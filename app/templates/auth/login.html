@@ -16,12 +16,11 @@
     <div class="card shadow-lg border-0" style="width:100%;max-width:420px;border-radius:.75rem;">
         <div class="card-body p-4 p-sm-5">
             <div class="text-center mb-4">
-                <div class="d-inline-flex align-items-center justify-content-center bg-primary rounded-circle mb-3"
-                     style="width:56px;height:56px">
-                    <i class="bi bi-qr-code text-white" style="font-size:1.5rem"></i>
-                </div>
-                <h5 class="fw-bold mb-0">QR Equipment System</h5>
-                <small class="text-muted">Staff Portal – Sign In</small>
+                <img src="{{ url_for('static', filename='ASOG-TBI_full-colored_stacked.png') }}"
+                     alt="ASOG TBI Logo"
+                     class="img-fluid mb-3"
+                     style="max-height:120px; width:auto;">
+                 <small class="d-block text-muted">Staff Portal – Sign In</small>
             </div>
 
             {% if google_oauth_enabled %}
