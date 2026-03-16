@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block body %}
+<nav class="sidebar">
+    <div class="brand">
+        <h6><i class="bi bi-qr-code me-2"></i>EqBorrow</h6>
+        <small>QR Equipment System</small>
+    </div>
+    <div class="pt-2">
+        <span class="nav-section">Main</span>
+        <a href="{{ url_for('dashboard.index') }}"
+           class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}">
+            <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+        <span class="nav-section">Borrowing</span>
+        <a href="#" class="nav-link text-secondary"><i class="bi bi-box-arrow-in-down"></i> Borrow Equipment</a>
+        <a href="#" class="nav-link text-secondary"><i class="bi bi-box-arrow-up"></i> Return Equipment</a>
+        <a href="#" class="nav-link text-secondary"><i class="bi bi-clock-history"></i> Active Borrowings</a>
+        <span class="nav-section">Management</span>
+        <a href="#" class="nav-link text-secondary"><i class="bi bi-people"></i> Members</a>
+        <a href="#" class="nav-link text-secondary"><i class="bi bi-tools"></i> Equipment</a>
+        <span class="nav-section">Reports</span>
+        <a href="#" class="nav-link text-secondary"><i class="bi bi-bar-chart"></i> Reports</a>
+        <a href="#" class="nav-link text-secondary"><i class="bi bi-exclamation-triangle"></i> Violations</a>
+    </div>
+    <div class="sidebar-bottom">
+        <div class="d-flex align-items-center gap-2 mb-2">
+            <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center"
+                 style="width:32px;height:32px;flex-shrink:0">
+                <i class="bi bi-person-fill text-white" style="font-size:.9rem"></i>
+            </div>
+            <div style="min-width:0">
+                <div class="text-white fw-semibold text-truncate" style="font-size:.8rem">{{ current_user.full_name }}</div>
+                <span class="badge bg-secondary" style="font-size:.65rem;text-transform:capitalize">{{ current_user.role }}</span>
+            </div>
+        </div>
+        <a href="{{ url_for('auth.logout') }}" class="nav-link ps-0">
+            <i class="bi bi-box-arrow-right"></i> Log Out
+        </a>
+    </div>
+</nav>
+
+<div class="main-content">
+    <div class="topbar">
+        <span class="fw-semibold text-dark">{% block page_title %}Dashboard{% endblock %}</span>
+        <small class="text-muted"><i class="bi bi-person-circle me-1"></i>{{ current_user.full_name }}</small>
+    </div>
+    <div class="px-3 pt-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endwith %}
+    </div>
+    <div class="page-content">
+        {% block content %}{% endblock %}
+    </div>
+</div>
+{% endblock %}

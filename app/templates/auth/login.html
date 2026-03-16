@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}Login – QR Equipment Borrowing System{% endblock %}
+{% block body %}
+<div class="position-fixed top-0 start-50 translate-middle-x mt-3" style="z-index:9999;min-width:320px">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endwith %}
+</div>
+<div class="min-vh-100 d-flex align-items-center justify-content-center"
+     style="background:linear-gradient(135deg,#1a2035 0%,#2d3a5e 100%);">
+    <div class="card shadow-lg border-0" style="width:100%;max-width:420px;border-radius:.75rem;">
+        <div class="card-body p-4 p-sm-5">
+            <div class="text-center mb-4">
+                <div class="d-inline-flex align-items-center justify-content-center bg-primary rounded-circle mb-3"
+                     style="width:56px;height:56px">
+                    <i class="bi bi-qr-code text-white" style="font-size:1.5rem"></i>
+                </div>
+                <h5 class="fw-bold mb-0">QR Equipment System</h5>
+                <small class="text-muted">Staff Portal – Sign In</small>
+            </div>
+            <form method="POST" action="{{ url_for('auth.login') }}" novalidate>
+                {{ form.hidden_tag() }}
+                <div class="mb-3">
+                    {{ form.email.label(class='form-label fw-semibold') }}
+                    {{ form.email(class='form-control' + (' is-invalid' if form.email.errors else ''),
+                                  placeholder='you@example.com', autofocus=True) }}
+                    {% for error in form.email.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                <div class="mb-4">
+                    {{ form.password.label(class='form-label fw-semibold') }}
+                    <div class="input-group">
+                        {{ form.password(class='form-control' + (' is-invalid' if form.password.errors else ''),
+                                         placeholder='••••••••', id='password') }}
+                        <button class="btn btn-outline-secondary" type="button"
+                                onclick="togglePwd()" title="Show/hide password">
+                            <i class="bi bi-eye" id="eyeIcon"></i>
+                        </button>
+                        {% for error in form.password.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="d-grid">
+                    {{ form.submit(class='btn btn-primary btn-lg') }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function togglePwd(){
+    var i=document.getElementById('password'),e=document.getElementById('eyeIcon');
+    if(i.type==='password'){i.type='text';e.className='bi bi-eye-slash';}
+    else{i.type='password';e.className='bi bi-eye';}
+}
+</script>
+{% endblock %}
