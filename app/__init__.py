@@ -4,12 +4,14 @@ from datetime import datetime
 from flask import Flask, session
 from flask_login import LoginManager, logout_user, current_user
 from flask_wtf.csrf import CSRFProtect
+from authlib.integrations.flask_client import OAuth
 
 from config.config import config
 from app.utils.db import close_db
 
 login_manager = LoginManager()
 csrf = CSRFProtect()
+oauth = OAuth()
 
 
 def create_app(config_name=None):
@@ -26,6 +28,16 @@ def create_app(config_name=None):
     login_manager.login_message_category = 'warning'
 
     csrf.init_app(app)
+    oauth.init_app(app)
+
+    if app.config.get('GOOGLE_CLIENT_ID') and app.config.get('GOOGLE_CLIENT_SECRET'):
+        oauth.register(
+            name='google',
+            client_id=app.config['GOOGLE_CLIENT_ID'],
+            client_secret=app.config['GOOGLE_CLIENT_SECRET'],
+            server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+            client_kwargs={'scope': 'openid email profile'},
+        )
 
     # Tear-down DB connection after each request
     app.teardown_appcontext(close_db)
@@ -57,9 +69,13 @@ def create_app(config_name=None):
     # Blueprints
     from app.routes.auth import auth_bp
     from app.routes.dashboard import dashboard_bp
+    from app.routes.members import members_bp
+    from app.routes.staff_admin import staff_admin_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
+    app.register_blueprint(members_bp)
+    app.register_blueprint(staff_admin_bp)
 
     return app
 

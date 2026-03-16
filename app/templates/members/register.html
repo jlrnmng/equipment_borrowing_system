@@ -1,0 +1,119 @@
+{% extends 'layouts/main.html' %}
+{% block title %}Register Member – QR Equipment Borrowing System{% endblock %}
+{% block page_title %}Member Registration{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card stat-card">
+            <div class="card-header bg-white border-bottom fw-semibold">
+                <i class="bi bi-person-plus me-1"></i> Register New Member
+            </div>
+            <div class="card-body">
+                <form method="POST" novalidate>
+                    {{ form.hidden_tag() }}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            {{ form.first_name.label(class='form-label fw-semibold') }}
+                            {{ form.first_name(class='form-control' + (' is-invalid' if form.first_name.errors else '')) }}
+                            {% for error in form.first_name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.middle_name.label(class='form-label fw-semibold') }}
+                            {{ form.middle_name(class='form-control' + (' is-invalid' if form.middle_name.errors else '')) }}
+                            {% for error in form.middle_name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.last_name.label(class='form-label fw-semibold') }}
+                            {{ form.last_name(class='form-control' + (' is-invalid' if form.last_name.errors else '')) }}
+                            {% for error in form.last_name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.student_id.label(class='form-label fw-semibold') }}
+                            {{ form.student_id(class='form-control' + (' is-invalid' if form.student_id.errors else ''), placeholder='ID number') }}
+                            {% for error in form.student_id.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.email.label(class='form-label fw-semibold') }}
+                            {{ form.email(class='form-control' + (' is-invalid' if form.email.errors else ''), placeholder='name@my.cspc.edu.ph') }}
+                            {% for error in form.email.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.phone.label(class='form-label fw-semibold') }}
+                            {{ form.phone(class='form-control' + (' is-invalid' if form.phone.errors else ''), placeholder='09xxxxxxxxx') }}
+                            {% for error in form.phone.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-8">
+                            {{ form.startup.label(class='form-label fw-semibold') }}
+                            {{ form.startup(class='form-control' + (' is-invalid' if form.startup.errors else ''), placeholder='Startup or agency name') }}
+                            {% for error in form.startup.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.max_borrow_limit.label(class='form-label fw-semibold') }}
+                            {{ form.max_borrow_limit(class='form-control' + (' is-invalid' if form.max_borrow_limit.errors else '')) }}
+                            {% for error in form.max_borrow_limit.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                    </div>
+                    <div class="d-grid mt-4">
+                        {{ form.submit(class='btn btn-primary') }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card stat-card h-100">
+            <div class="card-header bg-white border-bottom fw-semibold">
+                <i class="bi bi-info-circle me-1"></i> Registration Policy
+            </div>
+            <div class="card-body small text-muted">
+                <ul class="mb-0">
+                    <li>Only first admin or authorized staff can register members.</li>
+                    <li>Google email must use the institution domain.</li>
+                    <li>Account is pre-registered and linked on first Google sign-in.</li>
+                    <li>Each registration generates a unique member code and QR.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if created_member %}
+<div class="row mt-3">
+    <div class="col-lg-7">
+        <div class="card stat-card border-success">
+            <div class="card-header bg-success-subtle border-bottom fw-semibold text-success-emphasis">
+                <i class="bi bi-check-circle me-1"></i> Member Registered Successfully
+            </div>
+            <div class="card-body">
+                <div><strong>Member Code:</strong> {{ created_member.member_code }}</div>
+                <div><strong>Name:</strong> {{ created_member.full_name }}</div>
+                <div><strong>Email:</strong> {{ created_member.email }}</div>
+                <div><strong>Startup/Agency:</strong> {{ created_member.startup or '-' }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card stat-card">
+            <div class="card-header bg-white border-bottom fw-semibold">
+                <i class="bi bi-qr-code me-1"></i> Member QR Code
+            </div>
+            <div class="card-body text-center">
+                <img src="{{ url_for('static', filename=created_member.qr_code_path) }}"
+                     alt="Member QR"
+                     class="img-fluid border rounded p-2 bg-white"
+                     style="max-width:220px;">
+                <div class="d-grid mt-3">
+                    <a href="{{ url_for('static', filename=created_member.qr_code_path) }}"
+                       class="btn btn-outline-primary"
+                       download="{{ created_member.member_code }}.png">
+                        <i class="bi bi-download me-1"></i> Download QR
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

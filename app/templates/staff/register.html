@@ -1,0 +1,74 @@
+{% extends 'layouts/main.html' %}
+{% block title %}Register Staff – QR Equipment Borrowing System{% endblock %}
+{% block page_title %}Staff Account Registration{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card stat-card">
+            <div class="card-header bg-white border-bottom fw-semibold">
+                <i class="bi bi-person-badge me-1"></i> Register Staff Account
+            </div>
+            <div class="card-body">
+                <form method="POST" novalidate>
+                    {{ form.hidden_tag() }}
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            {{ form.full_name.label(class='form-label fw-semibold') }}
+                            {{ form.full_name(class='form-control' + (' is-invalid' if form.full_name.errors else ''), placeholder='Full name') }}
+                            {% for error in form.full_name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.role.label(class='form-label fw-semibold') }}
+                            {{ form.role(class='form-select' + (' is-invalid' if form.role.errors else '')) }}
+                            {% for error in form.role.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-12">
+                            {{ form.email.label(class='form-label fw-semibold') }}
+                            {{ form.email(class='form-control' + (' is-invalid' if form.email.errors else ''), placeholder='name@my.cspc.edu.ph') }}
+                            {% for error in form.email.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                    </div>
+                    <div class="d-grid mt-4">
+                        {{ form.submit(class='btn btn-primary') }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card stat-card h-100">
+            <div class="card-header bg-white border-bottom fw-semibold">
+                <i class="bi bi-shield-check me-1"></i> Security Policy
+            </div>
+            <div class="card-body small text-muted">
+                <ul class="mb-0">
+                    <li>Only admins can create staff accounts.</li>
+                    <li>Staff accounts are Google OAuth-only by default.</li>
+                    <li>Email must use the institution domain.</li>
+                    <li>Account is pre-registered and linked on first Google sign-in.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if created_staff %}
+<div class="row mt-3">
+    <div class="col-lg-7">
+        <div class="card stat-card border-success">
+            <div class="card-header bg-success-subtle border-bottom fw-semibold text-success-emphasis">
+                <i class="bi bi-check-circle me-1"></i> Staff Registered Successfully
+            </div>
+            <div class="card-body">
+                <div><strong>Staff Code:</strong> {{ created_staff.staff_code }}</div>
+                <div><strong>Name:</strong> {{ created_staff.full_name }}</div>
+                <div><strong>Email:</strong> {{ created_staff.email }}</div>
+                <div><strong>Role:</strong> {{ created_staff.role }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -12,6 +12,13 @@ class Config:
     MYSQL_DB = os.getenv('DB_NAME', 'equipment_borrowing')
     MYSQL_USER = os.getenv('DB_USER', 'root')
     MYSQL_PASSWORD = os.getenv('DB_PASSWORD', '')
+
+    # Google OAuth (read from environment only)
+    GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
+    GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
+    GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI')
+    GOOGLE_ALLOWED_DOMAIN = os.getenv('GOOGLE_ALLOWED_DOMAIN', 'my.cspc.edu.ph')
+
     WTF_CSRF_ENABLED = True
     # Session expires after 30 minutes of inactivity
     PERMANENT_SESSION_LIFETIME = timedelta(minutes=30)

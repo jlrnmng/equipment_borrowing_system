@@ -49,11 +49,84 @@ class Staff(UserMixin):
         with db.cursor() as cursor:
             cursor.execute(
                 "SELECT staff_id, staff_code, email, password_hash, "
-                "full_name, role, status "
-                "FROM staff WHERE email = %s",
-                (email,),
+                "full_name, role, status, google_email, google_sub "
+                "FROM staff WHERE email = %s OR google_email = %s LIMIT 1",
+                (email, email),
             )
             return cursor.fetchone()
+
+    @staticmethod
+    def is_first_admin(row):
+        """Return True when the row represents the earliest admin account."""
+        if not row:
+            return False
+        if row.get('role') != 'admin':
+            return False
+
+        db = get_db()
+        with db.cursor() as cursor:
+            cursor.execute(
+                "SELECT COUNT(*) AS cnt FROM staff WHERE role = 'admin' AND staff_id < %s",
+                (row.get('staff_id'),),
+            )
+            result = cursor.fetchone()
+        return (result or {}).get('cnt', 0) == 0
+
+    @staticmethod
+    def update_google_identity(staff_id, google_email, google_sub):
+        """Link a staff account to Google identity on first OAuth login."""
+        db = get_db()
+        with db.cursor() as cursor:
+            cursor.execute(
+                "UPDATE staff SET google_email = %s, google_sub = %s WHERE staff_id = %s",
+                (google_email, google_sub, staff_id),
+            )
+        db.commit()
+
+    @staticmethod
+    def touch_last_login(staff_id):
+        """Update staff last_login timestamp."""
+        db = get_db()
+        with db.cursor() as cursor:
+            cursor.execute(
+                "UPDATE staff SET last_login = NOW() WHERE staff_id = %s",
+                (staff_id,),
+            )
+        db.commit()
+
+    @staticmethod
+    def get_next_staff_code():
+        """Return next STAFF### code."""
+        db = get_db()
+        with db.cursor() as cursor:
+            cursor.execute("SELECT staff_code FROM staff ORDER BY staff_id DESC LIMIT 1")
+            row = cursor.fetchone()
+        if row and row.get('staff_code', '').startswith('STAFF'):
+            next_num = int(row['staff_code'][5:]) + 1
+        else:
+            next_num = 1
+        return f"STAFF{next_num:03d}"
+
+    @staticmethod
+    def create_google_only_staff(full_name, email, role):
+        """Create staff account pre-registered for Google OAuth-only sign in."""
+        db = get_db()
+        staff_code = Staff.get_next_staff_code()
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO staff (
+                    staff_code, email, password_hash, full_name, role, status, google_email
+                ) VALUES (%s, %s, NULL, %s, %s, 'active', %s)
+                """,
+                (staff_code, email, full_name, role, email),
+            )
+            staff_id = cursor.lastrowid
+        db.commit()
+        return {
+            'staff_id': staff_id,
+            'staff_code': staff_code,
+        }
 
     # ------------------------------------------------------------------
     # Password helpers
