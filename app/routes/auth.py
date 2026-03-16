@@ -194,8 +194,11 @@ def request_access():
 @login_required
 def logout():
     logout_user()
+    session.clear()
     flash('You have been logged out.', 'info')
     response = make_response(redirect(url_for('auth.login')))
+    response.delete_cookie(current_app.config.get('SESSION_COOKIE_NAME', 'session'))
+    response.delete_cookie(current_app.config.get('REMEMBER_COOKIE_NAME', 'remember_token'))
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
