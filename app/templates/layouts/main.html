@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block body %}
-<nav class="sidebar">
+<nav id="appSidebar" class="sidebar">
     <div class="brand">
         <h6>
             <img src="{{ url_for('static', filename='ASOG-TBI_full-colored_stacked.png') }}"
@@ -55,11 +55,17 @@
         </a>
     </div>
 </nav>
+<div id="sidebarBackdrop" class="sidebar-backdrop d-lg-none" onclick="closeSidebar()"></div>
 
 <div class="main-content">
     <div class="topbar">
-        <span class="fw-semibold text-dark">{% block page_title %}Dashboard{% endblock %}</span>
-        <small class="text-muted"><i class="bi bi-person-circle me-1"></i>{{ current_user.full_name }}</small>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary d-lg-none" onclick="toggleSidebar()" aria-label="Open navigation menu">
+                <i class="bi bi-list"></i>
+            </button>
+            <span class="fw-semibold text-dark">{% block page_title %}Dashboard{% endblock %}</span>
+        </div>
+        <small class="text-muted topbar-user"><i class="bi bi-person-circle me-1"></i>{{ current_user.full_name }}</small>
     </div>
     <div class="px-3 pt-3">
         {% with messages = get_flashed_messages(with_categories=true) %}

@@ -22,6 +22,74 @@
         .page-content { padding:1.5rem; }
         .stat-card { border:none; border-radius:.5rem; box-shadow:0 1px 4px rgba(0,0,0,.08); }
         .stat-card .icon-box { width:48px; height:48px; border-radius:.4rem; display:flex; align-items:center; justify-content:center; font-size:1.4rem; }
+        .sidebar-backdrop { display:none; }
+
+        @media (max-width: 991.98px) {
+            body.sidebar-open { overflow: hidden; }
+            .sidebar {
+                width: 270px;
+                transform: translateX(-100%);
+                transition: transform .2s ease;
+                z-index: 1045;
+            }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-backdrop {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, .35);
+                z-index: 1040;
+            }
+            .sidebar-backdrop.show { display: block; }
+            .main-content { margin-left: 0; width: 100%; }
+            .topbar {
+                position: sticky;
+                top: 0;
+                z-index: 1030;
+                padding: .75rem 1rem;
+            }
+            .topbar .fw-semibold {
+                max-width: calc(100vw - 90px);
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .topbar .topbar-user { display: none; }
+            .page-content { padding: 1rem; }
+            .sidebar .brand { padding: 1rem 1.25rem; }
+            .sidebar .nav-link { padding: .7rem 1.25rem; }
+            .sidebar-bottom { padding: .75rem 1.25rem; }
+            .stat-card .icon-box { width: 42px; height: 42px; font-size: 1.2rem; }
+        }
+
+        @media (max-width: 575.98px) {
+            .topbar { padding: .6rem .75rem; }
+            .page-content { padding: .75rem; }
+            .card .card-header,
+            .card .card-body {
+                padding-left: .75rem;
+                padding-right: .75rem;
+            }
+            .table { font-size: .84rem; }
+            .table th,
+            .table td {
+                padding: .45rem .4rem;
+                vertical-align: middle;
+            }
+            .badge { font-size: .72rem; }
+            .btn,
+            .form-control,
+            .form-select,
+            .input-group-text {
+                font-size: .92rem;
+            }
+            .alert { font-size: .9rem; }
+        }
+
+        @media (min-width: 992px) {
+            .sidebar { transform: translateX(0) !important; }
+            .sidebar-backdrop { display: none !important; }
+        }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
@@ -42,6 +110,48 @@
                 window.location.reload();
             }
         });
+
+        (function () {
+            var sidebar = document.getElementById('appSidebar');
+            var backdrop = document.getElementById('sidebarBackdrop');
+
+            function setSidebarOpen(open) {
+                if (!sidebar || !backdrop) {
+                    return;
+                }
+                sidebar.classList.toggle('open', open);
+                backdrop.classList.toggle('show', open);
+                document.body.classList.toggle('sidebar-open', open);
+            }
+
+            window.toggleSidebar = function () {
+                if (!sidebar) {
+                    return;
+                }
+                var isOpen = sidebar.classList.contains('open');
+                setSidebarOpen(!isOpen);
+            };
+
+            window.closeSidebar = function () {
+                setSidebarOpen(false);
+            };
+
+            if (sidebar) {
+                sidebar.querySelectorAll('a.nav-link').forEach(function (link) {
+                    link.addEventListener('click', function () {
+                        if (window.innerWidth < 992) {
+                            setSidebarOpen(false);
+                        }
+                    });
+                });
+            }
+
+            window.addEventListener('resize', function () {
+                if (window.innerWidth >= 992) {
+                    setSidebarOpen(false);
+                }
+            });
+        })();
     </script>
     {% endif %}
     {% block extra_scripts %}{% endblock %}

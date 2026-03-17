@@ -1,6 +1,14 @@
 {% extends 'layouts/main.html' %}
 {% block title %}Register Member – QR Equipment Borrowing System{% endblock %}
 {% block page_title %}Member Registration{% endblock %}
+{% block page_actions %}
+<a href="{{ url_for('dashboard.index') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-house-door me-1"></i> Dashboard
+</a>
+<a href="{{ url_for('equipment.list_equipment') }}" class="btn btn-sm btn-outline-primary">
+    <i class="bi bi-box2 me-1"></i> Equipment List
+</a>
+{% endblock %}
 
 {% block content %}
 <div class="row g-3">

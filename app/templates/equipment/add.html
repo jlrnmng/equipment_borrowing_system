@@ -1,6 +1,14 @@
 {% extends 'layouts/main.html' %}
 {% block title %}Add Equipment – QR Equipment Borrowing System{% endblock %}
 {% block page_title %}Equipment Management{% endblock %}
+{% block page_actions %}
+<a href="{{ url_for('equipment.list_equipment') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-list-ul me-1"></i> Equipment List
+</a>
+<a href="{{ url_for('dashboard.index') }}" class="btn btn-sm btn-outline-primary">
+    <i class="bi bi-house-door me-1"></i> Dashboard
+</a>
+{% endblock %}
 
 {% block content %}
 <div class="row g-3">

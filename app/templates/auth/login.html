@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Login – QR Equipment Borrowing System{% endblock %}
 {% block body %}
-<div class="position-fixed top-0 start-50 translate-middle-x mt-3" style="z-index:9999;min-width:320px">
+<div class="position-fixed top-0 start-50 translate-middle-x mt-3" style="z-index:9999;width:min(92vw,420px)">
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% for category, message in messages %}
             <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm">
