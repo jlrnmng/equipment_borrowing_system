@@ -31,7 +31,10 @@
             <i class="bi bi-person-badge"></i> Staff Accounts
         </a>
         {% endif %}
-        <a href="#" class="nav-link text-secondary"><i class="bi bi-tools"></i> Equipment</a>
+        <a href="{{ url_for('equipment.list_equipment') }}"
+           class="nav-link {% if request.endpoint in ['equipment.list_equipment', 'equipment.add_equipment', 'equipment.equipment_detail', 'equipment.edit_equipment'] %}active{% endif %}">
+            <i class="bi bi-box2"></i> Equipment
+        </a>
         <span class="nav-section">Reports</span>
         <a href="#" class="nav-link text-secondary"><i class="bi bi-bar-chart"></i> Reports</a>
         <a href="#" class="nav-link text-secondary"><i class="bi bi-exclamation-triangle"></i> Violations</a>

@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template
 from flask_login import login_required
 
+from app.models.equipment import Equipment
 from app.utils.db import get_db
 
 dashboard_bp = Blueprint('dashboard', __name__)
@@ -24,10 +25,7 @@ def index():
             )
             stats['active_members'] = cursor.fetchone()['cnt']
 
-            cursor.execute(
-                "SELECT COUNT(*) AS cnt FROM equipment WHERE status = 'available'"
-            )
-            stats['available_equipment'] = cursor.fetchone()['cnt']
+            stats['available_equipment'] = Equipment.count_by_status('available')
 
             cursor.execute(
                 "SELECT COUNT(*) AS cnt FROM borrow_records WHERE status = 'active'"

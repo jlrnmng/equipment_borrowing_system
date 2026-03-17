@@ -1,0 +1,152 @@
+{% extends 'layouts/main.html' %}
+{% block title %}{{ equipment.equipment_name }} – QR Equipment Borrowing System{% endblock %}
+{% block page_title %}Equipment Management{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card stat-card">
+            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+                <div class="fw-semibold">
+                    <i class="bi bi-box2 me-1"></i> Equipment Details
+                </div>
+                <a href="{{ url_for('equipment.edit_equipment', equipment_id=equipment.equipment_id) }}" class="btn btn-sm btn-secondary">
+                    <i class="bi bi-pencil me-1"></i> Edit
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted small fw-semibold d-block">Inventory Number</label>
+                        <span class="font-monospace h6">{{ equipment.inventory_number }}</span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted small fw-semibold d-block">Equipment Name</label>
+                        <span class="h6">{{ equipment.equipment_name }}</span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted small fw-semibold d-block">Brand</label>
+                        <span class="h6">{{ equipment.brand or '-' }}</span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted small fw-semibold d-block">Serial Number</label>
+                        <span class="h6 font-monospace">{{ equipment.serial_number or '-' }}</span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted small fw-semibold d-block">Property/Stock Number</label>
+                        <span class="h6">{{ equipment.property_stock_number or '-' }}</span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted small fw-semibold d-block">Status</label>
+                        <span class="badge
+                            {% if equipment.status == 'available' %}bg-success
+                            {% elif equipment.status == 'borrowed' %}bg-warning
+                            {% elif equipment.status == 'maintenance' %}bg-info
+                            {% else %}bg-secondary
+                            {% endif %} fs-6">
+                            {{ equipment.status | title }}
+                        </span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted small fw-semibold d-block">Condition</label>
+                        <span class="badge
+                            {% if equipment.condition_status == 'excellent' %}bg-success
+                            {% elif equipment.condition_status == 'good' %}bg-success-subtle text-success-emphasis
+                            {% elif equipment.condition_status == 'fair' %}bg-warning-subtle text-warning-emphasis
+                            {% else %}bg-danger-subtle text-danger-emphasis
+                            {% endif %} fs-6">
+                            {{ equipment.condition_status | title }}
+                        </span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted small fw-semibold d-block">Storage Location</label>
+                        <span class="h6">{{ equipment.location or '-' }}</span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted small fw-semibold d-block">Requires Supervision</label>
+                        <span class="h6">
+                            {% if equipment.requires_supervision %}
+                                <span class="badge bg-warning">Yes - Supervision Required</span>
+                            {% else %}
+                                <span class="text-muted">No</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% if equipment.restricted_areas %}
+                    <div class="col-md-12 mb-3">
+                        <label class="text-muted small fw-semibold d-block">Restricted Areas</label>
+                        <div class="alert alert-warning mb-0">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            {{ equipment.restricted_areas }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if equipment.notes %}
+                    <div class="col-md-12 mb-3">
+                        <label class="text-muted small fw-semibold d-block">Notes</label>
+                        <p>{{ equipment.notes }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <hr/>
+
+                <div class="row mt-4">
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted small fw-semibold d-block">Added By</label>
+                        <span class="h6">{{ equipment.added_by or 'System' }}</span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted small fw-semibold d-block">Created</label>
+                        <span class="h6">{{ equipment.created_at.strftime('%B %d, %Y at %I:%M %p') if equipment.created_at else '-' }}</span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted small fw-semibold d-block">Last Updated</label>
+                        <span class="h6">{{ equipment.updated_at.strftime('%B %d, %Y at %I:%M %p') if equipment.updated_at else '-' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card stat-card">
+            <div class="card-header bg-white border-bottom fw-semibold">
+                <i class="bi bi-qr-code me-1"></i> Equipment Code
+            </div>
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <small class="text-muted d-block mb-2">Scan this code for quick access</small>
+                    <div class="bg-light p-3 rounded">
+                        <span class="font-monospace fw-bold">{{ equipment.inventory_number }}</span>
+                    </div>
+                </div>
+                <small class="text-muted">Use this inventory number to identify equipment during borrow/return transactions.</small>
+            </div>
+        </div>
+
+        <div class="card stat-card mt-3">
+            <div class="card-header bg-white border-bottom fw-semibold">
+                <i class="bi bi-info-circle me-1"></i> Usage Policy
+            </div>
+            <div class="card-body small text-muted">
+                {% if equipment.requires_supervision %}
+                    <p class="mb-2"><strong>⚠️ Staff Supervision Required</strong></p>
+                    <p>This equipment must be supervised by staff when in use. Members cannot borrow this item without staff present.</p>
+                {% else %}
+                    <p>This equipment can be borrowed during in-facility usage only.</p>
+                {% endif %}
+
+                {% if equipment.restricted_areas %}
+                    <hr/>
+                    <p class="mb-2"><strong>Restricted Areas:</strong></p>
+                    <p>{{ equipment.restricted_areas }}</p>
+                {% endif %}
+
+                <hr/>
+                <p class="mb-0">Equipment must be used within the facility during regular working hours (Mon-Fri, 8am-5pm).</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

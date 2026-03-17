@@ -1,0 +1,182 @@
+{% extends 'layouts/main.html' %}
+{% block title %}Equipment List – QR Equipment Borrowing System{% endblock %}
+{% block page_title %}Equipment Management{% endblock %}
+
+{% block content %}
+<!-- Statistics Section -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="icon-box bg-primary-subtle text-primary me-3">
+                        <i class="bi bi-box2"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small">Total Equipment</div>
+                        <div class="h6 mb-0">{{ stats.total or 0 }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="icon-box bg-success-subtle text-success me-3">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small">Available</div>
+                        <div class="h6 mb-0">{{ stats.available or 0 }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="icon-box bg-warning-subtle text-warning me-3">
+                        <i class="bi bi-hand-thumbs-up"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small">Borrowed</div>
+                        <div class="h6 mb-0">{{ stats.borrowed or 0 }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="icon-box bg-info-subtle text-info me-3">
+                        <i class="bi bi-wrench"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small">Maintenance</div>
+                        <div class="h6 mb-0">{{ stats.maintenance or 0 }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Equipment List Section -->
+<div class="card stat-card">
+    <div class="card-header bg-white border-bottom">
+        <div class="d-flex align-items-center justify-content-between">
+            <div class="fw-semibold">
+                <i class="bi bi-list-ul me-1"></i> Equipment Inventory
+            </div>
+            <a href="{{ url_for('equipment.add_equipment') }}" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-lg me-1"></i> Add Equipment
+            </a>
+        </div>
+    </div>
+
+    <div class="card-body">
+        <!-- Filters and Search -->
+        <form method="GET" class="row g-3 mb-4">
+            <div class="col-md-4">
+                <input type="text" name="search" class="form-control form-control-sm" 
+                       placeholder="Search by name, code, serial..." value="{{ search_query or '' }}">
+            </div>
+            <div class="col-md-3">
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">All Statuses</option>
+                    <option value="available" {% if current_status == 'available' %}selected{% endif %}>Available</option>
+                    <option value="borrowed" {% if current_status == 'borrowed' %}selected{% endif %}>Borrowed</option>
+                    <option value="maintenance" {% if current_status == 'maintenance' %}selected{% endif %}>Maintenance</option>
+                    <option value="retired" {% if current_status == 'retired' %}selected{% endif %}>Retired</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select name="location" class="form-select form-select-sm">
+                    <option value="">All Locations</option>
+                    {% for location in locations %}
+                    <option value="{{ location }}" {% if current_location == location %}selected{% endif %}>{{ location }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-secondary btn-sm w-100">
+                    <i class="bi bi-funnel me-1"></i> Filter
+                </button>
+            </div>
+        </form>
+
+        <!-- Equipment Table -->
+        {% if equipment %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="fw-semibold">Inventory #</th>
+                        <th class="fw-semibold">Equipment Name</th>
+                        <th class="fw-semibold">Brand</th>
+                        <th class="fw-semibold">Condition</th>
+                        <th class="fw-semibold">Status</th>
+                        <th class="fw-semibold">Location</th>
+                        <th class="fw-semibold text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in equipment %}
+                    <tr>
+                        <td>
+                            <span class="font-monospace fw-semibold">{{ item.inventory_number }}</span>
+                        </td>
+                        <td>{{ item.equipment_name }}</td>
+                        <td>{{ item.brand or '-' }}</td>
+                        <td>
+                            <span class="badge
+                                {% if item.condition_status == 'excellent' %}bg-success
+                                {% elif item.condition_status == 'good' %}bg-success-subtle text-success-emphasis
+                                {% elif item.condition_status == 'fair' %}bg-warning-subtle text-warning-emphasis
+                                {% else %}bg-danger-subtle text-danger-emphasis
+                                {% endif %}">
+                                {{ item.condition_status | title }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge
+                                {% if item.status == 'available' %}bg-success
+                                {% elif item.status == 'borrowed' %}bg-warning
+                                {% elif item.status == 'maintenance' %}bg-info
+                                {% else %}bg-secondary
+                                {% endif %}">
+                                {{ item.status | title }}
+                            </span>
+                        </td>
+                        <td>{{ item.location or '-' }}</td>
+                        <td class="text-center">
+                            <a href="{{ url_for('equipment.equipment_detail', equipment_id=item.equipment_id) }}" 
+                               class="btn btn-sm btn-outline-primary" title="View Details">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{{ url_for('equipment.edit_equipment', equipment_id=item.equipment_id) }}" 
+                               class="btn btn-sm btn-outline-secondary" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info text-center mb-0">
+            <i class="bi bi-info-circle me-2"></i>
+            No equipment found. <a href="{{ url_for('equipment.add_equipment') }}">Add the first item</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

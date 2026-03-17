@@ -59,3 +59,8 @@ build/
 # QR Codes (if generated)
 qr_codes/
 uploads/
+
+# Local inventory workbook
+asoh_equipment_inventory.xlsx
+
+

@@ -71,11 +71,13 @@ def create_app(config_name=None):
     from app.routes.dashboard import dashboard_bp
     from app.routes.members import members_bp
     from app.routes.staff_admin import staff_admin_bp
+    from app.routes.equipment import equipment_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(members_bp)
     app.register_blueprint(staff_admin_bp)
+    app.register_blueprint(equipment_bp)
 
     return app
 

@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import IntegerField, PasswordField, SelectField, StringField, SubmitField
+from wtforms import BooleanField, IntegerField, PasswordField, SelectField, StringField, SubmitField, TextAreaField
 from wtforms.validators import DataRequired, Email, Length, NumberRange, Optional
 
 
@@ -41,3 +41,33 @@ class StaffRegistrationForm(FlaskForm):
         default='staff',
     )
     submit = SubmitField('Register Staff Account')
+
+
+class EquipmentForm(FlaskForm):
+    equipment_name = StringField(
+        'Equipment Name',
+        validators=[DataRequired(), Length(min=3, max=150)],
+    )
+    brand = StringField('Brand', validators=[Optional(), Length(max=100)])
+    serial_number = StringField('Serial Number', validators=[Optional(), Length(max=150)])
+    property_stock_number = StringField('Property/Stock Number', validators=[Optional(), Length(max=80)])
+    condition_status = SelectField(
+        'Condition',
+        choices=[
+            ('excellent', 'Excellent'),
+            ('good', 'Good'),
+            ('fair', 'Fair'),
+            ('poor', 'Poor'),
+        ],
+        validators=[DataRequired()],
+        default='good',
+    )
+    location = StringField('Storage Location', validators=[Optional(), Length(max=100)])
+    requires_supervision = BooleanField('Requires Staff Supervision During Use')
+    restricted_areas = StringField(
+        'Restricted Areas',
+        validators=[Optional(), Length(max=255)],
+        description='List areas where equipment cannot be used (e.g., "Outside facility, High-risk areas")',
+    )
+    notes = TextAreaField('Notes', validators=[Optional(), Length(max=1000)])
+    submit = SubmitField('Add Equipment')

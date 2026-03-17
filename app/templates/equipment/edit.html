@@ -1,0 +1,106 @@
+{% extends 'layouts/main.html' %}
+{% block title %}Edit Equipment – QR Equipment Borrowing System{% endblock %}
+{% block page_title %}Equipment Management{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card stat-card">
+            <div class="card-header bg-white border-bottom fw-semibold">
+                <i class="bi bi-pencil me-1"></i> Edit Equipment
+            </div>
+            <div class="card-body">
+                <form method="POST" novalidate>
+                    {{ form.hidden_tag() }}
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            {{ form.equipment_name.label(class='form-label fw-semibold') }}
+                            {{ form.equipment_name(class='form-control' + (' is-invalid' if form.equipment_name.errors else '')) }}
+                            {% for error in form.equipment_name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+
+                        <div class="col-md-6">
+                            {{ form.brand.label(class='form-label fw-semibold') }}
+                            {{ form.brand(class='form-control' + (' is-invalid' if form.brand.errors else '')) }}
+                            {% for error in form.brand.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+
+                        <div class="col-md-6">
+                            {{ form.serial_number.label(class='form-label fw-semibold') }}
+                            {{ form.serial_number(class='form-control' + (' is-invalid' if form.serial_number.errors else '')) }}
+                            {% for error in form.serial_number.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+
+                        <div class="col-md-6">
+                            {{ form.property_stock_number.label(class='form-label fw-semibold') }}
+                            {{ form.property_stock_number(class='form-control' + (' is-invalid' if form.property_stock_number.errors else '')) }}
+                            {% for error in form.property_stock_number.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+
+                        <div class="col-md-6">
+                            {{ form.condition_status.label(class='form-label fw-semibold') }}
+                            {{ form.condition_status(class='form-select' + (' is-invalid' if form.condition_status.errors else '')) }}
+                            {% for error in form.condition_status.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+
+                        <div class="col-md-12">
+                            {{ form.location.label(class='form-label fw-semibold') }}
+                            {{ form.location(class='form-control' + (' is-invalid' if form.location.errors else '')) }}
+                            {% for error in form.location.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+
+                        <div class="col-md-12">
+                            <div class="form-check">
+                                {{ form.requires_supervision(class='form-check-input' + (' is-invalid' if form.requires_supervision.errors else '')) }}
+                                {{ form.requires_supervision.label(class='form-check-label') }}
+                            </div>
+                        </div>
+
+                        <div class="col-md-12">
+                            {{ form.restricted_areas.label(class='form-label fw-semibold') }}
+                            {{ form.restricted_areas(class='form-control' + (' is-invalid' if form.restricted_areas.errors else ''), rows='2') }}
+                            {% for error in form.restricted_areas.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+
+                        <div class="col-md-12">
+                            {{ form.notes.label(class='form-label fw-semibold') }}
+                            {{ form.notes(class='form-control' + (' is-invalid' if form.notes.errors else ''), rows='3') }}
+                            {% for error in form.notes.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                    </div>
+                    <div class="d-grid mt-4">
+                        {{ form.submit(class='btn btn-primary') }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card stat-card">
+            <div class="card-header bg-white border-bottom fw-semibold">
+                <i class="bi bi-info-circle me-1"></i> Current Information
+            </div>
+            <div class="card-body small">
+                <div class="mb-3">
+                    <label class="text-muted fw-semibold d-block mb-1">Inventory Number</label>
+                    <span class="font-monospace">{{ equipment.inventory_number }}</span>
+                </div>
+                <div class="mb-3">
+                    <label class="text-muted fw-semibold d-block mb-1">Current Status</label>
+                    <span class="badge bg-primary">{{ equipment.status | title }}</span>
+                </div>
+                <div class="mb-3">
+                    <label class="text-muted fw-semibold d-block mb-1">Created</label>
+                    <span class="text-muted">{{ equipment.created_at.strftime('%b %d, %Y') if equipment.created_at else '-' }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="mt-3">
+            <a href="{{ url_for('equipment.equipment_detail', equipment_id=equipment.equipment_id) }}" class="btn btn-outline-secondary w-100">
+                <i class="bi bi-arrow-left me-1"></i> Cancel
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
