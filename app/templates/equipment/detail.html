@@ -17,12 +17,20 @@
             <div class="card-body">
                 <div class="row mb-4">
                     <div class="col-md-6 mb-3">
+                        <label class="text-muted small fw-semibold d-block">Equipment Code</label>
+                        <span class="font-monospace h6">{{ equipment.equipment_code or equipment.inventory_number }}</span>
+                    </div>
+                    <div class="col-md-6 mb-3">
                         <label class="text-muted small fw-semibold d-block">Inventory Number</label>
                         <span class="font-monospace h6">{{ equipment.inventory_number }}</span>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="text-muted small fw-semibold d-block">Equipment Name</label>
                         <span class="h6">{{ equipment.equipment_name }}</span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted small fw-semibold d-block">Category</label>
+                        <span class="h6">{{ equipment.category }}</span>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="text-muted small fw-semibold d-block">Brand</label>
@@ -118,10 +126,10 @@
                 <div class="mb-3">
                     <small class="text-muted d-block mb-2">Scan this code for quick access</small>
                     <div class="bg-light p-3 rounded">
-                        <span class="font-monospace fw-bold">{{ equipment.inventory_number }}</span>
+                        <span class="font-monospace fw-bold">{{ equipment.equipment_code or equipment.inventory_number }}</span>
                     </div>
                 </div>
-                <small class="text-muted">Use this inventory number to identify equipment during borrow/return transactions.</small>
+                <small class="text-muted">Use this equipment code during management and the inventory number for physical label matching.</small>
             </div>
         </div>
 

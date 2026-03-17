@@ -20,6 +20,24 @@
                         </div>
 
                         <div class="col-md-6">
+                            {{ form.inventory_number.label(class='form-label fw-semibold') }}
+                            {{ form.inventory_number(class='form-control font-monospace' + (' is-invalid' if form.inventory_number.errors else '')) }}
+                            {% for error in form.inventory_number.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+
+                        <div class="col-md-6">
+                            {{ form.category.label(class='form-label fw-semibold') }}
+                            {{ form.category(class='form-control' + (' is-invalid' if form.category.errors else '')) }}
+                            {% for error in form.category.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+
+                        <div class="col-md-6">
+                            {{ form.status.label(class='form-label fw-semibold') }}
+                            {{ form.status(class='form-select' + (' is-invalid' if form.status.errors else '')) }}
+                            {% for error in form.status.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+
+                        <div class="col-md-6">
                             {{ form.brand.label(class='form-label fw-semibold') }}
                             {{ form.brand(class='form-control' + (' is-invalid' if form.brand.errors else '')) }}
                             {% for error in form.brand.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
@@ -83,12 +101,20 @@
             </div>
             <div class="card-body small">
                 <div class="mb-3">
+                    <label class="text-muted fw-semibold d-block mb-1">Equipment Code</label>
+                    <span class="font-monospace">{{ equipment.equipment_code or equipment.inventory_number }}</span>
+                </div>
+                <div class="mb-3">
                     <label class="text-muted fw-semibold d-block mb-1">Inventory Number</label>
                     <span class="font-monospace">{{ equipment.inventory_number }}</span>
                 </div>
                 <div class="mb-3">
                     <label class="text-muted fw-semibold d-block mb-1">Current Status</label>
                     <span class="badge bg-primary">{{ equipment.status | title }}</span>
+                </div>
+                <div class="mb-3">
+                    <label class="text-muted fw-semibold d-block mb-1">Category</label>
+                    <span class="text-muted">{{ equipment.category }}</span>
                 </div>
                 <div class="mb-3">
                     <label class="text-muted fw-semibold d-block mb-1">Created</label>

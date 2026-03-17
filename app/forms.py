@@ -48,9 +48,29 @@ class EquipmentForm(FlaskForm):
         'Equipment Name',
         validators=[DataRequired(), Length(min=3, max=150)],
     )
+    inventory_number = StringField(
+        'Inventory Number',
+        validators=[DataRequired(), Length(max=150)],
+    )
+    category = StringField(
+        'Category',
+        validators=[DataRequired(), Length(max=50)],
+        default='General',
+    )
     brand = StringField('Brand', validators=[Optional(), Length(max=100)])
     serial_number = StringField('Serial Number', validators=[Optional(), Length(max=150)])
     property_stock_number = StringField('Property/Stock Number', validators=[Optional(), Length(max=80)])
+    status = SelectField(
+        'Status',
+        choices=[
+            ('available', 'Available'),
+            ('borrowed', 'Borrowed'),
+            ('maintenance', 'Maintenance'),
+            ('retired', 'Retired'),
+        ],
+        validators=[DataRequired()],
+        default='available',
+    )
     condition_status = SelectField(
         'Condition',
         choices=[

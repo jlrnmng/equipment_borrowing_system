@@ -20,6 +20,24 @@
                         </div>
 
                         <div class="col-md-6">
+                            {{ form.inventory_number.label(class='form-label fw-semibold') }}
+                            {{ form.inventory_number(class='form-control font-monospace' + (' is-invalid' if form.inventory_number.errors else '')) }}
+                            {% for error in form.inventory_number.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+
+                        <div class="col-md-6">
+                            {{ form.category.label(class='form-label fw-semibold') }}
+                            {{ form.category(class='form-control' + (' is-invalid' if form.category.errors else ''), placeholder='e.g., ICT, Audio, Office Equipment') }}
+                            {% for error in form.category.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+
+                        <div class="col-md-6">
+                            {{ form.status.label(class='form-label fw-semibold') }}
+                            {{ form.status(class='form-select' + (' is-invalid' if form.status.errors else '')) }}
+                            {% for error in form.status.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+
+                        <div class="col-md-6">
                             {{ form.brand.label(class='form-label fw-semibold') }}
                             {{ form.brand(class='form-control' + (' is-invalid' if form.brand.errors else ''), placeholder='e.g., Dell, Epson') }}
                             {% for error in form.brand.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
@@ -86,6 +104,7 @@
             </div>
             <div class="card-body small text-muted">
                 <p><strong>Naming Convention:</strong> Use descriptive names that clearly identify the equipment type and model.</p>
+                <p><strong>Equipment Code:</strong> Auto-generated from the inventory number and used for internal equipment tracking.</p>
                 <p><strong>Inventory Number:</strong> Auto-generated in format EQP001, EQP002, etc. This is the unique identifier for each item.</p>
                 <p><strong>Usage Restrictions:</strong> Specify if equipment should only be used in-facility or has restricted areas.</p>
                 <p><strong>Condition Tracking:</strong> Mark initial condition (Excellent/Good/Fair/Poor) for comparison when returning.</p>
@@ -99,8 +118,10 @@
                 <i class="bi bi-check-circle me-1"></i> Equipment Added Successfully
             </div>
             <div class="card-body">
+                <div><strong>Equipment Code:</strong> <span class="font-monospace">{{ created_equipment.equipment_code }}</span></div>
                 <div><strong>Inventory Number:</strong> <span class="font-monospace">{{ created_equipment.inventory_number }}</span></div>
                 <div><strong>Equipment Name:</strong> {{ created_equipment.equipment_name }}</div>
+                <div><strong>Category:</strong> {{ created_equipment.category }}</div>
                 <div><strong>Brand:</strong> {{ created_equipment.brand or '-' }}</div>
                 <div><strong>Condition:</strong> <span class="badge bg-info">{{ created_equipment.condition_status | title }}</span></div>
                 <div><strong>Status:</strong> <span class="badge bg-success">{{ created_equipment.status | title }}</span></div>

@@ -85,7 +85,7 @@
         <form method="GET" class="row g-3 mb-4">
             <div class="col-md-4">
                 <input type="text" name="search" class="form-control form-control-sm" 
-                       placeholder="Search by name, code, serial..." value="{{ search_query or '' }}">
+                       placeholder="Search by code, inventory, name, serial, stock..." value="{{ search_query or '' }}">
             </div>
             <div class="col-md-3">
                 <select name="status" class="form-select form-select-sm">
@@ -117,8 +117,9 @@
             <table class="table table-hover mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th class="fw-semibold">Inventory #</th>
+                        <th class="fw-semibold">Code / Inventory</th>
                         <th class="fw-semibold">Equipment Name</th>
+                        <th class="fw-semibold">Category</th>
                         <th class="fw-semibold">Brand</th>
                         <th class="fw-semibold">Condition</th>
                         <th class="fw-semibold">Status</th>
@@ -130,9 +131,11 @@
                     {% for item in equipment %}
                     <tr>
                         <td>
-                            <span class="font-monospace fw-semibold">{{ item.inventory_number }}</span>
+                            <div class="font-monospace fw-semibold">{{ item.equipment_code or item.inventory_number }}</div>
+                            <div class="small text-muted">{{ item.inventory_number }}</div>
                         </td>
                         <td>{{ item.equipment_name }}</td>
+                        <td>{{ item.category or '-' }}</td>
                         <td>{{ item.brand or '-' }}</td>
                         <td>
                             <span class="badge

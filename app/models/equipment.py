@@ -1,3 +1,5 @@
+import hashlib
+
 from app.utils.db import get_db
 
 
@@ -31,11 +33,25 @@ class Equipment:
         return rows
 
     @staticmethod
+    def generate_equipment_code(inventory_number):
+        """Create a compact deterministic code from the inventory number."""
+        digest = hashlib.sha1(inventory_number.encode('utf-8')).hexdigest()[:10].upper()
+        return f"EQ-{digest}"
+
+    @staticmethod
     def get_next_inventory_number():
         """Generate the next equipment inventory number (EQP001, EQP002, etc.)."""
         db = get_db()
         with db.cursor() as cursor:
-            cursor.execute("SELECT inventory_number FROM equipment ORDER BY equipment_id DESC LIMIT 1")
+            cursor.execute(
+                """
+                SELECT inventory_number
+                FROM equipment
+                WHERE inventory_number REGEXP '^EQP[0-9]+$'
+                ORDER BY CAST(SUBSTRING(inventory_number, 4) AS UNSIGNED) DESC
+                LIMIT 1
+                """
+            )
             row = cursor.fetchone()
         
         if row and row.get('inventory_number', '').startswith('EQP'):
@@ -47,10 +63,12 @@ class Equipment:
     @staticmethod
     def create_equipment(
         equipment_name,
+        category,
         inventory_number,
         brand=None,
         serial_number=None,
         property_stock_number=None,
+        status='available',
         condition_status='good',
         location=None,
         requires_supervision=False,
@@ -60,21 +78,25 @@ class Equipment:
     ):
         """Create a new equipment entry."""
         db = get_db()
+        equipment_code = Equipment.generate_equipment_code(inventory_number)
         with db.cursor() as cursor:
             cursor.execute(
                 """
                 INSERT INTO equipment 
-                (equipment_name, inventory_number, brand, serial_number, 
-                 property_stock_number, condition_status, location, 
-                 requires_supervision, restricted_areas, notes, added_by, status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'available')
+                (equipment_code, equipment_name, category, inventory_number, brand,
+                 serial_number, property_stock_number, status, condition_status,
+                 location, requires_supervision, restricted_areas, notes, added_by)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
+                    equipment_code,
                     equipment_name,
+                    category,
                     inventory_number,
                     brand,
                     serial_number,
                     property_stock_number,
+                    Equipment._normalize_status_value(status),
                     condition_status,
                     location,
                     requires_supervision,
@@ -86,6 +108,65 @@ class Equipment:
             db.commit()
             equipment_id = cursor.lastrowid
         
+        return Equipment.get_by_id(equipment_id)
+
+    @staticmethod
+    def update_equipment(
+        equipment_id,
+        equipment_name,
+        category,
+        inventory_number,
+        brand=None,
+        serial_number=None,
+        property_stock_number=None,
+        status='available',
+        condition_status='good',
+        location=None,
+        requires_supervision=False,
+        restricted_areas=None,
+        notes=None,
+    ):
+        """Update editable equipment fields."""
+        db = get_db()
+        equipment_code = Equipment.generate_equipment_code(inventory_number)
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE equipment
+                SET equipment_code = %s,
+                    equipment_name = %s,
+                    category = %s,
+                    inventory_number = %s,
+                    brand = %s,
+                    serial_number = %s,
+                    property_stock_number = %s,
+                    status = %s,
+                    condition_status = %s,
+                    location = %s,
+                    requires_supervision = %s,
+                    restricted_areas = %s,
+                    notes = %s,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE equipment_id = %s
+                """,
+                (
+                    equipment_code,
+                    equipment_name,
+                    category,
+                    inventory_number,
+                    brand,
+                    serial_number,
+                    property_stock_number,
+                    Equipment._normalize_status_value(status),
+                    condition_status,
+                    location,
+                    requires_supervision,
+                    restricted_areas,
+                    notes,
+                    equipment_id,
+                ),
+            )
+            db.commit()
         return Equipment.get_by_id(equipment_id)
 
     @staticmethod
@@ -135,9 +216,19 @@ class Equipment:
                 params.append(location)
 
             if search:
-                query += " AND (equipment_name LIKE %s OR inventory_number LIKE %s OR serial_number LIKE %s)"
+                query += (
+                    " AND (equipment_code LIKE %s OR equipment_name LIKE %s OR category LIKE %s "
+                    "OR inventory_number LIKE %s OR property_stock_number LIKE %s OR serial_number LIKE %s)"
+                )
                 search_term = f"%{search}%"
-                params.extend([search_term, search_term, search_term])
+                params.extend([
+                    search_term,
+                    search_term,
+                    search_term,
+                    search_term,
+                    search_term,
+                    search_term,
+                ])
 
             query += " ORDER BY equipment_id DESC"
             cursor.execute(query, params)
