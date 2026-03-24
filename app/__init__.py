@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 
-from flask import Flask, session
+from flask import Flask, request, session
 from flask_login import LoginManager, logout_user, current_user
 from flask_wtf.csrf import CSRFProtect
 from authlib.integrations.flask_client import OAuth
@@ -42,10 +42,14 @@ def create_app(config_name=None):
     # Tear-down DB connection after each request
     app.teardown_appcontext(close_db)
 
-    # Prevent browser from caching authenticated pages
+    # Prevent browser from caching auth and HTML pages to avoid stale back/forward history.
     @app.after_request
     def set_no_cache(response):
-        if current_user.is_authenticated:
+        endpoint = request.endpoint or ''
+        is_auth_endpoint = endpoint.startswith('auth.')
+        is_html_response = response.mimetype == 'text/html'
+
+        if current_user.is_authenticated or is_auth_endpoint or is_html_response:
             response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
             response.headers['Pragma'] = 'no-cache'
             response.headers['Expires'] = '0'

@@ -84,8 +84,11 @@ def login():
     )
 
 
-@auth_bp.route('/auth/google')
+@auth_bp.route('/auth/google', methods=['GET', 'POST'])
 def google_login():
+    if request.method != 'POST':
+        return redirect(url_for('auth.login'))
+
     if not is_google_oauth_enabled():
         flash('Google OAuth is not configured yet.', 'warning')
         return redirect(url_for('auth.login'))
@@ -108,8 +111,11 @@ def google_login():
     )
 
 
-@auth_bp.route('/auth/google/signup')
+@auth_bp.route('/auth/google/signup', methods=['GET', 'POST'])
 def google_signup():
+    if request.method != 'POST':
+        return redirect(url_for('auth.signup'))
+
     if not is_google_oauth_enabled():
         flash('Google OAuth is not configured yet.', 'warning')
         return redirect(url_for('auth.signup'))
@@ -262,7 +268,7 @@ def logout():
     logout_user()
     session.clear()
     flash('You have been logged out.', 'info')
-    response = make_response(redirect(url_for('auth.login')))
+    response = make_response(redirect(url_for('auth.login', logged_out=1)))
     response.delete_cookie(current_app.config.get('SESSION_COOKIE_NAME', 'session'))
     response.delete_cookie(current_app.config.get('REMEMBER_COOKIE_NAME', 'remember_token'))
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'

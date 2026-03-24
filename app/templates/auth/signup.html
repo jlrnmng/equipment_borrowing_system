@@ -27,9 +27,12 @@
 
             {% if google_oauth_enabled %}
             <div class="d-grid gap-2">
-                <a href="{{ url_for('auth.google_signup') }}" class="btn btn-dark btn-lg">
-                    <i class="bi bi-google me-2"></i>Sign Up with Google
-                </a>
+                <form method="POST" action="{{ url_for('auth.google_signup') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-dark btn-lg w-100">
+                        <i class="bi bi-google me-2"></i>Sign Up with Google
+                    </button>
+                </form>
                 <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary">
                     Back to Login
                 </a>
