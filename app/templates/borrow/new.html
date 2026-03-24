@@ -1,0 +1,286 @@
+{% extends 'layouts/main.html' %}
+{% block title %}Prepare Borrow Transaction - QR Equipment Borrowing System{% endblock %}
+{% block page_title %}Borrow Transaction (Day 4 Morning){% endblock %}
+{% block page_actions %}
+<a href="{{ url_for('members.scan_member') }}" class="btn btn-sm btn-outline-primary">
+    <i class="bi bi-qr-code-scan me-1"></i> Member Scanner
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="alert alert-info small">
+    This module performs pre-transaction validation only (eligibility + policy checks). Saving borrow records will be added in Day 4 afternoon.
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card stat-card mb-3">
+            <div class="card-header bg-white border-bottom fw-semibold"><i class="bi bi-person-check me-1"></i> Member Eligibility</div>
+            <div class="card-body">
+                <form id="memberCheckForm" class="d-flex gap-2 mb-2">
+                    <input id="memberQuery" class="form-control" placeholder="Member code or email" required>
+                    <button class="btn btn-primary" type="submit">Check</button>
+                </form>
+                <div id="memberInfo" class="small text-muted">No member selected.</div>
+            </div>
+        </div>
+
+        <div class="card stat-card">
+            <div class="card-header bg-white border-bottom fw-semibold"><i class="bi bi-shield-check me-1"></i> In-Facility Policy</div>
+            <div class="card-body small">
+                <div><strong>Current Time:</strong> {{ current_datetime }}</div>
+                <div><strong>Working Hours:</strong> Mon-Fri, 08:00-17:00</div>
+                <div><strong>Borrowed During Working Hours:</strong>
+                    {% if borrowed_during_working_hours %}
+                    <span class="badge bg-success">YES</span>
+                    {% else %}
+                    <span class="badge bg-danger">NO</span>
+                    {% endif %}
+                </div>
+                <hr>
+                <label class="form-label fw-semibold">Usage Area (required)</label>
+                <input id="usageArea" class="form-control" placeholder="Room/area within facility">
+                <div class="form-text">Example: Fabrication Lab A</div>
+
+                <label class="form-label fw-semibold mt-3">Expected Return Date</label>
+                <input id="expectedReturnDate" type="date" class="form-control" value="{{ default_return_date }}">
+                <div class="form-text">Default: 7 days from today.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card stat-card mb-3">
+            <div class="card-header bg-white border-bottom fw-semibold"><i class="bi bi-box-seam me-1"></i> Select Equipment</div>
+            <div class="card-body">
+                <form id="equipmentSearchForm" class="d-flex gap-2 mb-3">
+                    <input id="equipmentQuery" class="form-control" placeholder="Equipment code/name/category">
+                    <button class="btn btn-outline-primary" type="submit">Search</button>
+                </form>
+                <div id="equipmentSearchResults" class="small text-muted">Search for available equipment to add.</div>
+            </div>
+        </div>
+
+        <div class="card stat-card mb-3">
+            <div class="card-header bg-white border-bottom fw-semibold"><i class="bi bi-list-check me-1"></i> Borrow List</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Equipment</th>
+                                <th style="width:160px;">Condition</th>
+                                <th style="width:90px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="selectedItemsBody">
+                            <tr id="emptySelectedRow"><td colspan="3" class="text-muted text-center py-3">No equipment selected.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card stat-card">
+            <div class="card-header bg-white border-bottom fw-semibold"><i class="bi bi-clipboard-check me-1"></i> Precheck Result</div>
+            <div class="card-body">
+                <div class="d-grid mb-2">
+                    <button id="validateBorrowBtn" class="btn btn-success" type="button">Validate Borrow Setup</button>
+                </div>
+                <div id="precheckResult" class="small text-muted">Run validation after selecting member and equipment.</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+    var memberCheckForm = document.getElementById('memberCheckForm');
+    var memberQuery = document.getElementById('memberQuery');
+    var memberInfo = document.getElementById('memberInfo');
+    var equipmentSearchForm = document.getElementById('equipmentSearchForm');
+    var equipmentQuery = document.getElementById('equipmentQuery');
+    var equipmentResults = document.getElementById('equipmentSearchResults');
+    var selectedItemsBody = document.getElementById('selectedItemsBody');
+    var usageArea = document.getElementById('usageArea');
+    var validateBorrowBtn = document.getElementById('validateBorrowBtn');
+    var precheckResult = document.getElementById('precheckResult');
+
+    var selectedMember = null;
+    var selectedItems = new Map();
+
+    function escapeHtml(value) {
+        return (value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function renderMember(data) {
+        if (!data || !data.member) {
+            selectedMember = null;
+            memberInfo.innerHTML = '<span class="text-danger">Member not found.</span>';
+            return;
+        }
+
+        selectedMember = data.member;
+        var e = data.eligibility || {};
+        var checks = e.checks || {};
+
+        memberInfo.innerHTML =
+            '<div class="fw-semibold">' + escapeHtml(data.member.full_name) + ' <span class="text-muted">(' + escapeHtml(data.member.member_code) + ')</span></div>' +
+            '<div>Email: ' + escapeHtml(data.member.email || '-') + '</div>' +
+            '<div>Startup: ' + escapeHtml(data.member.startup || '-') + '</div>' +
+            '<div class="mt-2">Eligibility: ' + (e.eligible ? '<span class="badge bg-success">ELIGIBLE</span>' : '<span class="badge bg-danger">NOT ELIGIBLE</span>') + '</div>' +
+            '<ul class="mb-0 mt-2">' +
+            '<li>Status Active: ' + (checks.active_status ? 'OK' : 'Failed') + '</li>' +
+            '<li>Within Borrow Limit: ' + (checks.within_borrow_limit ? 'OK' : 'Failed') + '</li>' +
+            '<li>No Overdue Items: ' + (checks.no_overdue_items ? 'OK' : 'Failed') + '</li>' +
+            '</ul>' +
+            '<div class="mt-2 text-muted">' + escapeHtml(e.message || '') + '</div>';
+    }
+
+    function renderSelectedItems() {
+        var entries = Array.from(selectedItems.values());
+        if (!entries.length) {
+            selectedItemsBody.innerHTML = '<tr id="emptySelectedRow"><td colspan="3" class="text-muted text-center py-3">No equipment selected.</td></tr>';
+            return;
+        }
+
+        var rows = entries.map(function (item) {
+            var condition = item.condition_status || 'good';
+            return (
+                '<tr data-equipment-id="' + item.equipment_id + '">' +
+                '<td><div class="fw-semibold">' + escapeHtml(item.equipment_name) + '</div><div class="small text-muted">' +
+                escapeHtml(item.equipment_code) + ' • ' + escapeHtml(item.category || '-') + '</div></td>' +
+                '<td>' +
+                '<select class="form-select form-select-sm item-condition" data-equipment-id="' + item.equipment_id + '">' +
+                '<option value="excellent"' + (condition === 'excellent' ? ' selected' : '') + '>Excellent</option>' +
+                '<option value="good"' + (condition === 'good' ? ' selected' : '') + '>Good</option>' +
+                '<option value="fair"' + (condition === 'fair' ? ' selected' : '') + '>Fair</option>' +
+                '<option value="poor"' + (condition === 'poor' ? ' selected' : '') + '>Poor</option>' +
+                '</select>' +
+                '</td>' +
+                '<td><button class="btn btn-sm btn-outline-danger remove-item" data-equipment-id="' + item.equipment_id + '">Remove</button></td>' +
+                '</tr>'
+            );
+        });
+
+        selectedItemsBody.innerHTML = rows.join('');
+
+        selectedItemsBody.querySelectorAll('.remove-item').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var id = Number(btn.getAttribute('data-equipment-id'));
+                selectedItems.delete(id);
+                renderSelectedItems();
+            });
+        });
+
+        selectedItemsBody.querySelectorAll('.item-condition').forEach(function (select) {
+            select.addEventListener('change', function () {
+                var id = Number(select.getAttribute('data-equipment-id'));
+                var item = selectedItems.get(id);
+                if (item) {
+                    item.condition_status = select.value;
+                    selectedItems.set(id, item);
+                }
+            });
+        });
+    }
+
+    function renderEquipmentResults(results) {
+        if (!results || !results.length) {
+            equipmentResults.innerHTML = '<span class="text-muted">No available equipment found.</span>';
+            return;
+        }
+
+        var html = '<div class="list-group">';
+        results.forEach(function (item) {
+            html += '<button type="button" class="list-group-item list-group-item-action add-equipment" data-item="' + encodeURIComponent(JSON.stringify(item)) + '">' +
+                '<div class="d-flex justify-content-between align-items-start">' +
+                '<div><div class="fw-semibold">' + escapeHtml(item.equipment_name) + '</div>' +
+                '<div class="small text-muted">' + escapeHtml(item.equipment_code) + ' • ' + escapeHtml(item.category || '-') + '</div></div>' +
+                '<span class="badge bg-light text-dark border">' + escapeHtml(item.condition_status || 'good') + '</span>' +
+                '</div>' +
+                '</button>';
+        });
+        html += '</div>';
+        equipmentResults.innerHTML = html;
+
+        equipmentResults.querySelectorAll('.add-equipment').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var item = JSON.parse(decodeURIComponent(btn.getAttribute('data-item')));
+                selectedItems.set(item.equipment_id, item);
+                renderSelectedItems();
+            });
+        });
+    }
+
+    memberCheckForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        var query = (memberQuery.value || '').trim();
+        if (!query) {
+            return;
+        }
+
+        fetch('{{ url_for("borrow.member_check") }}?query=' + encodeURIComponent(query), { credentials: 'same-origin' })
+            .then(function (response) { return response.json(); })
+            .then(renderMember)
+            .catch(function () {
+                memberInfo.innerHTML = '<span class="text-danger">Unable to validate member right now.</span>';
+            });
+    });
+
+    equipmentSearchForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        var query = (equipmentQuery.value || '').trim();
+        fetch('{{ url_for("borrow.equipment_search") }}?query=' + encodeURIComponent(query), { credentials: 'same-origin' })
+            .then(function (response) { return response.json(); })
+            .then(function (data) { renderEquipmentResults(data.results || []); })
+            .catch(function () {
+                equipmentResults.innerHTML = '<span class="text-danger">Unable to search equipment right now.</span>';
+            });
+    });
+
+    validateBorrowBtn.addEventListener('click', function () {
+        var memberCode = selectedMember ? selectedMember.member_code : '';
+        var equipmentIds = Array.from(selectedItems.keys()).join(',');
+        var area = (usageArea.value || '').trim();
+
+        var url = '{{ url_for("borrow.borrow_precheck") }}' +
+            '?member_code=' + encodeURIComponent(memberCode) +
+            '&equipment_ids=' + encodeURIComponent(equipmentIds) +
+            '&usage_area=' + encodeURIComponent(area);
+
+        fetch(url, { credentials: 'same-origin' })
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                if (!data.ok) {
+                    precheckResult.innerHTML = '<span class="text-danger">Precheck failed.</span>';
+                    return;
+                }
+
+                var warnings = data.warnings || [];
+                var warningsHtml = warnings.length
+                    ? '<ul class="mb-2">' + warnings.map(function (w) { return '<li>' + escapeHtml(w) + '</li>'; }).join('') + '</ul>'
+                    : '<div class="text-success">No policy warnings detected.</div>';
+
+                precheckResult.innerHTML =
+                    '<div><strong>Selected Items:</strong> ' + data.selected_count + '</div>' +
+                    '<div><strong>Member Eligible:</strong> ' + (data.eligibility && data.eligibility.eligible ? 'YES' : 'NO') + '</div>' +
+                    '<div><strong>Requires Supervision:</strong> ' + (data.policy && data.policy.requires_supervision ? 'YES' : 'NO') + '</div>' +
+                    '<div><strong>Borrowed During Working Hours:</strong> ' + (data.policy && data.policy.borrowed_during_working_hours ? 'YES' : 'NO') + '</div>' +
+                    '<div class="mt-2"><strong>Warnings:</strong></div>' + warningsHtml +
+                    '<div class="mt-2"><strong>Ready for Day 4 Afternoon Save:</strong> ' + (data.ready_for_save ? '<span class="text-success">YES</span>' : '<span class="text-danger">NO</span>') + '</div>';
+            })
+            .catch(function () {
+                precheckResult.innerHTML = '<span class="text-danger">Unable to run precheck.</span>';
+            });
+    });
+})();
+</script>
+{% endblock %}
