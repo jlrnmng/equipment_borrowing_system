@@ -5,7 +5,7 @@ from flask import Blueprint, current_app, flash, make_response, redirect, render
 from flask_login import current_user, login_required, login_user, logout_user
 
 from app import oauth
-from app.forms import LoginForm, MemberRegistrationForm
+from app.forms import LoginForm
 from app.models.member import Member
 from app.models.staff import Staff
 from app.utils.qr import generate_member_qr
@@ -31,6 +31,15 @@ def is_google_oauth_enabled():
 def is_allowed_domain(email):
     domain = get_google_oauth_config()['allowed_domain'].lower()
     return email.lower().endswith(f"@{domain}")
+
+
+def _split_google_name(full_name):
+    parts = [part for part in (full_name or '').split() if part]
+    if not parts:
+        return 'Google', 'User'
+    if len(parts) == 1:
+        return parts[0], parts[0]
+    return parts[0], ' '.join(parts[1:])
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
@@ -88,6 +97,31 @@ def google_login():
 
     nonce = secrets.token_urlsafe(16)
     session['oauth_nonce'] = nonce
+    session['oauth_flow'] = 'login'
+    cfg = get_google_oauth_config()
+    redirect_uri = cfg['redirect_uri'] or url_for('auth.google_callback', _external=True)
+    return google.authorize_redirect(
+        redirect_uri,
+        nonce=nonce,
+        hd=cfg['allowed_domain'],
+        prompt='select_account',
+    )
+
+
+@auth_bp.route('/auth/google/signup')
+def google_signup():
+    if not is_google_oauth_enabled():
+        flash('Google OAuth is not configured yet.', 'warning')
+        return redirect(url_for('auth.signup'))
+
+    google = oauth.create_client('google')
+    if google is None:
+        flash('Google OAuth client initialization failed.', 'danger')
+        return redirect(url_for('auth.signup'))
+
+    nonce = secrets.token_urlsafe(16)
+    session['oauth_nonce'] = nonce
+    session['oauth_flow'] = 'signup'
     cfg = get_google_oauth_config()
     redirect_uri = cfg['redirect_uri'] or url_for('auth.google_callback', _external=True)
     return google.authorize_redirect(
@@ -125,6 +159,7 @@ def google_callback():
     google_sub = userinfo.get('sub')
     full_name = (userinfo.get('name') or 'User').strip()
     email_verified = bool(userinfo.get('email_verified'))
+    oauth_flow = session.pop('oauth_flow', 'login')
 
     if not email or not google_sub:
         flash('Google account data is incomplete.', 'danger')
@@ -182,6 +217,27 @@ def google_callback():
         flash('Member account verified via Google. Member portal will be available in next phase.', 'info')
         return redirect(url_for('auth.login'))
 
+    if oauth_flow == 'signup':
+        first_name, last_name = _split_google_name(full_name)
+        member_code = Member.get_next_member_code()
+        qr_code_path = generate_member_qr(member_code)
+        created_member = Member.create_member(
+            member_code=member_code,
+            first_name=first_name,
+            middle_name=None,
+            last_name=last_name,
+            email=email,
+            phone=None,
+            student_id=None,
+            startup=None,
+            max_borrow_limit=3,
+            created_by=None,
+            qr_code_path=qr_code_path,
+        )
+        Member.link_google_identity(created_member['member_id'], email, google_sub)
+        flash('Google signup successful. Your member account has been created.', 'success')
+        return redirect(url_for('auth.login'))
+
     return redirect(url_for('auth.request_access', email=email))
 
 
@@ -191,62 +247,13 @@ def request_access():
     return render_template('auth/request_access.html', email=email)
 
 
-@auth_bp.route('/signup', methods=['GET', 'POST'])
+@auth_bp.route('/signup', methods=['GET'])
 def signup():
-    form = MemberRegistrationForm()
-    created_member = None
-
-    if form.validate_on_submit():
-        email = form.email.data.strip().lower()
-        allowed_domain = current_app.config.get('GOOGLE_ALLOWED_DOMAIN', 'my.cspc.edu.ph')
-
-        if not email.endswith(f'@{allowed_domain}'):
-            flash(f'Member Google email must end with @{allowed_domain}.', 'danger')
-            return render_template('auth/signup.html', form=form)
-
-        existing_member = Member.get_by_email_or_google_email(email)
-        if existing_member:
-            flash('A member with this Google email already exists. Please sign in with Google.', 'warning')
-            return redirect(url_for('auth.login'))
-
-        existing_staff = Staff.get_by_email(email)
-        if existing_staff:
-            flash('This Google email is already registered as staff. Please use staff login.', 'warning')
-            return redirect(url_for('auth.login'))
-
-        member_code = Member.get_next_member_code()
-        qr_code_path = generate_member_qr(member_code)
-        created_by = current_user.id if current_user.is_authenticated else None
-
-        created_member = Member.create_member(
-            member_code=member_code,
-            first_name=form.first_name.data.strip(),
-            middle_name=(form.middle_name.data or '').strip() or None,
-            last_name=form.last_name.data.strip(),
-            email=email,
-            phone=(form.phone.data or '').strip() or None,
-            student_id=(form.student_id.data or '').strip() or None,
-            startup=(form.startup.data or '').strip() or None,
-            max_borrow_limit=form.max_borrow_limit.data,
-            created_by=created_by,
-            qr_code_path=qr_code_path,
-        )
-
-        created_member.update(
-            {
-                'full_name': f"{form.first_name.data.strip()} {form.last_name.data.strip()}",
-                'email': email,
-                'startup': (form.startup.data or '').strip(),
-                'qr_code_path': qr_code_path,
-            }
-        )
-
-        flash(
-            'Signup successful. Your account is ready. You may now continue with Google sign-in.',
-            'success',
-        )
-
-    return render_template('auth/signup.html', form=form, created_member=created_member)
+    return render_template(
+        'auth/signup.html',
+        google_oauth_enabled=is_google_oauth_enabled(),
+        allowed_domain=get_google_oauth_config()['allowed_domain'],
+    )
 
 
 @auth_bp.route('/logout')

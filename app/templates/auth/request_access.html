@@ -15,12 +15,12 @@
                 {% if email %}
                 Attempted account: <strong>{{ email }}</strong><br>
                 {% endif %}
-                If you are a normal user, complete manual signup first.
-                Staff accounts must be registered by an admin or existing staff.
+                If you are a normal user, continue with Google signup.
+                Staff accounts still require registration by an admin or existing staff.
             </div>
 
             <div class="d-grid gap-2">
-                <a href="{{ url_for('auth.signup') }}" class="btn btn-primary">Go to Member Signup</a>
+                <a href="{{ url_for('auth.signup') }}" class="btn btn-primary">Go to Google Signup</a>
                 <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary">Back to Login</a>
             </div>
         </div>

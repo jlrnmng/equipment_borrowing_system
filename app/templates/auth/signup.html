@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Member Signup - QR Equipment Borrowing System{% endblock %}
 {% block body %}
-<div class="position-fixed top-0 start-50 translate-middle-x mt-3" style="z-index:9999;width:min(92vw,760px)">
+<div class="position-fixed top-0 start-50 translate-middle-x mt-3" style="z-index:9999;width:min(92vw,560px)">
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% for category, message in messages %}
             <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm">
@@ -14,94 +14,32 @@
 
 <div class="min-vh-100 d-flex align-items-center justify-content-center py-4"
      style="background:linear-gradient(135deg,#1a2035 0%,#2d3a5e 100%);">
-    <div class="card shadow-lg border-0" style="width:100%;max-width:980px;border-radius:.75rem;">
+    <div class="card shadow-lg border-0" style="width:100%;max-width:560px;border-radius:.75rem;">
         <div class="card-body p-4 p-sm-5">
-            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-                <div>
-                    <h4 class="fw-bold mb-1">Member Manual Signup</h4>
-                    <p class="text-muted mb-0">Normal users create their own account here.</p>
+            <div class="text-center mb-4">
+                <i class="bi bi-google fs-2 d-inline-block mb-2"></i>
+                <h4 class="fw-bold mb-1">Google Signup Required</h4>
+                <p class="text-muted mb-2">New member accounts are created through Google OAuth only.</p>
+                <div class="small text-muted">
+                    Allowed domain: <strong>@{{ allowed_domain }}</strong>
                 </div>
-                <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="bi bi-arrow-left me-1"></i>Back to Login
-                </a>
             </div>
 
-            <form method="POST" novalidate>
-                {{ form.hidden_tag() }}
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        {{ form.first_name.label(class='form-label fw-semibold') }}
-                        {{ form.first_name(class='form-control' + (' is-invalid' if form.first_name.errors else '')) }}
-                        {% for error in form.first_name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-                    </div>
-                    <div class="col-md-4">
-                        {{ form.middle_name.label(class='form-label fw-semibold') }}
-                        {{ form.middle_name(class='form-control' + (' is-invalid' if form.middle_name.errors else '')) }}
-                        {% for error in form.middle_name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-                    </div>
-                    <div class="col-md-4">
-                        {{ form.last_name.label(class='form-label fw-semibold') }}
-                        {{ form.last_name(class='form-control' + (' is-invalid' if form.last_name.errors else '')) }}
-                        {% for error in form.last_name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-                    </div>
-                    <div class="col-md-6">
-                        {{ form.student_id.label(class='form-label fw-semibold') }}
-                        {{ form.student_id(class='form-control' + (' is-invalid' if form.student_id.errors else ''), placeholder='ID number') }}
-                        {% for error in form.student_id.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-                    </div>
-                    <div class="col-md-6">
-                        {{ form.email.label(class='form-label fw-semibold') }}
-                        {{ form.email(class='form-control' + (' is-invalid' if form.email.errors else ''), placeholder='name@my.cspc.edu.ph') }}
-                        {% for error in form.email.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-                    </div>
-                    <div class="col-md-6">
-                        {{ form.phone.label(class='form-label fw-semibold') }}
-                        {{ form.phone(class='form-control' + (' is-invalid' if form.phone.errors else ''), placeholder='09xxxxxxxxx') }}
-                        {% for error in form.phone.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-                    </div>
-                    <div class="col-md-6">
-                        {{ form.startup.label(class='form-label fw-semibold') }}
-                        {{ form.startup(class='form-control' + (' is-invalid' if form.startup.errors else ''), placeholder='Startup or agency name') }}
-                        {% for error in form.startup.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-                    </div>
-                    <div class="col-md-3">
-                        {{ form.max_borrow_limit.label(class='form-label fw-semibold') }}
-                        {{ form.max_borrow_limit(class='form-control' + (' is-invalid' if form.max_borrow_limit.errors else '')) }}
-                        {% for error in form.max_borrow_limit.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-                    </div>
-                    <div class="col-md-9 d-flex align-items-end">
-                        {{ form.submit(class='btn btn-primary w-100') }}
-                    </div>
-                </div>
-            </form>
-
-            {% if created_member %}
-            <hr class="my-4">
-            <div class="row g-3">
-                <div class="col-lg-7">
-                    <div class="p-3 border rounded bg-light">
-                        <h6 class="fw-bold mb-2 text-success"><i class="bi bi-check-circle me-1"></i>Signup Complete</h6>
-                        <div><strong>Member Code:</strong> {{ created_member.member_code }}</div>
-                        <div><strong>Name:</strong> {{ created_member.full_name }}</div>
-                        <div><strong>Email:</strong> {{ created_member.email }}</div>
-                        <div><strong>Startup/Agency:</strong> {{ created_member.startup or '-' }}</div>
-                        <div class="small text-muted mt-2">Use your Google account on the login page to continue.</div>
-                    </div>
-                </div>
-                <div class="col-lg-5 text-center">
-                    <div class="p-3 border rounded bg-light h-100 d-flex flex-column justify-content-center">
-                        <div class="fw-semibold mb-2">Your QR Code</div>
-                        <img src="{{ url_for('static', filename=created_member.qr_code_path) }}"
-                             alt="Member QR"
-                             class="img-fluid border rounded p-2 bg-white mx-auto"
-                             style="max-width:210px;">
-                        <a href="{{ url_for('static', filename=created_member.qr_code_path) }}"
-                           class="btn btn-outline-primary btn-sm mt-3"
-                           download="{{ created_member.member_code }}.png">
-                            <i class="bi bi-download me-1"></i>Download QR
-                        </a>
-                    </div>
-                </div>
+            {% if google_oauth_enabled %}
+            <div class="d-grid gap-2">
+                <a href="{{ url_for('auth.google_signup') }}" class="btn btn-dark btn-lg">
+                    <i class="bi bi-google me-2"></i>Sign Up with Google
+                </a>
+                <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary">
+                    Back to Login
+                </a>
+            </div>
+            {% else %}
+            <div class="alert alert-warning small mb-3">
+                Google OAuth is not configured yet. Please contact the administrator.
+            </div>
+            <div class="d-grid">
+                <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary">Back to Login</a>
             </div>
             {% endif %}
         </div>
