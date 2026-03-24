@@ -846,6 +846,44 @@ def return_receipt(borrow_item_id):
     )
 
 
+@borrow_bp.route('/notifications', methods=['GET'])
+@login_required
+def notification_center():
+    if not _is_authorized_borrower():
+        return redirect(url_for('dashboard.index'))
+
+    db = get_db()
+    with db.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT
+                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_count,
+                SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) AS sent_count,
+                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed_count,
+                COUNT(*) AS total_count
+            FROM notifications
+            """
+        )
+        stats = cursor.fetchone() or {}
+
+        cursor.execute(
+            """
+            SELECT n.notification_id, n.notification_type, n.recipient_email, n.subject,
+                   n.status, n.retry_count, n.last_error, n.created_at, n.sent_at,
+                   m.member_code, m.first_name, m.last_name,
+                   br.transaction_code
+            FROM notifications n
+            LEFT JOIN members m ON m.member_id = n.member_id
+            LEFT JOIN borrow_records br ON br.borrow_id = n.borrow_id
+            ORDER BY n.created_at DESC
+            LIMIT 100
+            """
+        )
+        notifications = cursor.fetchall()
+
+    return render_template('borrow/notifications.html', stats=stats, notifications=notifications)
+
+
 @borrow_bp.route('/api/notifications/process-pending', methods=['POST'])
 @login_required
 def process_pending_notifications():

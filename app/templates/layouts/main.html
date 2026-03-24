@@ -29,6 +29,10 @@
            class="nav-link {% if request.endpoint == 'borrow.new_return' %}active{% endif %}">
             <i class="bi bi-box-arrow-up"></i> Return Equipment
         </a>
+        <a href="{{ url_for('borrow.notification_center') }}"
+           class="nav-link {% if request.endpoint == 'borrow.notification_center' %}active{% endif %}">
+            <i class="bi bi-envelope-check"></i> Notifications
+        </a>
         <a href="#" class="nav-link text-secondary"><i class="bi bi-clock-history"></i> Active Borrowings</a>
         <span class="nav-section">Management</span>
         {% if current_user.role in ['admin', 'staff'] %}

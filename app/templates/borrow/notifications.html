@@ -1,0 +1,157 @@
+{% extends 'layouts/main.html' %}
+{% block title %}Notification Queue{% endblock %}
+{% block page_title %}Notification Queue{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <small class="text-muted d-block">Pending</small>
+                <div class="fs-3 fw-bold text-warning">{{ stats.pending_count or 0 }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <small class="text-muted d-block">Sent</small>
+                <div class="fs-3 fw-bold text-success">{{ stats.sent_count or 0 }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <small class="text-muted d-block">Failed</small>
+                <div class="fs-3 fw-bold text-danger">{{ stats.failed_count or 0 }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <small class="text-muted d-block">Total</small>
+                <div class="fs-3 fw-bold">{{ stats.total_count or 0 }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card stat-card">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <div class="fw-semibold">
+            <i class="bi bi-envelope-check me-1 text-primary"></i> Recent Notifications
+        </div>
+        <button id="processPendingBtn" type="button" class="btn btn-sm btn-primary">
+            <i class="bi bi-play-circle me-1"></i> Process Pending
+        </button>
+    </div>
+    <div class="card-body p-0">
+        {% if notifications %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Type</th>
+                        <th>Member</th>
+                        <th>Recipient</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Sent</th>
+                        <th>Error</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in notifications %}
+                    <tr>
+                        <td class="ps-3">
+                            <div class="fw-semibold text-capitalize">{{ (item.notification_type or '').replace('_', ' ') }}</div>
+                            {% if item.transaction_code %}
+                            <small class="text-muted">{{ item.transaction_code }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div>{{ ((item.first_name or '') ~ ' ' ~ (item.last_name or '')).strip() or 'N/A' }}</div>
+                            <small class="text-muted">{{ item.member_code or 'No member code' }}</small>
+                        </td>
+                        <td>{{ item.recipient_email }}</td>
+                        <td>
+                            {% if item.status == 'sent' %}
+                            <span class="badge bg-success">Sent</span>
+                            {% elif item.status == 'failed' %}
+                            <span class="badge bg-danger">Failed</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">Pending</span>
+                            {% endif %}
+                            {% if item.retry_count %}
+                            <small class="d-block text-muted">Retry: {{ item.retry_count }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.created_at %}
+                            {{ item.created_at.strftime('%b %d, %Y %I:%M %p') }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.sent_at %}
+                            {{ item.sent_at.strftime('%b %d, %Y %I:%M %p') }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.last_error %}
+                            <small class="text-danger">{{ item.last_error }}</small>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+            No notification records yet.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+(() => {
+    const btn = document.getElementById('processPendingBtn');
+    if (!btn) return;
+
+    btn.addEventListener('click', async () => {
+        const original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Processing...';
+
+        try {
+            const response = await fetch('{{ url_for("borrow.process_pending_notifications") }}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                }
+            });
+            const result = await response.json();
+            if (!response.ok || !result.ok) {
+                throw new Error(result.message || 'Failed to process pending notifications.');
+            }
+
+            alert(`Processed: ${result.processed} | Sent: ${result.sent} | Failed: ${result.failed}`);
+            window.location.reload();
+        } catch (err) {
+            alert(err.message || 'An unexpected error occurred.');
+            btn.disabled = false;
+            btn.innerHTML = original;
+        }
+    });
+})();
+</script>
+{% endblock %}
