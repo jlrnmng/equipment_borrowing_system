@@ -1,6 +1,6 @@
 # QR Equipment Borrowing System
 
-A Flask-based web application for managing equipment borrowing in a facility using QR codes. Staff can register members, process borrow/return transactions, and track equipment — all via QR code scanning.
+A Flask-based web application for managing equipment borrowing in a facility using QR codes. Staff and admins can register staff accounts, normal users can sign up manually as members, and staff can manage equipment and transactions.
 
 ---
 
@@ -22,8 +22,14 @@ A Flask-based web application for managing equipment borrowing in a facility usi
 
 ## Features
 
-**Currently implemented (Day 2 MVP):**
+**Currently implemented (through Day 3 morning):**
 - Staff login / logout with bcrypt-hashed passwords
+- Google OAuth login flow (domain-restricted)
+- Manual login reserved for bootstrap admin account
+- Public member manual signup (`/signup`) with QR code generation
+- Staff account registration by admin or staff (`/staff/register`)
+- Equipment management: add, list, detail, and edit
+- Equipment code generation + inventory/status tracking
 - CSRF protection on all forms
 - Session timeout after 30 minutes of inactivity
 - No back-button bypass after logout (cache headers)
@@ -31,14 +37,11 @@ A Flask-based web application for managing equipment borrowing in a facility usi
 - Recent activity feed
 
 **Planned (see `2-week_development_plan.txt`):**
-- Member registration with QR code generation
-- Equipment management with QR codes
 - Borrow / return transactions via QR scanning
 - In-facility usage enforcement (working hours, usage area)
 - Overdue tracking and automated email reminders
 - Violation logging
 - Reports and CSV export
-- Google OAuth 2.0 (database ready)
 - Gmail API notifications (database ready)
 - Google Calendar integration (database ready)
 
@@ -63,24 +66,35 @@ A Flask-based web application for managing equipment borrowing in a facility usi
 equipment_borrowing_system/
 │
 ├── app/
-│   ├── __init__.py          # App factory (Flask-Login, CSRF, session timeout)
+│   ├── __init__.py          # App factory (Flask-Login, CSRF, OAuth, session timeout)
 │   ├── forms.py             # WTForms form classes
 │   ├── models/
-│   │   └── staff.py         # Staff model (UserMixin, bcrypt helpers)
+│   │   ├── staff.py         # Staff model (UserMixin, bcrypt helpers)
+│   │   ├── member.py        # Member model helpers
+│   │   └── equipment.py     # Equipment model helpers
 │   ├── routes/
-│   │   ├── auth.py          # /login, /logout
-│   │   └── dashboard.py     # /dashboard
+│   │   ├── auth.py          # /login, /logout, /auth/google, /signup
+│   │   ├── dashboard.py     # /dashboard
+│   │   ├── equipment.py     # equipment CRUD pages
+│   │   ├── members.py       # compatibility redirect to /signup
+│   │   └── staff_admin.py   # /staff/register
 │   ├── templates/
 │   │   ├── base.html        # Shared <head>, Bootstrap, CSS
 │   │   ├── layouts/
 │   │   │   └── main.html    # Authenticated layout (sidebar + topbar)
 │   │   ├── auth/
-│   │   │   └── login.html
-│   │   └── dashboard/
-│   │       └── index.html
-│   ├── static/              # CSS, JS, images (to be added)
+│   │   │   ├── login.html
+│   │   │   ├── request_access.html
+│   │   │   └── signup.html
+│   │   ├── dashboard/
+│   │   │   └── index.html
+│   │   ├── equipment/       # add, list, detail, edit
+│   │   └── staff/
+│   │       └── register.html
+│   ├── static/              # CSS, JS, images, generated QRs
 │   └── utils/
-│       └── db.py            # get_db() / close_db() per-request connection
+│       ├── db.py            # get_db() / close_db() per-request connection
+│       └── qr.py            # member QR generation helper
 │
 ├── config/
 │   └── config.py            # DevelopmentConfig / ProductionConfig
@@ -193,6 +207,11 @@ python run.py
 
 Then open **http://127.0.0.1:5000** in your browser.
 
+Account flow:
+- Member manual signup: **/signup**
+- Staff login page: **/login**
+- Staff registration (admin/staff only): **/staff/register**
+
 ---
 
 ## Creating the First Admin Account
@@ -266,9 +285,10 @@ See [`2-week_development_plan.txt`](2-week_development_plan.txt) for the full sp
 |---|---|
 | Day 1 — Database & project setup | ✅ Done |
 | Day 2 Morning — Staff authentication & dashboard | ✅ Done |
-| Day 2 Afternoon — Member registration & QR codes | 🔲 Next |
-| Day 3 — Equipment management & QR scanning | 🔲 Planned |
+| Day 2 Afternoon — Member manual signup & QR codes | ✅ Done |
+| Day 3 Morning — Equipment management | ✅ Done |
+| Day 3 Afternoon — Member QR scanning | 🔲 Next |
 | Day 4 — Borrow transaction module | 🔲 Planned |
 | Day 5 — Return module & email notifications | 🔲 Planned |
 | Week 2 — Overdue tracking, reports, polish | 🔲 Planned |
-| Post-launch — Google OAuth, Calendar, HTML emails | 🔲 Phase 2 |
+| Post-launch — Calendar, advanced notifications, HTML emails | 🔲 Phase 2 |

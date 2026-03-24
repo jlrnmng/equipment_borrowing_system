@@ -11,9 +11,8 @@ staff_admin_bp = Blueprint('staff_admin', __name__)
 @staff_admin_bp.route('/staff/register', methods=['GET', 'POST'])
 @login_required
 def register_staff():
-    # Admin-only in UI to prevent privilege escalation.
-    if current_user.role != 'admin':
-        flash('Only administrators can register staff accounts.', 'danger')
+    if current_user.role not in ('admin', 'staff'):
+        flash('Only admin or staff accounts can register new staff.', 'danger')
         return redirect(url_for('dashboard.index'))
 
     form = StaffRegistrationForm()

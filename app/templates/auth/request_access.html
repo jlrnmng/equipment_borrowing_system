@@ -15,11 +15,13 @@
                 {% if email %}
                 Attempted account: <strong>{{ email }}</strong><br>
                 {% endif %}
-                Ask the first admin or an authorized staff member to register your account.
+                If you are a normal user, complete manual signup first.
+                Staff accounts must be registered by an admin or existing staff.
             </div>
 
-            <div class="d-grid">
-                <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Back to Login</a>
+            <div class="d-grid gap-2">
+                <a href="{{ url_for('auth.signup') }}" class="btn btn-primary">Go to Member Signup</a>
+                <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary">Back to Login</a>
             </div>
         </div>
     </div>

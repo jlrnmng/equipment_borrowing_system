@@ -5,9 +5,10 @@ from flask import Blueprint, current_app, flash, make_response, redirect, render
 from flask_login import current_user, login_required, login_user, logout_user
 
 from app import oauth
-from app.forms import LoginForm
+from app.forms import LoginForm, MemberRegistrationForm
 from app.models.member import Member
 from app.models.staff import Staff
+from app.utils.qr import generate_member_qr
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -188,6 +189,64 @@ def google_callback():
 def request_access():
     email = (request.args.get('email') or '').strip().lower()
     return render_template('auth/request_access.html', email=email)
+
+
+@auth_bp.route('/signup', methods=['GET', 'POST'])
+def signup():
+    form = MemberRegistrationForm()
+    created_member = None
+
+    if form.validate_on_submit():
+        email = form.email.data.strip().lower()
+        allowed_domain = current_app.config.get('GOOGLE_ALLOWED_DOMAIN', 'my.cspc.edu.ph')
+
+        if not email.endswith(f'@{allowed_domain}'):
+            flash(f'Member Google email must end with @{allowed_domain}.', 'danger')
+            return render_template('auth/signup.html', form=form)
+
+        existing_member = Member.get_by_email_or_google_email(email)
+        if existing_member:
+            flash('A member with this Google email already exists. Please sign in with Google.', 'warning')
+            return redirect(url_for('auth.login'))
+
+        existing_staff = Staff.get_by_email(email)
+        if existing_staff:
+            flash('This Google email is already registered as staff. Please use staff login.', 'warning')
+            return redirect(url_for('auth.login'))
+
+        member_code = Member.get_next_member_code()
+        qr_code_path = generate_member_qr(member_code)
+        created_by = current_user.id if current_user.is_authenticated else None
+
+        created_member = Member.create_member(
+            member_code=member_code,
+            first_name=form.first_name.data.strip(),
+            middle_name=(form.middle_name.data or '').strip() or None,
+            last_name=form.last_name.data.strip(),
+            email=email,
+            phone=(form.phone.data or '').strip() or None,
+            student_id=(form.student_id.data or '').strip() or None,
+            startup=(form.startup.data or '').strip() or None,
+            max_borrow_limit=form.max_borrow_limit.data,
+            created_by=created_by,
+            qr_code_path=qr_code_path,
+        )
+
+        created_member.update(
+            {
+                'full_name': f"{form.first_name.data.strip()} {form.last_name.data.strip()}",
+                'email': email,
+                'startup': (form.startup.data or '').strip(),
+                'qr_code_path': qr_code_path,
+            }
+        )
+
+        flash(
+            'Signup successful. Your account is ready. You may now continue with Google sign-in.',
+            'success',
+        )
+
+    return render_template('auth/signup.html', form=form, created_member=created_member)
 
 
 @auth_bp.route('/logout')

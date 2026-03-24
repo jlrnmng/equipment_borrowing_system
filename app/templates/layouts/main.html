@@ -6,9 +6,9 @@
             <img src="{{ url_for('static', filename='ASOG-TBI_full-colored_stacked.png') }}"
                  alt="ASOG TBI Logo"
                  style="height:22px; width:auto;" class="me-2">
-            EqBorrow
+            DOST-CSPC ASOG TBI
         </h6>
-        <small>QR Equipment System</small>
+        <small>Equipment Borrowing System</small>
     </div>
     <div class="pt-2">
         <span class="nav-section">Main</span>
@@ -21,11 +21,7 @@
         <a href="#" class="nav-link text-secondary"><i class="bi bi-box-arrow-up"></i> Return Equipment</a>
         <a href="#" class="nav-link text-secondary"><i class="bi bi-clock-history"></i> Active Borrowings</a>
         <span class="nav-section">Management</span>
-        <a href="{{ url_for('members.register_member') }}"
-           class="nav-link {% if request.endpoint == 'members.register_member' %}active{% endif %}">
-            <i class="bi bi-people"></i> Members
-        </a>
-        {% if current_user.role == 'admin' %}
+        {% if current_user.role in ['admin', 'staff'] %}
         <a href="{{ url_for('staff_admin.register_staff') }}"
            class="nav-link {% if request.endpoint == 'staff_admin.register_staff' %}active{% endif %}">
             <i class="bi bi-person-badge"></i> Staff Accounts
