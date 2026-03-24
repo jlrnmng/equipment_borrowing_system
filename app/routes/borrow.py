@@ -869,7 +869,7 @@ def notification_center():
         cursor.execute(
             """
             SELECT n.notification_id, n.notification_type, n.recipient_email, n.subject,
-                   n.status, n.retry_count, n.last_error, n.created_at, n.sent_at,
+                 n.status, n.retry_count, n.error_message, n.created_at, n.sent_at,
                    m.member_code, m.first_name, m.last_name,
                    br.transaction_code
             FROM notifications n

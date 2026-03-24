@@ -102,8 +102,8 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% if item.last_error %}
-                            <small class="text-danger">{{ item.last_error }}</small>
+                            {% if item.error_message %}
+                            <small class="text-danger">{{ item.error_message }}</small>
                             {% else %}
                             <span class="text-muted">-</span>
                             {% endif %}
