@@ -1,0 +1,219 @@
+{% extends 'layouts/main.html' %}
+{% block title %}Process Return - QR Equipment Borrowing System{% endblock %}
+{% block page_title %}Return Transaction (Day 5 Morning){% endblock %}
+{% block page_actions %}
+<a href="{{ url_for('borrow.new_borrow') }}" class="btn btn-sm btn-outline-primary">
+    <i class="bi bi-box-arrow-in-down me-1"></i> Borrow
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card stat-card mb-3">
+            <div class="card-header bg-white border-bottom fw-semibold"><i class="bi bi-person-check me-1"></i> Find Member</div>
+            <div class="card-body">
+                <form id="memberLookupForm" class="d-flex gap-2">
+                    <input id="memberQuery" class="form-control" placeholder="Member code or email" required>
+                    <button class="btn btn-primary" type="submit">Lookup</button>
+                </form>
+                <div id="memberInfo" class="small text-muted mt-2">No member selected.</div>
+            </div>
+        </div>
+
+        <div class="card stat-card">
+            <div class="card-header bg-white border-bottom fw-semibold"><i class="bi bi-clipboard-check me-1"></i> Return Details</div>
+            <div class="card-body small">
+                <div class="mb-2">
+                    <label class="form-label fw-semibold">Return Condition</label>
+                    <select id="returnCondition" class="form-select form-select-sm">
+                        <option value="excellent">Excellent</option>
+                        <option value="good" selected>Good</option>
+                        <option value="fair">Fair</option>
+                        <option value="poor">Poor</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label fw-semibold">Notes (optional)</label>
+                    <textarea id="returnNotes" class="form-control" rows="3" placeholder="Return notes"></textarea>
+                </div>
+                <div class="d-grid gap-2">
+                    <button id="submitReturnBtn" class="btn btn-success" type="button" disabled>Process Return</button>
+                </div>
+                <div id="returnStatus" class="small text-muted mt-2">Select a borrowed item first.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card stat-card">
+            <div class="card-header bg-white border-bottom fw-semibold"><i class="bi bi-list-check me-1"></i> Active Borrowed Items</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Transaction</th>
+                                <th>Equipment</th>
+                                <th>Borrowed Condition</th>
+                                <th>Due Date</th>
+                                <th style="width:90px;">Select</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activeItemsBody">
+                            <tr><td colspan="5" class="text-muted text-center py-3">Lookup a member to load active borrowed items.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+    var memberLookupForm = document.getElementById('memberLookupForm');
+    var memberQuery = document.getElementById('memberQuery');
+    var memberInfo = document.getElementById('memberInfo');
+    var activeItemsBody = document.getElementById('activeItemsBody');
+    var submitReturnBtn = document.getElementById('submitReturnBtn');
+    var returnCondition = document.getElementById('returnCondition');
+    var returnNotes = document.getElementById('returnNotes');
+    var returnStatus = document.getElementById('returnStatus');
+    var csrfToken = '{{ csrf_token() }}';
+
+    var selectedMember = null;
+    var selectedItem = null;
+
+    function escapeHtml(value) {
+        return (value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function renderMember(member) {
+        if (!member) {
+            memberInfo.innerHTML = '<span class="text-danger">Member not found.</span>';
+            selectedMember = null;
+            return;
+        }
+        selectedMember = member;
+        memberInfo.innerHTML =
+            '<div class="fw-semibold">' + escapeHtml(member.full_name) + ' (' + escapeHtml(member.member_code) + ')</div>' +
+            '<div>Email: ' + escapeHtml(member.email || '-') + '</div>' +
+            '<div>Startup: ' + escapeHtml(member.startup || '-') + '</div>';
+    }
+
+    function setSelectedItem(item) {
+        selectedItem = item;
+        submitReturnBtn.disabled = !selectedItem;
+        if (selectedItem) {
+            returnStatus.innerHTML = 'Selected <strong>' + escapeHtml(selectedItem.equipment_code) + '</strong> for return.';
+        } else {
+            returnStatus.textContent = 'Select a borrowed item first.';
+        }
+    }
+
+    function renderItems(items) {
+        if (!items || !items.length) {
+            activeItemsBody.innerHTML = '<tr><td colspan="5" class="text-muted text-center py-3">No active borrowed items for this member.</td></tr>';
+            setSelectedItem(null);
+            return;
+        }
+
+        var html = items.map(function (item) {
+            var due = new Date(item.expected_return_date + 'T00:00:00');
+            var now = new Date();
+            var overdue = due < new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            return (
+                '<tr>' +
+                '<td><div class="fw-semibold">' + escapeHtml(item.transaction_code) + '</div><div class="small text-muted">' + escapeHtml(item.borrow_status) + '</div></td>' +
+                '<td><div class="fw-semibold">' + escapeHtml(item.equipment_name) + '</div><div class="small text-muted">' + escapeHtml(item.equipment_code) + '</div></td>' +
+                '<td><span class="badge bg-secondary text-uppercase">' + escapeHtml(item.condition_borrowed) + '</span></td>' +
+                '<td>' + escapeHtml(item.expected_return_date) + (overdue ? ' <span class="badge bg-danger ms-1">Overdue</span>' : '') + '</td>' +
+                '<td><button class="btn btn-sm btn-outline-primary select-return-item" data-item="' + encodeURIComponent(JSON.stringify(item)) + '">Select</button></td>' +
+                '</tr>'
+            );
+        }).join('');
+
+        activeItemsBody.innerHTML = html;
+        activeItemsBody.querySelectorAll('.select-return-item').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var item = JSON.parse(decodeURIComponent(btn.getAttribute('data-item')));
+                setSelectedItem(item);
+            });
+        });
+    }
+
+    memberLookupForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        var query = (memberQuery.value || '').trim();
+        if (!query) {
+            return;
+        }
+
+        fetch('{{ url_for("borrow.return_member_items") }}?query=' + encodeURIComponent(query), { credentials: 'same-origin' })
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                if (!data.ok) {
+                    renderMember(null);
+                    activeItemsBody.innerHTML = '<tr><td colspan="5" class="text-danger text-center py-3">' + escapeHtml(data.message || 'Lookup failed.') + '</td></tr>';
+                    return;
+                }
+                renderMember(data.member);
+                renderItems(data.items || []);
+            })
+            .catch(function () {
+                activeItemsBody.innerHTML = '<tr><td colspan="5" class="text-danger text-center py-3">Unable to lookup member right now.</td></tr>';
+            });
+    });
+
+    submitReturnBtn.addEventListener('click', function () {
+        if (!selectedItem) {
+            returnStatus.innerHTML = '<span class="text-danger">Select a borrow item to return.</span>';
+            return;
+        }
+
+        submitReturnBtn.disabled = true;
+        submitReturnBtn.textContent = 'Processing...';
+
+        fetch('{{ url_for("borrow.submit_return") }}', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                borrow_item_id: Number(selectedItem.borrow_item_id),
+                condition_returned: returnCondition.value,
+                notes: (returnNotes.value || '').trim()
+            })
+        })
+            .then(function (response) {
+                return response.json().then(function (data) { return { status: response.status, data: data }; });
+            })
+            .then(function (result) {
+                if (!result.data.ok) {
+                    returnStatus.innerHTML = '<span class="text-danger">' + escapeHtml(result.data.message || 'Failed to process return.') + '</span>';
+                    submitReturnBtn.disabled = false;
+                    submitReturnBtn.textContent = 'Process Return';
+                    return;
+                }
+
+                window.location.href = result.data.receipt_url;
+            })
+            .catch(function () {
+                returnStatus.innerHTML = '<span class="text-danger">Failed to process return transaction.</span>';
+                submitReturnBtn.disabled = false;
+                submitReturnBtn.textContent = 'Process Return';
+            });
+    });
+})();
+</script>
+{% endblock %}

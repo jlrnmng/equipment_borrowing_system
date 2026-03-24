@@ -1,0 +1,37 @@
+{% extends 'layouts/main.html' %}
+{% block title %}Return Receipt - {{ record.transaction_code }}{% endblock %}
+{% block page_title %}Return Receipt{% endblock %}
+{% block page_actions %}
+<a href="{{ url_for('borrow.new_return') }}" class="btn btn-sm btn-outline-primary">
+    <i class="bi bi-arrow-repeat me-1"></i> New Return
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card stat-card mb-3">
+    <div class="card-header bg-white border-bottom fw-semibold">
+        <i class="bi bi-check2-square me-1"></i> Return Processed
+    </div>
+    <div class="card-body small">
+        <div class="row g-2">
+            <div class="col-md-6"><strong>Transaction:</strong> {{ record.transaction_code }}</div>
+            <div class="col-md-6"><strong>Member:</strong> {{ record.first_name }} {{ record.middle_name or '' }} {{ record.last_name }} ({{ record.member_code }})</div>
+            <div class="col-md-6"><strong>Equipment:</strong> {{ record.equipment_name }} ({{ record.equipment_code }})</div>
+            <div class="col-md-6"><strong>Expected Return:</strong> {{ record.expected_return_date }}</div>
+            <div class="col-md-6"><strong>Returned At:</strong> {{ record.returned_at }}</div>
+            <div class="col-md-6"><strong>Condition Borrowed:</strong> <span class="badge bg-secondary text-uppercase">{{ record.condition_borrowed }}</span></div>
+            <div class="col-md-6"><strong>Condition Returned:</strong> <span class="badge bg-info text-uppercase">{{ record.condition_returned }}</span></div>
+            <div class="col-md-6"><strong>Overdue Days:</strong> {% if days_overdue > 0 %}<span class="text-danger fw-semibold">{{ days_overdue }}</span>{% else %}0{% endif %}</div>
+            <div class="col-md-6"><strong>Damage Flag:</strong> {% if is_damaged %}<span class="text-danger fw-semibold">YES</span>{% else %}NO{% endif %}</div>
+        </div>
+    </div>
+</div>
+
+<div class="alert {% if days_overdue > 0 or is_damaged %}alert-warning{% else %}alert-success{% endif %}">
+    {% if days_overdue > 0 or is_damaged %}
+    Return saved with violation checks. Review Violations module for follow-up actions.
+    {% else %}
+    Return saved successfully. No overdue or damage issues detected.
+    {% endif %}
+</div>
+{% endblock %}

@@ -212,6 +212,63 @@ def _fetch_receipt_data(transaction_code):
     return header, items
 
 
+def _condition_rank(value):
+    order = {
+        'excellent': 4,
+        'good': 3,
+        'fair': 2,
+        'poor': 1,
+    }
+    return order.get((value or '').strip().lower(), 0)
+
+
+def _is_condition_worse(borrowed, returned):
+    return _condition_rank(returned) < _condition_rank(borrowed)
+
+
+def _fetch_member_active_borrowed_items(member_id):
+    db = get_db()
+    with db.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT bi.borrow_item_id, bi.borrow_id, bi.condition_borrowed, bi.borrowed_at,
+                   br.transaction_code, br.borrow_date, br.expected_return_date, br.status AS borrow_status,
+                   e.equipment_id, e.equipment_code, e.equipment_name, e.category, e.location
+            FROM borrow_items bi
+            INNER JOIN borrow_records br ON br.borrow_id = bi.borrow_id
+            INNER JOIN equipment e ON e.equipment_id = bi.equipment_id
+            WHERE br.member_id = %s
+              AND br.status IN ('active', 'overdue')
+              AND bi.returned_at IS NULL
+            ORDER BY br.borrow_date ASC, bi.borrow_item_id ASC
+            """,
+            (member_id,),
+        )
+        return cursor.fetchall()
+
+
+def _fetch_return_receipt_data(return_record):
+    db = get_db()
+    with db.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT m.member_code, m.first_name, m.middle_name, m.last_name,
+                   e.equipment_code, e.equipment_name,
+                   br.transaction_code, br.expected_return_date,
+                   s.full_name AS returned_by_name
+            FROM borrow_items bi
+            INNER JOIN borrow_records br ON br.borrow_id = bi.borrow_id
+            INNER JOIN members m ON m.member_id = br.member_id
+            INNER JOIN equipment e ON e.equipment_id = bi.equipment_id
+            LEFT JOIN staff s ON s.staff_id = %s
+            WHERE bi.borrow_item_id = %s
+            LIMIT 1
+            """,
+            (current_user.id, return_record['borrow_item_id']),
+        )
+        return cursor.fetchone()
+
+
 @borrow_bp.route('/borrow/new', methods=['GET'])
 @login_required
 def new_borrow():
@@ -225,6 +282,14 @@ def new_borrow():
         borrowed_during_working_hours=_is_within_working_hours(now),
         current_datetime=now.strftime('%Y-%m-%d %H:%M'),
     )
+
+
+@borrow_bp.route('/return/new', methods=['GET'])
+@login_required
+def new_return():
+    if not _is_authorized_borrower():
+        return redirect(url_for('dashboard.index'))
+    return render_template('borrow/return.html')
 
 
 @borrow_bp.route('/api/borrow/member-check', methods=['GET'])
@@ -476,3 +541,252 @@ def borrow_receipt(transaction_code):
         return redirect(url_for('borrow.new_borrow'))
 
     return render_template('borrow/receipt.html', header=header, items=items)
+
+
+@borrow_bp.route('/api/return/member-items', methods=['GET'])
+@login_required
+def return_member_items():
+    if not _is_authorized_borrower():
+        return jsonify({'ok': False, 'message': 'Forbidden'}), 403
+
+    member_row = _get_member_from_query()
+    if not member_row:
+        return jsonify({'ok': False, 'message': 'Member not found.'}), 404
+
+    rows = _fetch_member_active_borrowed_items(member_row['member_id'])
+    return jsonify(
+        {
+            'ok': True,
+            'member': _serialize_member(member_row),
+            'items': [
+                {
+                    'borrow_item_id': row.get('borrow_item_id'),
+                    'borrow_id': row.get('borrow_id'),
+                    'transaction_code': row.get('transaction_code'),
+                    'expected_return_date': str(row.get('expected_return_date')),
+                    'borrow_status': row.get('borrow_status'),
+                    'condition_borrowed': row.get('condition_borrowed'),
+                    'equipment_id': row.get('equipment_id'),
+                    'equipment_code': row.get('equipment_code'),
+                    'equipment_name': row.get('equipment_name'),
+                    'category': row.get('category'),
+                    'location': row.get('location'),
+                }
+                for row in rows
+            ],
+        }
+    )
+
+
+@borrow_bp.route('/api/return/submit', methods=['POST'])
+@login_required
+def submit_return():
+    if not _is_authorized_borrower():
+        return jsonify({'ok': False, 'message': 'Forbidden'}), 403
+
+    payload = request.get_json(silent=True) or {}
+    borrow_item_id = payload.get('borrow_item_id')
+    condition_returned = (payload.get('condition_returned') or '').strip().lower()
+    notes = (payload.get('notes') or '').strip() or None
+
+    if not isinstance(borrow_item_id, int):
+        return jsonify({'ok': False, 'message': 'Invalid return item selection.'}), 400
+    if condition_returned not in ('excellent', 'good', 'fair', 'poor'):
+        return jsonify({'ok': False, 'message': 'Invalid return condition value.'}), 400
+
+    db = get_db()
+    try:
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT bi.borrow_item_id, bi.borrow_id, bi.equipment_id, bi.condition_borrowed,
+                       br.member_id, br.transaction_code, br.expected_return_date, br.status AS borrow_status
+                FROM borrow_items bi
+                INNER JOIN borrow_records br ON br.borrow_id = bi.borrow_id
+                WHERE bi.borrow_item_id = %s AND bi.returned_at IS NULL
+                LIMIT 1
+                """,
+                (borrow_item_id,),
+            )
+            item_row = cursor.fetchone()
+
+            if not item_row:
+                return jsonify({'ok': False, 'message': 'Borrow item not found or already returned.'}), 404
+
+            expected_return_date = item_row.get('expected_return_date')
+            today = datetime.now().date()
+            days_overdue = max(0, (today - expected_return_date).days) if expected_return_date else 0
+            is_overdue = days_overdue > 0
+            is_damaged = _is_condition_worse(item_row.get('condition_borrowed'), condition_returned)
+
+            cursor.execute(
+                """
+                UPDATE borrow_items
+                SET condition_returned = %s,
+                    returned_at = NOW(),
+                    notes = %s
+                WHERE borrow_item_id = %s
+                """,
+                (condition_returned, notes, borrow_item_id),
+            )
+
+            cursor.execute(
+                """
+                UPDATE equipment
+                SET status = 'available',
+                    condition_status = %s,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE equipment_id = %s
+                """,
+                (condition_returned, item_row['equipment_id']),
+            )
+
+            cursor.execute(
+                """
+                UPDATE members
+                SET current_borrow_count = GREATEST(current_borrow_count - 1, 0),
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE member_id = %s
+                """,
+                (item_row['member_id'],),
+            )
+
+            # Update transaction header status based on remaining unreturned items and due date.
+            cursor.execute(
+                "SELECT COUNT(*) AS cnt FROM borrow_items WHERE borrow_id = %s AND returned_at IS NULL",
+                (item_row['borrow_id'],),
+            )
+            remaining = int((cursor.fetchone() or {}).get('cnt', 0))
+
+            if remaining == 0:
+                cursor.execute(
+                    """
+                    UPDATE borrow_records
+                    SET status = 'returned',
+                        actual_return_date = NOW(),
+                        returned_by = %s,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE borrow_id = %s
+                    """,
+                    (current_user.id, item_row['borrow_id']),
+                )
+            else:
+                new_status = 'overdue' if is_overdue else 'active'
+                cursor.execute(
+                    """
+                    UPDATE borrow_records
+                    SET status = %s,
+                        returned_by = %s,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE borrow_id = %s
+                    """,
+                    (new_status, current_user.id, item_row['borrow_id']),
+                )
+
+            if is_overdue:
+                cursor.execute(
+                    """
+                    INSERT INTO violations (
+                        member_id, borrow_id, equipment_id, violation_type,
+                        days_overdue, description, status
+                    ) VALUES (%s, %s, %s, 'overdue', %s, %s, 'pending')
+                    """,
+                    (
+                        item_row['member_id'],
+                        item_row['borrow_id'],
+                        item_row['equipment_id'],
+                        days_overdue,
+                        f"Returned {days_overdue} day(s) late for transaction {item_row['transaction_code']}.",
+                    ),
+                )
+
+            if is_damaged:
+                cursor.execute(
+                    """
+                    INSERT INTO violations (
+                        member_id, borrow_id, equipment_id, violation_type,
+                        description, status
+                    ) VALUES (%s, %s, %s, 'damage', %s, 'pending')
+                    """,
+                    (
+                        item_row['member_id'],
+                        item_row['borrow_id'],
+                        item_row['equipment_id'],
+                        f"Condition changed from {item_row['condition_borrowed']} to {condition_returned}.",
+                    ),
+                )
+
+            _log_activity(
+                db,
+                action='RETURN_PROCESSED',
+                description=(
+                    f"Processed return for item {item_row['borrow_item_id']} in transaction "
+                    f"{item_row['transaction_code']}."
+                ),
+                member_id=item_row['member_id'],
+            )
+
+            receipt_meta = {
+                'borrow_item_id': item_row['borrow_item_id'],
+                'days_overdue': days_overdue,
+                'is_damaged': is_damaged,
+                'condition_borrowed': item_row.get('condition_borrowed'),
+                'condition_returned': condition_returned,
+            }
+
+        db.commit()
+    except Exception:
+        db.rollback()
+        return jsonify({'ok': False, 'message': 'Failed to process return transaction.'}), 500
+
+    return jsonify(
+        {
+            'ok': True,
+            'receipt_url': url_for('borrow.return_receipt', borrow_item_id=borrow_item_id),
+            'days_overdue': receipt_meta['days_overdue'],
+            'is_damaged': receipt_meta['is_damaged'],
+            'condition_borrowed': receipt_meta['condition_borrowed'],
+            'condition_returned': receipt_meta['condition_returned'],
+        }
+    )
+
+
+@borrow_bp.route('/return/receipt/<int:borrow_item_id>', methods=['GET'])
+@login_required
+def return_receipt(borrow_item_id):
+    if not _is_authorized_borrower():
+        return redirect(url_for('dashboard.index'))
+
+    db = get_db()
+    with db.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT bi.borrow_item_id, bi.condition_borrowed, bi.condition_returned, bi.returned_at,
+                   br.transaction_code, br.expected_return_date,
+                   m.member_code, m.first_name, m.middle_name, m.last_name,
+                   e.equipment_code, e.equipment_name
+            FROM borrow_items bi
+            INNER JOIN borrow_records br ON br.borrow_id = bi.borrow_id
+            INNER JOIN members m ON m.member_id = br.member_id
+            INNER JOIN equipment e ON e.equipment_id = bi.equipment_id
+            WHERE bi.borrow_item_id = %s
+            LIMIT 1
+            """,
+            (borrow_item_id,),
+        )
+        row = cursor.fetchone()
+
+    if not row:
+        return redirect(url_for('borrow.new_return'))
+
+    today = datetime.now().date()
+    expected = row.get('expected_return_date')
+    days_overdue = max(0, (today - expected).days) if expected else 0
+    is_damaged = _is_condition_worse(row.get('condition_borrowed'), row.get('condition_returned'))
+
+    return render_template(
+        'borrow/return_receipt.html',
+        record=row,
+        days_overdue=days_overdue,
+        is_damaged=is_damaged,
+    )

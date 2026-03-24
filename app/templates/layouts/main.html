@@ -25,7 +25,10 @@
            class="nav-link {% if request.endpoint == 'members.scan_member' %}active{% endif %}">
             <i class="bi bi-qr-code-scan"></i> Scan Member QR
         </a>
-        <a href="#" class="nav-link text-secondary"><i class="bi bi-box-arrow-up"></i> Return Equipment</a>
+        <a href="{{ url_for('borrow.new_return') }}"
+           class="nav-link {% if request.endpoint == 'borrow.new_return' %}active{% endif %}">
+            <i class="bi bi-box-arrow-up"></i> Return Equipment
+        </a>
         <a href="#" class="nav-link text-secondary"><i class="bi bi-clock-history"></i> Active Borrowings</a>
         <span class="nav-section">Management</span>
         {% if current_user.role in ['admin', 'staff'] %}
