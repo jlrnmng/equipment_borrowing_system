@@ -1,0 +1,65 @@
+{% extends 'layouts/main.html' %}
+{% block title %}Borrow Receipt - {{ header.transaction_code }}{% endblock %}
+{% block page_title %}Borrow Receipt{% endblock %}
+{% block page_actions %}
+<a href="{{ url_for('borrow.new_borrow') }}" class="btn btn-sm btn-outline-primary">
+    <i class="bi bi-plus-circle me-1"></i> New Borrow
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card stat-card mb-3">
+    <div class="card-header bg-white border-bottom fw-semibold">
+        <i class="bi bi-receipt me-1"></i> Transaction {{ header.transaction_code }}
+    </div>
+    <div class="card-body">
+        <div class="row g-2 small">
+            <div class="col-md-6"><strong>Member:</strong> {{ header.first_name }} {{ header.middle_name or '' }} {{ header.last_name }}</div>
+            <div class="col-md-6"><strong>Member Code:</strong> {{ header.member_code }}</div>
+            <div class="col-md-6"><strong>Email:</strong> {{ header.email or '-' }}</div>
+            <div class="col-md-6"><strong>Startup/Agency:</strong> {{ header.startup or '-' }}</div>
+            <div class="col-md-6"><strong>Borrow Date:</strong> {{ header.borrow_date }}</div>
+            <div class="col-md-6"><strong>Expected Return:</strong> {{ header.expected_return_date }}</div>
+            <div class="col-md-6"><strong>Usage Area:</strong> {{ header.usage_area or '-' }}</div>
+            <div class="col-md-6"><strong>Processed By:</strong> {{ header.processed_by_name or '-' }}</div>
+            <div class="col-md-6"><strong>Requires Supervision:</strong> {{ 'YES' if header.requires_supervision else 'NO' }}</div>
+            <div class="col-md-6"><strong>Working Hours Compliant:</strong> {{ 'YES' if header.borrowed_during_working_hours else 'NO' }}</div>
+            <div class="col-md-6"><strong>Status:</strong> <span class="badge bg-primary text-uppercase">{{ header.status }}</span></div>
+            <div class="col-md-6"><strong>Total Items:</strong> {{ header.total_items }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="card stat-card">
+    <div class="card-header bg-white border-bottom fw-semibold">
+        <i class="bi bi-box-seam me-1"></i> Borrowed Items
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Equipment</th>
+                        <th>Category</th>
+                        <th>Location</th>
+                        <th>Condition Borrowed</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td>
+                            <div class="fw-semibold">{{ item.equipment_name }}</div>
+                            <div class="small text-muted">{{ item.equipment_code }}</div>
+                        </td>
+                        <td>{{ item.category or '-' }}</td>
+                        <td>{{ item.location or '-' }}</td>
+                        <td><span class="badge bg-secondary text-uppercase">{{ item.condition_borrowed }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

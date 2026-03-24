@@ -113,7 +113,7 @@ equipment_borrowing_system/
 ├── .env                     # Local environment variables (not in Git)
 ├── .gitignore
 ├── requirements.txt
-├── run.py                   # Entry point
+├── main.py                  # Entry point
 ├── workflow.txt             # System workflow documentation
 └── 2-week_development_plan.txt
 ```
@@ -169,7 +169,7 @@ DB_NAME=equipment_borrowing
 DB_USER=root
 DB_PASSWORD=
 
-FLASK_APP=run.py
+FLASK_APP=main.py
 FLASK_ENV=development
 SECRET_KEY=replace-with-a-long-random-string
 ```
@@ -202,7 +202,7 @@ python scripts/create_admin.py
 ## Running the App
 
 ```bash
-python run.py
+python main.py
 ```
 
 Then open **http://127.0.0.1:5000** in your browser.
@@ -238,7 +238,7 @@ The script checks for duplicate emails and generates a unique `STAFF###` code au
 | `DB_NAME` | Database name | `equipment_borrowing` |
 | `DB_USER` | MySQL username | `root` |
 | `DB_PASSWORD` | MySQL password | *(empty)* |
-| `FLASK_APP` | Flask app module | `run.py` |
+| `FLASK_APP` | Flask app module | `main.py` |
 | `FLASK_ENV` | `development` or `production` | `development` |
 | `SECRET_KEY` | Flask session signing key | *(must be changed)* |
 

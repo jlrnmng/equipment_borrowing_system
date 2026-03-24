@@ -45,6 +45,9 @@
                 <label class="form-label fw-semibold mt-3">Expected Return Date</label>
                 <input id="expectedReturnDate" type="date" class="form-control" value="{{ default_return_date }}">
                 <div class="form-text">Default: 7 days from today.</div>
+
+                <label class="form-label fw-semibold mt-3">Notes (optional)</label>
+                <textarea id="borrowNotes" class="form-control" rows="2" placeholder="Any transaction notes"></textarea>
             </div>
         </div>
     </div>
@@ -87,6 +90,9 @@
                 <div class="d-grid mb-2">
                     <button id="validateBorrowBtn" class="btn btn-success" type="button">Validate Borrow Setup</button>
                 </div>
+                <div class="d-grid mb-2">
+                    <button id="submitBorrowBtn" class="btn btn-primary" type="button" disabled>Save Borrow Transaction</button>
+                </div>
                 <div id="precheckResult" class="small text-muted">Run validation after selecting member and equipment.</div>
             </div>
         </div>
@@ -105,8 +111,12 @@
     var equipmentResults = document.getElementById('equipmentSearchResults');
     var selectedItemsBody = document.getElementById('selectedItemsBody');
     var usageArea = document.getElementById('usageArea');
+    var expectedReturnDate = document.getElementById('expectedReturnDate');
+    var borrowNotes = document.getElementById('borrowNotes');
     var validateBorrowBtn = document.getElementById('validateBorrowBtn');
+    var submitBorrowBtn = document.getElementById('submitBorrowBtn');
     var precheckResult = document.getElementById('precheckResult');
+    var csrfToken = '{{ csrf_token() }}';
 
     var selectedMember = null;
     var selectedItems = new Map();
@@ -276,9 +286,68 @@
                     '<div><strong>Borrowed During Working Hours:</strong> ' + (data.policy && data.policy.borrowed_during_working_hours ? 'YES' : 'NO') + '</div>' +
                     '<div class="mt-2"><strong>Warnings:</strong></div>' + warningsHtml +
                     '<div class="mt-2"><strong>Ready for Day 4 Afternoon Save:</strong> ' + (data.ready_for_save ? '<span class="text-success">YES</span>' : '<span class="text-danger">NO</span>') + '</div>';
+
+                submitBorrowBtn.disabled = !data.ready_for_save;
             })
             .catch(function () {
                 precheckResult.innerHTML = '<span class="text-danger">Unable to run precheck.</span>';
+                submitBorrowBtn.disabled = true;
+            });
+    });
+
+    submitBorrowBtn.addEventListener('click', function () {
+        if (!selectedMember) {
+            precheckResult.innerHTML = '<span class="text-danger">Select and validate a member first.</span>';
+            return;
+        }
+
+        var itemPayload = Array.from(selectedItems.values()).map(function (item) {
+            return {
+                equipment_id: Number(item.equipment_id),
+                condition_borrowed: item.condition_status || 'good'
+            };
+        });
+
+        var payload = {
+            member_code: selectedMember.member_code,
+            expected_return_date: (expectedReturnDate.value || '').trim(),
+            usage_area: (usageArea.value || '').trim(),
+            notes: (borrowNotes.value || '').trim(),
+            items: itemPayload
+        };
+
+        submitBorrowBtn.disabled = true;
+        submitBorrowBtn.textContent = 'Saving...';
+
+        fetch('{{ url_for("borrow.submit_borrow") }}', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(payload)
+        })
+            .then(function (response) {
+                return response.json().then(function (data) {
+                    return { status: response.status, data: data };
+                });
+            })
+            .then(function (result) {
+                if (!result.data.ok) {
+                    precheckResult.innerHTML = '<span class="text-danger">' + escapeHtml(result.data.message || 'Unable to save transaction.') + '</span>';
+                    submitBorrowBtn.disabled = false;
+                    submitBorrowBtn.textContent = 'Save Borrow Transaction';
+                    return;
+                }
+
+                precheckResult.innerHTML = '<span class="text-success">Transaction saved: ' + escapeHtml(result.data.transaction_code) + '</span>';
+                window.location.href = result.data.receipt_url;
+            })
+            .catch(function () {
+                precheckResult.innerHTML = '<span class="text-danger">Failed to save borrow transaction.</span>';
+                submitBorrowBtn.disabled = false;
+                submitBorrowBtn.textContent = 'Save Borrow Transaction';
             });
     });
 })();
