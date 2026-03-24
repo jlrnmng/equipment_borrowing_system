@@ -1,0 +1,219 @@
+{% extends 'layouts/main.html' %}
+{% block title %}Scan Member QR - QR Equipment Borrowing System{% endblock %}
+{% block page_title %}Member QR Scanner{% endblock %}
+{% block page_actions %}
+<a href="{{ url_for('dashboard.index') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-house-door me-1"></i> Dashboard
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card stat-card">
+            <div class="card-header bg-white border-bottom fw-semibold">
+                <i class="bi bi-qr-code-scan me-1"></i> Scan Member QR
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">Use webcam scanning first. If camera fails, use manual lookup below.</p>
+                <div id="scanner" class="border rounded p-2 bg-light" style="min-height:320px;"></div>
+                <div class="d-flex gap-2 mt-3">
+                    <button id="startScanBtn" type="button" class="btn btn-primary">
+                        <i class="bi bi-camera-video me-1"></i> Start Camera Scan
+                    </button>
+                    <button id="stopScanBtn" type="button" class="btn btn-outline-secondary" disabled>
+                        <i class="bi bi-stop-circle me-1"></i> Stop
+                    </button>
+                </div>
+                <div id="scanStatus" class="small text-muted mt-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card stat-card mb-3">
+            <div class="card-header bg-white border-bottom fw-semibold">
+                <i class="bi bi-search me-1"></i> Manual Lookup
+            </div>
+            <div class="card-body">
+                <form id="lookupForm" class="d-flex gap-2">
+                    <input id="lookupInput" type="text" class="form-control" placeholder="Member code or email" required>
+                    <button class="btn btn-outline-primary" type="submit">Search</button>
+                </form>
+                <small class="text-muted d-block mt-2">Examples: MEM001 or user@my.cspc.edu.ph</small>
+            </div>
+        </div>
+
+        <div class="card stat-card">
+            <div class="card-header bg-white border-bottom fw-semibold">
+                <i class="bi bi-person-badge me-1"></i> Member Result
+            </div>
+            <div class="card-body" id="memberResult">
+                <div class="text-muted small">No member selected yet.</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script>
+(function () {
+    var scannerInstance = null;
+    var isScanning = false;
+    var startBtn = document.getElementById('startScanBtn');
+    var stopBtn = document.getElementById('stopScanBtn');
+    var lookupForm = document.getElementById('lookupForm');
+    var lookupInput = document.getElementById('lookupInput');
+    var statusEl = document.getElementById('scanStatus');
+    var resultEl = document.getElementById('memberResult');
+
+    function setStatus(text, isError) {
+        statusEl.textContent = text || '';
+        statusEl.className = 'small mt-2 ' + (isError ? 'text-danger' : 'text-muted');
+    }
+
+    function renderMember(member) {
+        if (!member) {
+            resultEl.innerHTML = '<div class="text-muted small">No matching member found.</div>';
+            return;
+        }
+
+        var statusClass = member.status === 'active' ? 'success' : 'secondary';
+        resultEl.innerHTML =
+            '<div class="mb-2"><strong>' + member.full_name + '</strong></div>' +
+            '<div><strong>Code:</strong> ' + member.member_code + '</div>' +
+            '<div><strong>Email:</strong> ' + (member.email || '-') + '</div>' +
+            '<div><strong>Phone:</strong> ' + (member.phone || '-') + '</div>' +
+            '<div><strong>ID Number:</strong> ' + (member.student_id || '-') + '</div>' +
+            '<div><strong>Startup/Agency:</strong> ' + (member.startup || '-') + '</div>' +
+            '<div><strong>Borrow Count:</strong> ' + member.current_borrow_count + ' / ' + member.max_borrow_limit + '</div>' +
+            '<div class="mt-2"><span class="badge bg-' + statusClass + ' text-uppercase">' + member.status + '</span></div>';
+    }
+
+    function renderSuggestions(results) {
+        if (!results || !results.length) {
+            renderMember(null);
+            return;
+        }
+
+        var html = '<div class="small text-muted mb-2">No exact match. Similar members:</div><div class="list-group">';
+        results.forEach(function (item) {
+            html += '<button type="button" class="list-group-item list-group-item-action" data-member-code="' + item.member_code + '">' +
+                '<div class="fw-semibold">' + item.full_name + '</div>' +
+                '<div class="small text-muted">' + item.member_code + ' • ' + (item.email || '-') + '</div>' +
+                '</button>';
+        });
+        html += '</div>';
+        resultEl.innerHTML = html;
+
+        resultEl.querySelectorAll('[data-member-code]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                lookupMember({ member_code: btn.getAttribute('data-member-code') });
+            });
+        });
+    }
+
+    function lookupMember(params) {
+        var url = new URL('{{ url_for("members.lookup_member") }}', window.location.origin);
+        Object.keys(params).forEach(function (key) {
+            if (params[key]) {
+                url.searchParams.set(key, params[key]);
+            }
+        });
+
+        setStatus('Looking up member...', false);
+        fetch(url.toString(), { credentials: 'same-origin' })
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                if (!data.ok) {
+                    setStatus(data.message || 'Lookup failed.', true);
+                    return;
+                }
+
+                if (data.member) {
+                    setStatus('Member found.', false);
+                    renderMember(data.member);
+                } else {
+                    setStatus('No exact match found.', true);
+                    renderSuggestions(data.results || []);
+                }
+            })
+            .catch(function () {
+                setStatus('Unable to reach lookup service.', true);
+            });
+    }
+
+    function onScanSuccess(decodedText) {
+        var upper = (decodedText || '').toUpperCase();
+        if (upper.indexOf('MEM') === -1) {
+            setStatus('QR detected but not a valid member QR.', true);
+            return;
+        }
+        lookupMember({ qr_data: decodedText });
+    }
+
+    function startScanner() {
+        if (isScanning) {
+            return;
+        }
+
+        scannerInstance = new Html5Qrcode('scanner');
+        Html5Qrcode.getCameras()
+            .then(function (devices) {
+                if (!devices || !devices.length) {
+                    throw new Error('No camera detected.');
+                }
+
+                var cameraId = devices[0].id;
+                return scannerInstance.start(
+                    cameraId,
+                    { fps: 10, qrbox: { width: 240, height: 240 } },
+                    onScanSuccess,
+                    function () {}
+                );
+            })
+            .then(function () {
+                isScanning = true;
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                setStatus('Scanning... point camera at member QR code.', false);
+            })
+            .catch(function (err) {
+                setStatus(err.message || 'Failed to start scanner.', true);
+            });
+    }
+
+    function stopScanner() {
+        if (!scannerInstance || !isScanning) {
+            return;
+        }
+
+        scannerInstance.stop()
+            .then(function () {
+                isScanning = false;
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                setStatus('Scanner stopped.', false);
+            })
+            .catch(function () {
+                setStatus('Unable to stop scanner cleanly.', true);
+            });
+    }
+
+    startBtn.addEventListener('click', startScanner);
+    stopBtn.addEventListener('click', stopScanner);
+
+    lookupForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        var query = (lookupInput.value || '').trim();
+        if (!query) {
+            setStatus('Enter member code or email first.', true);
+            return;
+        }
+        lookupMember({ query: query });
+    });
+})();
+</script>
+{% endblock %}

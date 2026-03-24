@@ -17,7 +17,10 @@
             <i class="bi bi-speedometer2"></i> Dashboard
         </a>
         <span class="nav-section">Borrowing</span>
-        <a href="#" class="nav-link text-secondary"><i class="bi bi-box-arrow-in-down"></i> Borrow Equipment</a>
+        <a href="{{ url_for('members.scan_member') }}"
+           class="nav-link {% if request.endpoint == 'members.scan_member' %}active{% endif %}">
+            <i class="bi bi-qr-code-scan"></i> Scan Member QR
+        </a>
         <a href="#" class="nav-link text-secondary"><i class="bi bi-box-arrow-up"></i> Return Equipment</a>
         <a href="#" class="nav-link text-secondary"><i class="bi bi-clock-history"></i> Active Borrowings</a>
         <span class="nav-section">Management</span>
