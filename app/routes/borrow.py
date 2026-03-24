@@ -1,11 +1,17 @@
 from datetime import datetime, timedelta
 
-from flask import Blueprint, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app.models.equipment import Equipment
 from app.models.member import Member
 from app.utils.db import get_db
+from app.utils.notifications import (
+    build_borrow_confirmation_message,
+    build_return_confirmation_message,
+    process_existing_notification,
+    queue_and_send_notification,
+)
 
 borrow_bp = Blueprint('borrow', __name__)
 
@@ -521,6 +527,28 @@ def submit_borrow():
         db.rollback()
         return jsonify({'ok': False, 'message': 'Failed to save borrow transaction.'}), 500
 
+    # Day 5 afternoon: queue and attempt to send borrow confirmation email.
+    recipient_email = (member_row.get('email') or member_row.get('google_email') or '').strip()
+    if recipient_email:
+        try:
+            member_name = f"{member_row.get('first_name', '')} {member_row.get('last_name', '')}".strip() or member_code
+            queue_and_send_notification(
+                member_id=member_row['member_id'],
+                borrow_id=borrow_id,
+                notification_type='borrow_confirmation',
+                recipient_email=recipient_email,
+                subject=f'Borrow Confirmation - {transaction_code}',
+                message=build_borrow_confirmation_message(
+                    member_name=member_name,
+                    transaction_code=transaction_code,
+                    expected_return_date=str(expected_return_date),
+                    usage_area=usage_area,
+                    total_items=len(parsed_items),
+                ),
+            )
+        except Exception:
+            current_app.logger.exception('Failed to queue/send borrow confirmation for %s', transaction_code)
+
     return jsonify(
         {
             'ok': True,
@@ -600,9 +628,13 @@ def submit_return():
             cursor.execute(
                 """
                 SELECT bi.borrow_item_id, bi.borrow_id, bi.equipment_id, bi.condition_borrowed,
-                       br.member_id, br.transaction_code, br.expected_return_date, br.status AS borrow_status
+                       br.member_id, br.transaction_code, br.expected_return_date, br.status AS borrow_status,
+                       m.first_name, m.last_name, m.email, m.google_email,
+                       e.equipment_name
                 FROM borrow_items bi
                 INNER JOIN borrow_records br ON br.borrow_id = bi.borrow_id
+                INNER JOIN members m ON m.member_id = br.member_id
+                INNER JOIN equipment e ON e.equipment_id = bi.equipment_id
                 WHERE bi.borrow_item_id = %s AND bi.returned_at IS NULL
                 LIMIT 1
                 """,
@@ -739,6 +771,28 @@ def submit_return():
         db.rollback()
         return jsonify({'ok': False, 'message': 'Failed to process return transaction.'}), 500
 
+    # Day 5 afternoon: queue and attempt to send return confirmation email.
+    recipient_email = (item_row.get('email') or item_row.get('google_email') or '').strip()
+    if recipient_email:
+        try:
+            member_name = f"{item_row.get('first_name', '')} {item_row.get('last_name', '')}".strip() or item_row.get('member_id')
+            queue_and_send_notification(
+                member_id=item_row['member_id'],
+                borrow_id=item_row['borrow_id'],
+                notification_type='return_confirmation',
+                recipient_email=recipient_email,
+                subject=f"Return Confirmation - {item_row['transaction_code']}",
+                message=build_return_confirmation_message(
+                    member_name=member_name,
+                    transaction_code=item_row['transaction_code'],
+                    equipment_name=item_row.get('equipment_name') or 'Equipment item',
+                    condition_returned=condition_returned,
+                    days_overdue=receipt_meta['days_overdue'],
+                ),
+            )
+        except Exception:
+            current_app.logger.exception('Failed to queue/send return confirmation for item %s', borrow_item_id)
+
     return jsonify(
         {
             'ok': True,
@@ -790,3 +844,47 @@ def return_receipt(borrow_item_id):
         days_overdue=days_overdue,
         is_damaged=is_damaged,
     )
+
+
+@borrow_bp.route('/api/notifications/process-pending', methods=['POST'])
+@login_required
+def process_pending_notifications():
+    if not _is_authorized_borrower():
+        return jsonify({'ok': False, 'message': 'Forbidden'}), 403
+
+    db = get_db()
+    try:
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT notification_id, member_id, borrow_id, notification_type,
+                       recipient_email, subject, message, channel
+                FROM notifications
+                WHERE status = 'pending'
+                ORDER BY created_at ASC
+                LIMIT 50
+                """
+            )
+            rows = cursor.fetchall()
+
+        processed = 0
+        sent = 0
+        failed = 0
+
+        for row in rows:
+            result = process_existing_notification(
+                notification_id=row['notification_id'],
+                recipient_email=row['recipient_email'],
+                subject=row['subject'],
+                message=row['message'],
+            )
+            processed += 1
+            if result.get('sent'):
+                sent += 1
+            else:
+                failed += 1
+
+        return jsonify({'ok': True, 'processed': processed, 'sent': sent, 'failed': failed})
+    except Exception:
+        db.rollback()
+        return jsonify({'ok': False, 'message': 'Failed to process pending notifications.'}), 500

@@ -5,6 +5,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def _env_bool(name, default=False):
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return str(raw).strip().lower() in ('1', 'true', 'yes', 'on')
+
+
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'change-this-in-production')
     MYSQL_HOST = os.getenv('DB_HOST', 'localhost')
@@ -18,6 +25,16 @@ class Config:
     GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
     GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI')
     GOOGLE_ALLOWED_DOMAIN = os.getenv('GOOGLE_ALLOWED_DOMAIN', 'my.cspc.edu.ph')
+
+    # Mail settings for notification pipeline
+    MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
+    MAIL_PORT = int(os.getenv('MAIL_PORT', 587))
+    MAIL_USE_TLS = _env_bool('MAIL_USE_TLS', True)
+    MAIL_USE_SSL = _env_bool('MAIL_USE_SSL', False)
+    MAIL_USERNAME = os.getenv('MAIL_USERNAME', '')
+    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD', '')
+    MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER', MAIL_USERNAME or 'no-reply@localhost')
+    MAIL_NOTIFICATIONS_ENABLED = _env_bool('MAIL_NOTIFICATIONS_ENABLED', True)
 
     WTF_CSRF_ENABLED = True
     # Session expires after 30 minutes of inactivity

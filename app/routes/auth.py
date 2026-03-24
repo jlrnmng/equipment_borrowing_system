@@ -8,6 +8,7 @@ from app import oauth
 from app.forms import LoginForm
 from app.models.member import Member
 from app.models.staff import Staff
+from app.utils.notifications import build_welcome_message, queue_and_send_notification
 from app.utils.qr import generate_member_qr
 
 auth_bp = Blueprint('auth', __name__)
@@ -241,6 +242,23 @@ def google_callback():
             qr_code_path=qr_code_path,
         )
         Member.link_google_identity(created_member['member_id'], email, google_sub)
+
+        # Queue welcome notification and attempt immediate delivery when mail config is available.
+        try:
+            queue_and_send_notification(
+                member_id=created_member['member_id'],
+                borrow_id=None,
+                notification_type='welcome',
+                recipient_email=email,
+                subject='Welcome to QR Equipment Borrowing System',
+                message=build_welcome_message(
+                    member_name=f"{first_name} {last_name}".strip(),
+                    member_code=member_code,
+                ),
+            )
+        except Exception:
+            current_app.logger.exception('Failed to queue/send welcome notification for member %s', member_code)
+
         flash('Google signup successful. Your member account has been created.', 'success')
         return redirect(url_for('auth.login'))
 
