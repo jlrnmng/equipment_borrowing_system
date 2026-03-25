@@ -56,8 +56,9 @@
                 <form id="equipmentSearchForm" class="d-flex gap-2 mb-3">
                     <input id="equipmentQuery" class="form-control" placeholder="Equipment code/name/category">
                     <button class="btn btn-outline-primary" type="submit">Search</button>
+                    <button class="btn btn-outline-secondary" id="loadAvailableBtn" type="button">Show Available</button>
                 </form>
-                <div id="equipmentSearchResults" class="small text-muted">Search for available equipment to add.</div>
+                <div id="equipmentSearchResults" class="small text-muted border rounded p-2" style="max-height: 340px; overflow: auto;">Loading available equipment...</div>
             </div>
         </div>
 
@@ -105,6 +106,7 @@
     var memberInfo = document.getElementById('memberInfo');
     var equipmentSearchForm = document.getElementById('equipmentSearchForm');
     var equipmentQuery = document.getElementById('equipmentQuery');
+    var loadAvailableBtn = document.getElementById('loadAvailableBtn');
     var equipmentResults = document.getElementById('equipmentSearchResults');
     var selectedItemsBody = document.getElementById('selectedItemsBody');
     var usageArea = document.getElementById('usageArea');
@@ -117,6 +119,8 @@
 
     var selectedMember = null;
     var selectedItems = new Map();
+    var allEquipmentResults = [];
+    var equipmentVisibleCount = 10;
 
     function escapeHtml(value) {
         return (value || '')
@@ -199,14 +203,17 @@
         });
     }
 
-    function renderEquipmentResults(results) {
+    function renderEquipmentResults(results, appendOnly) {
         if (!results || !results.length) {
             equipmentResults.innerHTML = '<span class="text-muted">No available equipment found.</span>';
             return;
         }
 
-        var html = '<div class="list-group">';
-        results.forEach(function (item) {
+        var visibleItems = results.slice(0, equipmentVisibleCount);
+        var remaining = Math.max(results.length - visibleItems.length, 0);
+
+        var html = '<div class="small text-muted mb-2">Showing ' + visibleItems.length + ' of ' + results.length + ' available item(s).</div><div class="list-group">';
+        visibleItems.forEach(function (item) {
             html += '<button type="button" class="list-group-item list-group-item-action add-equipment" data-item="' + encodeURIComponent(JSON.stringify(item)) + '">' +
                 '<div class="d-flex justify-content-between align-items-start">' +
                 '<div><div class="fw-semibold">' + escapeHtml(item.equipment_name) + '</div>' +
@@ -216,6 +223,11 @@
                 '</button>';
         });
         html += '</div>';
+
+        if (remaining > 0) {
+            html += '<div class="d-grid mt-2"><button type="button" class="btn btn-sm btn-outline-secondary" id="loadMoreEquipmentBtn">Load more (' + remaining + ' remaining)</button></div>';
+        }
+
         equipmentResults.innerHTML = html;
 
         equipmentResults.querySelectorAll('.add-equipment').forEach(function (btn) {
@@ -225,6 +237,28 @@
                 renderSelectedItems();
             });
         });
+
+        var loadMoreBtn = document.getElementById('loadMoreEquipmentBtn');
+        if (loadMoreBtn) {
+            loadMoreBtn.addEventListener('click', function () {
+                equipmentVisibleCount += 10;
+                renderEquipmentResults(allEquipmentResults, true);
+            });
+        }
+    }
+
+    function fetchEquipment(query) {
+        equipmentResults.innerHTML = '<span class="text-muted">Loading available equipment...</span>';
+        return fetch('{{ url_for("borrow.equipment_search") }}?query=' + encodeURIComponent(query || ''), { credentials: 'same-origin' })
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                allEquipmentResults = data.results || [];
+                equipmentVisibleCount = 10;
+                renderEquipmentResults(allEquipmentResults);
+            })
+            .catch(function () {
+                equipmentResults.innerHTML = '<span class="text-danger">Unable to search equipment right now.</span>';
+            });
     }
 
     memberCheckForm.addEventListener('submit', function (event) {
@@ -245,12 +279,12 @@
     equipmentSearchForm.addEventListener('submit', function (event) {
         event.preventDefault();
         var query = (equipmentQuery.value || '').trim();
-        fetch('{{ url_for("borrow.equipment_search") }}?query=' + encodeURIComponent(query), { credentials: 'same-origin' })
-            .then(function (response) { return response.json(); })
-            .then(function (data) { renderEquipmentResults(data.results || []); })
-            .catch(function () {
-                equipmentResults.innerHTML = '<span class="text-danger">Unable to search equipment right now.</span>';
-            });
+        fetchEquipment(query);
+    });
+
+    loadAvailableBtn.addEventListener('click', function () {
+        equipmentQuery.value = '';
+        fetchEquipment('');
     });
 
     validateBorrowBtn.addEventListener('click', function () {
@@ -347,6 +381,9 @@
                 submitBorrowBtn.textContent = 'Save Borrow Transaction';
             });
     });
+
+    // Load a starter list so staff can pick equipment immediately without typing a query.
+    fetchEquipment('');
 })();
 </script>
 {% endblock %}

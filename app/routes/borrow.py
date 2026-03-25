@@ -439,7 +439,6 @@ def equipment_search():
 
     search = (request.args.get('query') or '').strip()
     rows = Equipment.get_all(status='available', search=search or None)
-    rows = rows[:20]
 
     return jsonify(
         {
