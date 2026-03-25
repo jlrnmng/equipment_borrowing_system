@@ -9,9 +9,9 @@ from app.utils.db import get_db
 from app.utils.notifications import (
     build_borrow_confirmation_message,
     build_return_confirmation_message,
-    process_existing_notification,
     queue_and_send_notification,
 )
+from app.utils.reminders import run_reminder_cycle, process_pending_notifications as process_pending_notifications_service
 
 borrow_bp = Blueprint('borrow', __name__)
 
@@ -1005,39 +1005,22 @@ def process_pending_notifications():
     if not _is_authorized_borrower():
         return jsonify({'ok': False, 'message': 'Forbidden'}), 403
 
-    db = get_db()
     try:
-        with db.cursor() as cursor:
-            cursor.execute(
-                """
-                SELECT notification_id, member_id, borrow_id, notification_type,
-                       recipient_email, subject, message, channel
-                FROM notifications
-                WHERE status = 'pending'
-                ORDER BY created_at ASC
-                LIMIT 50
-                """
-            )
-            rows = cursor.fetchall()
-
-        processed = 0
-        sent = 0
-        failed = 0
-
-        for row in rows:
-            result = process_existing_notification(
-                notification_id=row['notification_id'],
-                recipient_email=row['recipient_email'],
-                subject=row['subject'],
-                message=row['message'],
-            )
-            processed += 1
-            if result.get('sent'):
-                sent += 1
-            else:
-                failed += 1
-
-        return jsonify({'ok': True, 'processed': processed, 'sent': sent, 'failed': failed})
+        result = process_pending_notifications_service(limit=50)
+        return jsonify({'ok': True, **result})
     except Exception:
-        db.rollback()
         return jsonify({'ok': False, 'message': 'Failed to process pending notifications.'}), 500
+
+
+@borrow_bp.route('/api/reminders/run', methods=['POST'])
+@login_required
+def run_reminders_now():
+    if not _is_authorized_borrower():
+        return jsonify({'ok': False, 'message': 'Forbidden'}), 403
+
+    try:
+        summary = run_reminder_cycle()
+        return jsonify({'ok': True, 'summary': summary})
+    except Exception:
+        current_app.logger.exception('Manual reminder cycle failed.')
+        return jsonify({'ok': False, 'message': 'Failed to run reminder cycle.'}), 500

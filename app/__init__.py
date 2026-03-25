@@ -8,6 +8,7 @@ from authlib.integrations.flask_client import OAuth
 
 from config.config import config
 from app.utils.db import close_db
+from app.utils.reminders import maybe_start_scheduler
 
 login_manager = LoginManager()
 csrf = CSRFProtect()
@@ -84,6 +85,9 @@ def create_app(config_name=None):
     app.register_blueprint(staff_admin_bp)
     app.register_blueprint(equipment_bp)
     app.register_blueprint(borrow_bp)
+
+    # Day 6 afternoon: background reminder automation scheduler.
+    maybe_start_scheduler(app)
 
     return app
 

@@ -42,9 +42,14 @@
         <div class="fw-semibold">
             <i class="bi bi-envelope-check me-1 text-primary"></i> Recent Notifications
         </div>
-        <button id="processPendingBtn" type="button" class="btn btn-sm btn-primary">
-            <i class="bi bi-play-circle me-1"></i> Process Pending
-        </button>
+        <div class="d-flex gap-2">
+            <button id="runRemindersBtn" type="button" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-arrow-repeat me-1"></i> Run Reminder Cycle
+            </button>
+            <button id="processPendingBtn" type="button" class="btn btn-sm btn-primary">
+                <i class="bi bi-play-circle me-1"></i> Process Pending
+            </button>
+        </div>
     </div>
     <div class="card-body p-0">
         {% if notifications %}
@@ -125,6 +130,44 @@
 <script>
 (() => {
     const btn = document.getElementById('processPendingBtn');
+    const runBtn = document.getElementById('runRemindersBtn');
+    const csrfToken = '{{ csrf_token() }}';
+
+    if (runBtn) {
+        runBtn.addEventListener('click', async () => {
+            const original = runBtn.innerHTML;
+            runBtn.disabled = true;
+            runBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Running...';
+
+            try {
+                const response = await fetch('{{ url_for("borrow.run_reminders_now") }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+                const result = await response.json();
+                if (!response.ok || !result.ok) {
+                    throw new Error(result.message || 'Failed to run reminder cycle.');
+                }
+
+                const sync = result.summary?.sync || {};
+                const queued = result.summary?.queued || {};
+                const delivery = result.summary?.delivery || {};
+                alert(
+                    `Sync: +${sync.updated_to_overdue || 0} overdue, ${sync.total_overdue || 0} total overdue\n` +
+                    `Queued: ${queued.queued_due_reminders || 0} due reminders, ${queued.queued_overdue_warnings || 0} overdue warnings\n` +
+                    `Delivery: processed ${delivery.processed || 0}, sent ${delivery.sent || 0}, failed ${delivery.failed || 0}`
+                );
+                window.location.reload();
+            } catch (err) {
+                alert(err.message || 'An unexpected error occurred.');
+                runBtn.disabled = false;
+                runBtn.innerHTML = original;
+            }
+        });
+    }
+
     if (!btn) return;
 
     btn.addEventListener('click', async () => {
@@ -136,7 +179,7 @@
             const response = await fetch('{{ url_for("borrow.process_pending_notifications") }}', {
                 method: 'POST',
                 headers: {
-                    'X-CSRFToken': '{{ csrf_token() }}'
+                    'X-CSRFToken': csrfToken
                 }
             });
             const result = await response.json();
