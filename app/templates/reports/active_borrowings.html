@@ -1,0 +1,121 @@
+{% extends "layouts/main.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-2">
+                        <i class="bi bi-bookmark-check"></i> Active Borrowings Report
+                    </h2>
+                    <p class="text-muted">All currently active borrowing records</p>
+                </div>
+                <div>
+                    <a href="/reports" class="btn btn-outline-secondary me-2">
+                        <i class="bi bi-arrow-left"></i> Back
+                    </a>
+                    <a href="/reports/active-borrowings?export=true{% if filters.member_code %}&member_code={{ filters.member_code }}{% endif %}{% if filters.equipment_code %}&equipment_code={{ filters.equipment_code }}{% endif %}{% if filters.usage_area %}&usage_area={{ filters.usage_area }}{% endif %}" class="btn btn-success">
+                        <i class="bi bi-download"></i> Export CSV
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-body">
+            <h5 class="card-title">Filters</h5>
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="member_code" class="form-label">Member Code</label>
+                    <input type="text" class="form-control" id="member_code" name="member_code" 
+                           placeholder="Search member code..." value="{{ filters.member_code }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="equipment_code" class="form-label">Equipment Code</label>
+                    <input type="text" class="form-control" id="equipment_code" name="equipment_code" 
+                           placeholder="Search equipment code..." value="{{ filters.equipment_code }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="usage_area" class="form-label">Facility Area</label>
+                    <select class="form-select" id="usage_area" name="usage_area">
+                        <option value="">-- All Areas --</option>
+                        {% for area in usage_areas %}
+                            <option value="{{ area.usage_area }}" {% if filters.usage_area == area.usage_area %}selected{% endif %}>
+                                {{ area.usage_area }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Filter
+                    </button>
+                    <a href="/reports/active-borrowings" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <span class="badge bg-primary">{{ report_data|length }} Records</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Member Code</th>
+                        <th>Member Name</th>
+                        <th>Email</th>
+                        <th>Equipment</th>
+                        <th>Items</th>
+                        <th>Facility Area</th>
+                        <th>Borrow Date</th>
+                        <th>Expected Return</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if report_data %}
+                        {% for record in report_data %}
+                            <tr>
+                                <td>
+                                    <strong>{{ record.member_code }}</strong>
+                                </td>
+                                <td>{{ record.member_name }}</td>
+                                <td>{{ record.email }}</td>
+                                <td>
+                                    <small>{{ record.equipment_codes }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ record.item_count }}</span>
+                                </td>
+                                <td>
+                                    {% if record.usage_area %}
+                                        <small class="text-muted">{{ record.usage_area }}</small>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ record.borrow_date.strftime('%Y-%m-%d %H:%M') if record.borrow_date else '-' }}</td>
+                                <td>{{ record.expected_return_date.strftime('%Y-%m-%d %H:%M') if record.expected_return_date else '-' }}</td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4 text-muted">
+                                No active borrowings found.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

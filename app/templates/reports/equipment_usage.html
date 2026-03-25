@@ -1,0 +1,139 @@
+{% extends "layouts/main.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-2">
+                        <i class="bi bi-box"></i> Equipment Usage Report
+                    </h2>
+                    <p class="text-muted">Usage statistics and borrowing patterns for equipment</p>
+                </div>
+                <div>
+                    <a href="/reports" class="btn btn-outline-secondary me-2">
+                        <i class="bi bi-arrow-left"></i> Back
+                    </a>
+                    <a href="/reports/equipment-usage?export=true{% if filters.equipment_code %}&equipment_code={{ filters.equipment_code }}{% endif %}{% if filters.start_date %}&start_date={{ filters.start_date }}{% endif %}{% if filters.end_date %}&end_date={{ filters.end_date }}{% endif %}" class="btn btn-success">
+                        <i class="bi bi-download"></i> Export CSV
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-body">
+            <h5 class="card-title">Filters</h5>
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="equipment_code" class="form-label">Equipment Code</label>
+                    <input type="text" class="form-control" id="equipment_code" name="equipment_code" 
+                           placeholder="Search equipment code..." value="{{ filters.equipment_code }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="start_date" class="form-label">From Date</label>
+                    <input type="date" class="form-control" id="start_date" name="start_date" 
+                           value="{{ filters.start_date }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="end_date" class="form-label">To Date</label>
+                    <input type="date" class="form-control" id="end_date" name="end_date" 
+                           value="{{ filters.end_date }}">
+                </div>
+                <div class="col-md-5 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search"></i> Filter
+                    </button>
+                    <a href="/reports/equipment-usage" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-clockwise"></i> Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <span class="badge bg-primary">{{ report_data|length }} Equipment Items</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Equipment Code</th>
+                        <th>Equipment Name</th>
+                        <th>Category</th>
+                        <th>Status</th>
+                        <th>Times Borrowed</th>
+                        <th>Unique Members</th>
+                        <th>Currently Borrowed</th>
+                        <th>Last Borrowed</th>
+                        <th>Avg Duration (days)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if report_data %}
+                        {% for record in report_data %}
+                            <tr>
+                                <td>
+                                    <strong>{{ record.code }}</strong>
+                                </td>
+                                <td>{{ record.name }}</td>
+                                <td>
+                                    <small class="text-muted">{{ record.category }}</small>
+                                </td>
+                                <td>
+                                    {% if record.status == 'available' %}
+                                        <span class="badge bg-success">Available</span>
+                                    {% elif record.status == 'borrowed' %}
+                                        <span class="badge bg-warning text-dark">Borrowed</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ record.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ record.total_times_borrowed or 0 }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ record.unique_members or 0 }}</span>
+                                </td>
+                                <td>
+                                    {% if record.currently_borrowed %}
+                                        <span class="badge bg-warning text-dark">{{ record.currently_borrowed }}</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if record.last_borrowed_date %}
+                                        {{ record.last_borrowed_date.strftime('%Y-%m-%d') }}
+                                    {% else %}
+                                        <span class="text-muted">Never</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if record.avg_borrow_duration_days %}
+                                        {{ "%.1f"|format(record.avg_borrow_duration_days) }} days
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="9" class="text-center py-4 text-muted">
+                                No equipment data found.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

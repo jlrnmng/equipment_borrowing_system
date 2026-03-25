@@ -1,0 +1,112 @@
+{% extends "layouts/main.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-2">
+                        <i class="bi bi-exclamation-triangle"></i> Overdue Items Report
+                    </h2>
+                    <p class="text-muted">Borrowings that have exceeded their expected return date</p>
+                </div>
+                <div>
+                    <a href="/reports" class="btn btn-outline-secondary me-2">
+                        <i class="bi bi-arrow-left"></i> Back
+                    </a>
+                    <a href="/reports/overdue-items?export=true{% if filters.days_overdue %}&days_overdue={{ filters.days_overdue }}{% endif %}{% if filters.member_code %}&member_code={{ filters.member_code }}{% endif %}" class="btn btn-success">
+                        <i class="bi bi-download"></i> Export CSV
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-body">
+            <h5 class="card-title">Filters</h5>
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="days_overdue" class="form-label">Minimum Days Overdue</label>
+                    <input type="number" class="form-control" id="days_overdue" name="days_overdue" 
+                           placeholder="e.g., 1" value="{{ filters.days_overdue }}" min="0">
+                </div>
+                <div class="col-md-3">
+                    <label for="member_code" class="form-label">Member Code</label>
+                    <input type="text" class="form-control" id="member_code" name="member_code" 
+                           placeholder="Search member code..." value="{{ filters.member_code }}">
+                </div>
+                <div class="col-md-6 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search"></i> Filter
+                    </button>
+                    <a href="/reports/overdue-items" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-clockwise"></i> Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <span class="badge bg-danger">{{ report_data|length }} Overdue Records</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Member Code</th>
+                        <th>Member Name</th>
+                        <th>Email</th>
+                        <th>Equipment</th>
+                        <th>Items</th>
+                        <th>Borrow Date</th>
+                        <th>Due Date</th>
+                        <th>Days Overdue</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if report_data %}
+                        {% for record in report_data %}
+                            <tr class="table-danger-light">
+                                <td>
+                                    <strong>{{ record.member_code }}</strong>
+                                </td>
+                                <td>{{ record.member_name }}</td>
+                                <td>{{ record.email }}</td>
+                                <td>
+                                    <small>{{ record.equipment_codes }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-warning">{{ record.item_count }}</span>
+                                </td>
+                                <td>{{ record.borrow_date.strftime('%Y-%m-%d %H:%M') if record.borrow_date else '-' }}</td>
+                                <td>{{ record.expected_return_date.strftime('%Y-%m-%d %H:%M') if record.expected_return_date else '-' }}</td>
+                                <td>
+                                    <span class="badge bg-danger">{{ record.days_overdue }} days</span>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4 text-muted">
+                                No overdue items found. Great job! ✓
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .table-danger-light {
+        background-color: #ffe5e5;
+    }
+</style>
+{% endblock %}

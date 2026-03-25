@@ -1,0 +1,141 @@
+{% extends "layouts/main.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h1 class="mb-4">
+                <i class="bi bi-file-earmark-bar-graph"></i> Reports & Analytics
+            </h1>
+            <p class="text-muted">Access comprehensive reports on borrowing activity, equipment usage, and violations.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Active Borrowings Report -->
+        <div class="col-md-6 mb-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-bookmark-check text-primary"></i> Active Borrowings
+                    </h5>
+                    <p class="card-text text-muted small">
+                        View all currently active borrowing records with member and equipment details.
+                    </p>
+                    <ul class="small mb-3">
+                        <li>Filter by member code</li>
+                        <li>Filter by equipment</li>
+                        <li>Filter by facility area</li>
+                        <li>Export to CSV</li>
+                    </ul>
+                </div>
+                <div class="card-footer bg-light">
+                    <a href="/reports/active-borrowings" class="btn btn-sm btn-primary">
+                        <i class="bi bi-arrow-right"></i> View Report
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overdue Items Report -->
+        <div class="col-md-6 mb-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-exclamation-triangle text-danger"></i> Overdue Items
+                    </h5>
+                    <p class="card-text text-muted small">
+                        Track overdue borrowings and take action on late returns.
+                    </p>
+                    <ul class="small mb-3">
+                        <li>View all overdue items</li>
+                        <li>Filter by days overdue</li>
+                        <li>Filter by member</li>
+                        <li>Export to CSV</li>
+                    </ul>
+                </div>
+                <div class="card-footer bg-light">
+                    <a href="/reports/overdue-items" class="btn btn-sm btn-danger">
+                        <i class="bi bi-arrow-right"></i> View Report
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Member History Report -->
+        <div class="col-md-6 mb-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-person text-info"></i> Member History
+                    </h5>
+                    <p class="card-text text-muted small">
+                        View complete borrowing history for individual members.
+                    </p>
+                    <ul class="small mb-3">
+                        <li>Filter by member code</li>
+                        <li>Date range filter</li>
+                        <li>View all transactions</li>
+                        <li>Export to CSV</li>
+                    </ul>
+                </div>
+                <div class="card-footer bg-light">
+                    <a href="/reports/member-history" class="btn btn-sm btn-info">
+                        <i class="bi bi-arrow-right"></i> View Report
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Equipment Usage Report -->
+        <div class="col-md-6 mb-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-box text-success"></i> Equipment Usage
+                    </h5>
+                    <p class="card-text text-muted small">
+                        Analyze equipment usage statistics and borrowing patterns.
+                    </p>
+                    <ul class="small mb-3">
+                        <li>Total times borrowed</li>
+                        <li>Unique members count</li>
+                        <li>Average borrow duration</li>
+                        <li>Export to CSV</li>
+                    </ul>
+                </div>
+                <div class="card-footer bg-light">
+                    <a href="/reports/equipment-usage" class="btn btn-sm btn-success">
+                        <i class="bi bi-arrow-right"></i> View Report
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Violations Report -->
+        <div class="col-md-6 mb-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-shield-exclamation text-warning"></i> Violations Log
+                    </h5>
+                    <p class="card-text text-muted small">
+                        Review all recorded violations including overdue, damage, and policy violations.
+                    </p>
+                    <ul class="small mb-3">
+                        <li>Filter by violation type</li>
+                        <li>Filter by member</li>
+                        <li>Date range filter</li>
+                        <li>Export to CSV</li>
+                    </ul>
+                </div>
+                <div class="card-footer bg-light">
+                    <a href="/reports/violations" class="btn btn-sm btn-warning">
+                        <i class="bi bi-arrow-right"></i> View Report
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

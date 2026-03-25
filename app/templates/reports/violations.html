@@ -1,0 +1,136 @@
+{% extends "layouts/main.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-2">
+                        <i class="bi bi-shield-exclamation"></i> Violations Log
+                    </h2>
+                    <p class="text-muted">All recorded violations including overdue, damage, and policy violations</p>
+                </div>
+                <div>
+                    <a href="/reports" class="btn btn-outline-secondary me-2">
+                        <i class="bi bi-arrow-left"></i> Back
+                    </a>
+                    <a href="/reports/violations?export=true{% if filters.violation_type %}&violation_type={{ filters.violation_type }}{% endif %}{% if filters.member_code %}&member_code={{ filters.member_code }}{% endif %}{% if filters.start_date %}&start_date={{ filters.start_date }}{% endif %}{% if filters.end_date %}&end_date={{ filters.end_date }}{% endif %}" class="btn btn-success">
+                        <i class="bi bi-download"></i> Export CSV
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-body">
+            <h5 class="card-title">Filters</h5>
+            <form method="get" class="row g-3">
+                <div class="col-md-2">
+                    <label for="violation_type" class="form-label">Violation Type</label>
+                    <select class="form-select" id="violation_type" name="violation_type">
+                        <option value="">-- All Types --</option>
+                        <option value="overdue" {% if filters.violation_type == 'overdue' %}selected{% endif %}>Overdue</option>
+                        <option value="damage" {% if filters.violation_type == 'damage' %}selected{% endif %}>Damage</option>
+                        <option value="unauthorized_external_use" {% if filters.violation_type == 'unauthorized_external_use' %}selected{% endif %}>Unauthorized External Use</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="member_code" class="form-label">Member Code</label>
+                    <input type="text" class="form-control" id="member_code" name="member_code" 
+                           placeholder="Search..." value="{{ filters.member_code }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="start_date" class="form-label">From Date</label>
+                    <input type="date" class="form-control" id="start_date" name="start_date" 
+                           value="{{ filters.start_date }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="end_date" class="form-label">To Date</label>
+                    <input type="date" class="form-control" id="end_date" name="end_date" 
+                           value="{{ filters.end_date }}">
+                </div>
+                <div class="col-md-4 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search"></i> Filter
+                    </button>
+                    <a href="/reports/violations" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-clockwise"></i> Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <span class="badge bg-danger">{{ report_data|length }} Violations</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Type</th>
+                        <th>Member Code</th>
+                        <th>Member Name</th>
+                        <th>Equipment Code</th>
+                        <th>Equipment Name</th>
+                        <th>Description</th>
+                        <th>Recorded Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if report_data %}
+                        {% for record in report_data %}
+                            <tr>
+                                <td>
+                                    {% if record.violation_type == 'overdue' %}
+                                        <span class="badge bg-warning text-dark">Overdue</span>
+                                    {% elif record.violation_type == 'damage' %}
+                                        <span class="badge bg-danger">Damage</span>
+                                    {% elif record.violation_type == 'unauthorized_external_use' %}
+                                        <span class="badge bg-danger">Unauthorized External Use</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ record.violation_type }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>{{ record.member_code }}</strong>
+                                </td>
+                                <td>{{ record.member_name }}</td>
+                                <td>
+                                    {% if record.equipment_code %}
+                                        <small>{{ record.equipment_code }}</small>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if record.equipment_name %}
+                                        <small>{{ record.equipment_name }}</small>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small>{{ record.description or '-' }}</small>
+                                </td>
+                                <td>{{ record.recorded_date.strftime('%Y-%m-%d') if record.recorded_date else '-' }}</td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">
+                                No violations found.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

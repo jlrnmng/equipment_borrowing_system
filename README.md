@@ -22,7 +22,7 @@ A Flask-based web application for managing equipment borrowing in a facility usi
 
 ## Features
 
-**Currently implemented (through Day 7 morning):**
+**Currently implemented (through Day 7 afternoon):**
 - Staff login / logout with bcrypt-hashed passwords
 - Google OAuth login flow (domain-restricted)
 - Manual login reserved for bootstrap admin account
@@ -40,9 +40,14 @@ A Flask-based web application for managing equipment borrowing in a facility usi
 - Dashboard with live stats — today's transactions, available equipment, active borrowings, overdue items
 - Dashboard quick search across members, equipment, and transactions
 - Recent activity feed
+- **5 Essential Reports with filtering & CSV export:**
+  - Active borrowings list (filter by member, equipment, facility area)
+  - Overdue items report (filter by days overdue, member)
+  - Member borrowing history (filter by member, date range)
+  - Equipment usage report (usage stats, borrowing patterns, average duration)
+  - Violation log (filter by violation type, member, date range)
 
 **Planned (see `2-week_development_plan.txt`):**
-- Reports and CSV export
 - Gmail API native integration (database ready; SMTP queue fallback implemented)
 - Google Calendar integration (database ready)
 
