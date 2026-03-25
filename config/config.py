@@ -36,7 +36,7 @@ class Config:
     MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER', MAIL_USERNAME or 'no-reply@localhost')
     MAIL_NOTIFICATIONS_ENABLED = _env_bool('MAIL_NOTIFICATIONS_ENABLED', True)
 
-    # Day 6 afternoon: reminder automation settings.
+    #reminder automation settings.
     REMINDER_AUTOMATION_ENABLED = _env_bool('REMINDER_AUTOMATION_ENABLED', True)
     REMINDER_JOB_INTERVAL_MINUTES = int(os.getenv('REMINDER_JOB_INTERVAL_MINUTES', 15))
     REMINDER_PROCESS_PENDING_ON_RUN = _env_bool('REMINDER_PROCESS_PENDING_ON_RUN', True)

@@ -27,12 +27,12 @@
     <div class="col-6 col-xl-3">
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3">
-                <div class="icon-box bg-primary bg-opacity-10">
-                    <i class="bi bi-people-fill text-primary"></i>
+                <div class="icon-box bg-info bg-opacity-10">
+                    <i class="bi bi-calendar2-check text-info"></i>
                 </div>
                 <div>
-                    <div class="fs-3 fw-bold lh-1">{{ stats.active_members }}</div>
-                    <small class="text-muted">Active Members</small>
+                    <div class="fs-3 fw-bold lh-1">{{ stats.todays_transactions }}</div>
+                    <small class="text-muted">Today's Transactions</small>
                 </div>
             </div>
         </div>
@@ -75,6 +75,84 @@
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+<div class="card stat-card mb-4">
+    <div class="card-header bg-white border-bottom fw-semibold">
+        <i class="bi bi-search me-1 text-primary"></i> Quick Search
+    </div>
+    <div class="card-body">
+        <form method="get" action="{{ url_for('dashboard.index') }}" class="row g-2 align-items-center">
+            <div class="col-md-9">
+                <input
+                    type="text"
+                    name="q"
+                    class="form-control"
+                    value="{{ search_query or '' }}"
+                    placeholder="Search member code/name, equipment code/name, or transaction code"
+                >
+            </div>
+            <div class="col-md-3 d-grid">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search me-1"></i> Search
+                </button>
+            </div>
+        </form>
+
+        {% if search_query %}
+        <hr>
+        <div class="small text-muted mb-2">Results for "{{ search_query }}"</div>
+
+        <div class="row g-3">
+            <div class="col-lg-4">
+                <div class="border rounded p-2 h-100">
+                    <div class="fw-semibold mb-2"><i class="bi bi-person-badge me-1"></i> Members</div>
+                    {% if search_results.members %}
+                        {% for row in search_results.members %}
+                        <div class="small mb-2 pb-2 border-bottom">
+                            <div class="fw-semibold">{{ row.member_code }} - {{ row.first_name }} {{ row.last_name }}</div>
+                            <div class="text-muted">{{ row.email }} | {{ row.status }}</div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                    <div class="small text-muted">No member matches.</div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="border rounded p-2 h-100">
+                    <div class="fw-semibold mb-2"><i class="bi bi-box2 me-1"></i> Equipment</div>
+                    {% if search_results.equipment %}
+                        {% for row in search_results.equipment %}
+                        <div class="small mb-2 pb-2 border-bottom">
+                            <div class="fw-semibold">{{ row.equipment_code }} - {{ row.equipment_name }}</div>
+                            <div class="text-muted">{{ row.category or 'Uncategorized' }} | {{ row.status }}</div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                    <div class="small text-muted">No equipment matches.</div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="border rounded p-2 h-100">
+                    <div class="fw-semibold mb-2"><i class="bi bi-receipt me-1"></i> Transactions</div>
+                    {% if search_results.transactions %}
+                        {% for row in search_results.transactions %}
+                        <div class="small mb-2 pb-2 border-bottom">
+                            <div class="fw-semibold">{{ row.transaction_code }} <span class="badge bg-secondary text-uppercase">{{ row.status }}</span></div>
+                            <div class="text-muted">{{ row.member_code }} - {{ row.first_name }} {{ row.last_name }}</div>
+                            <div class="text-muted">Due: {{ row.expected_return_date }}</div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                    <div class="small text-muted">No transaction matches.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 

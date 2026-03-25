@@ -22,7 +22,7 @@ A Flask-based web application for managing equipment borrowing in a facility usi
 
 ## Features
 
-**Currently implemented (through Day 3 morning):**
+**Currently implemented (through Day 7 morning):**
 - Staff login / logout with bcrypt-hashed passwords
 - Google OAuth login flow (domain-restricted)
 - Manual login reserved for bootstrap admin account
@@ -30,19 +30,20 @@ A Flask-based web application for managing equipment borrowing in a facility usi
 - Staff account registration by admin or staff (`/staff/register`)
 - Equipment management: add, list, detail, and edit
 - Equipment code generation + inventory/status tracking
+- Borrow transactions with member eligibility checks and equipment assignment
+- Return workflow with condition capture, overdue checks, and violation logging
+- Notification queue pipeline for borrow/return/reminder/overdue emails
+- Automated reminder scheduler (due-tomorrow reminders + overdue warnings)
 - CSRF protection on all forms
 - Session timeout after 30 minutes of inactivity
 - No back-button bypass after logout (cache headers)
-- Dashboard with live stats — active members, available equipment, active borrowings, overdue items
+- Dashboard with live stats — today's transactions, available equipment, active borrowings, overdue items
+- Dashboard quick search across members, equipment, and transactions
 - Recent activity feed
 
 **Planned (see `2-week_development_plan.txt`):**
-- Borrow / return transactions via QR scanning
-- In-facility usage enforcement (working hours, usage area)
-- Overdue tracking and automated email reminders
-- Violation logging
 - Reports and CSV export
-- Gmail API notifications (database ready)
+- Gmail API native integration (database ready; SMTP queue fallback implemented)
 - Google Calendar integration (database ready)
 
 ---
@@ -56,6 +57,7 @@ A Flask-based web application for managing equipment borrowing in a facility usi
 | Forms | Flask-WTF · WTForms |
 | Database | MySQL (XAMPP) · PyMySQL |
 | Frontend | Jinja2 · Bootstrap 5 · Bootstrap Icons |
+| Scheduling | APScheduler |
 | Config | python-dotenv |
 
 ---
@@ -74,9 +76,10 @@ equipment_borrowing_system/
 │   │   └── equipment.py     # Equipment model helpers
 │   ├── routes/
 │   │   ├── auth.py          # /login, /logout, /auth/google, /signup
-│   │   ├── dashboard.py     # /dashboard
+│   │   ├── borrow.py        # borrow/return/overdue/notifications APIs + pages
+│   │   ├── dashboard.py     # /dashboard + quick search
 │   │   ├── equipment.py     # equipment CRUD pages
-│   │   ├── members.py       # compatibility redirect to /signup
+│   │   ├── members.py       # signup + member QR scan page
 │   │   └── staff_admin.py   # /staff/register
 │   ├── templates/
 │   │   ├── base.html        # Shared <head>, Bootstrap, CSS
@@ -86,14 +89,17 @@ equipment_borrowing_system/
 │   │   │   ├── login.html
 │   │   │   ├── request_access.html
 │   │   │   └── signup.html
+│   │   ├── borrow/          # new, return, overdue, notifications, receipts
 │   │   ├── dashboard/
 │   │   │   └── index.html
 │   │   ├── equipment/       # add, list, detail, edit
+│   │   ├── members/         # register, scan
 │   │   └── staff/
 │   │       └── register.html
 │   ├── static/              # CSS, JS, images, generated QRs
 │   └── utils/
 │       ├── db.py            # get_db() / close_db() per-request connection
+│       ├── notifications.py # notification queue + SMTP sender helpers
 │       └── qr.py            # member QR generation helper
 │
 ├── config/
@@ -172,6 +178,21 @@ DB_PASSWORD=
 FLASK_APP=main.py
 FLASK_ENV=development
 SECRET_KEY=replace-with-a-long-random-string
+
+# Mail / notifications
+MAIL_NOTIFICATIONS_ENABLED=true
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USE_TLS=true
+MAIL_USE_SSL=false
+MAIL_USERNAME=
+MAIL_PASSWORD=
+MAIL_DEFAULT_SENDER=
+
+# Reminder automation
+REMINDER_AUTOMATION_ENABLED=true
+REMINDER_JOB_INTERVAL_MINUTES=15
+REMINDER_PROCESS_PENDING_ON_RUN=true
 ```
 
 > **Important:** Change `SECRET_KEY` to a long random string before deploying.  
@@ -241,6 +262,17 @@ The script checks for duplicate emails and generates a unique `STAFF###` code au
 | `FLASK_APP` | Flask app module | `main.py` |
 | `FLASK_ENV` | `development` or `production` | `development` |
 | `SECRET_KEY` | Flask session signing key | *(must be changed)* |
+| `MAIL_NOTIFICATIONS_ENABLED` | Enable/disable notification sending | `true` |
+| `MAIL_SERVER` | SMTP server host | `smtp.gmail.com` |
+| `MAIL_PORT` | SMTP port | `587` |
+| `MAIL_USE_TLS` | Use STARTTLS for SMTP | `true` |
+| `MAIL_USE_SSL` | Use SSL SMTP transport | `false` |
+| `MAIL_USERNAME` | SMTP username | *(empty)* |
+| `MAIL_PASSWORD` | SMTP password/app password | *(empty)* |
+| `MAIL_DEFAULT_SENDER` | Sender email/display address | `MAIL_USERNAME` or `no-reply@localhost` |
+| `REMINDER_AUTOMATION_ENABLED` | Enable background reminder scheduler | `true` |
+| `REMINDER_JOB_INTERVAL_MINUTES` | Scheduler run interval in minutes | `15` |
+| `REMINDER_PROCESS_PENDING_ON_RUN` | Process queued notifications every reminder cycle | `true` |
 
 ---
 
@@ -287,8 +319,11 @@ See [`2-week_development_plan.txt`](2-week_development_plan.txt) for the full sp
 | Day 2 Morning — Staff authentication & dashboard | ✅ Done |
 | Day 2 Afternoon — Member manual signup & QR codes | ✅ Done |
 | Day 3 Morning — Equipment management | ✅ Done |
-| Day 3 Afternoon — Member QR scanning | 🔲 Next |
-| Day 4 — Borrow transaction module | 🔲 Planned |
-| Day 5 — Return module & email notifications | 🔲 Planned |
-| Week 2 — Overdue tracking, reports, polish | 🔲 Planned |
+| Day 3 Afternoon — Member QR scanning | ✅ Done |
+| Day 4 — Borrow transaction module | ✅ Done |
+| Day 5 — Return module & email notifications | ✅ Done |
+| Day 6 Morning — Overdue tracking | ✅ Done |
+| Day 6 Afternoon — Reminder automation | ✅ Done |
+| Day 7 Morning — Dashboard metrics + search | ✅ Done |
+| Day 7 Afternoon — Reports & CSV export | 🔲 Next |
 | Post-launch — Calendar, advanced notifications, HTML emails | 🔲 Phase 2 |
