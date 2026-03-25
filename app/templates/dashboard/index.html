@@ -87,6 +87,7 @@
             <div class="card-body d-grid gap-2">
                 <a href="{{ url_for('borrow.new_borrow') }}" class="btn btn-primary"><i class="bi bi-box-arrow-in-down me-1"></i> Process Borrow</a>
                 <a href="{{ url_for('borrow.new_return') }}" class="btn btn-success"><i class="bi bi-box-arrow-up me-1"></i> Process Return</a>
+                <a href="{{ url_for('borrow.overdue_management') }}" class="btn btn-outline-danger"><i class="bi bi-exclamation-triangle me-1"></i> Overdue Management</a>
                 <a href="{{ url_for('members.scan_member') }}" class="btn btn-outline-secondary"><i class="bi bi-qr-code-scan me-1"></i> Scan Member QR</a>
                 <a href="{{ url_for('borrow.notification_center') }}" class="btn btn-outline-secondary"><i class="bi bi-envelope-check me-1"></i> Notifications</a>
                 <a href="{{ url_for('auth.signup') }}" class="btn btn-outline-secondary"><i class="bi bi-person-plus me-1"></i> Register Member</a>

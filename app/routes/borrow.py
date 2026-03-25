@@ -275,6 +275,91 @@ def _fetch_return_receipt_data(return_record):
         return cursor.fetchone()
 
 
+def _sync_overdue_borrowings(db):
+    """Mark active transactions as overdue when expected return date has passed."""
+    with db.cursor() as cursor:
+        cursor.execute(
+            """
+            UPDATE borrow_records br
+            SET br.status = 'overdue',
+                br.updated_at = CURRENT_TIMESTAMP
+            WHERE br.status = 'active'
+              AND br.expected_return_date < CURDATE()
+              AND EXISTS (
+                  SELECT 1
+                  FROM borrow_items bi
+                  WHERE bi.borrow_id = br.borrow_id
+                    AND bi.returned_at IS NULL
+              )
+            """
+        )
+        updated_to_overdue = cursor.rowcount or 0
+
+        cursor.execute(
+            """
+            UPDATE borrow_records br
+            SET br.status = 'active',
+                br.updated_at = CURRENT_TIMESTAMP
+            WHERE br.status = 'overdue'
+              AND br.expected_return_date >= CURDATE()
+              AND EXISTS (
+                  SELECT 1
+                  FROM borrow_items bi
+                  WHERE bi.borrow_id = br.borrow_id
+                    AND bi.returned_at IS NULL
+              )
+            """
+        )
+        restored_to_active = cursor.rowcount or 0
+
+        cursor.execute(
+            """
+            SELECT COUNT(*) AS total_overdue
+            FROM borrow_records br
+            WHERE br.status = 'overdue'
+              AND EXISTS (
+                  SELECT 1
+                  FROM borrow_items bi
+                  WHERE bi.borrow_id = br.borrow_id
+                    AND bi.returned_at IS NULL
+              )
+            """
+        )
+        total_overdue = int((cursor.fetchone() or {}).get('total_overdue', 0))
+
+    return {
+        'updated_to_overdue': updated_to_overdue,
+        'restored_to_active': restored_to_active,
+        'total_overdue': total_overdue,
+    }
+
+
+def _fetch_overdue_records(limit=200):
+    db = get_db()
+    with db.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT br.borrow_id, br.transaction_code, br.borrow_date, br.expected_return_date,
+                   DATEDIFF(CURDATE(), br.expected_return_date) AS days_overdue,
+                   GREATEST(TIMESTAMPDIFF(HOUR, DATE_ADD(br.expected_return_date, INTERVAL 17 HOUR), NOW()), 0) AS hours_overdue,
+                   m.member_id, m.member_code, m.first_name, m.last_name,
+                   COUNT(CASE WHEN bi.returned_at IS NULL THEN 1 END) AS unreturned_items
+            FROM borrow_records br
+            INNER JOIN members m ON m.member_id = br.member_id
+            INNER JOIN borrow_items bi ON bi.borrow_id = br.borrow_id
+            WHERE br.status IN ('active', 'overdue')
+              AND br.expected_return_date < CURDATE()
+              AND bi.returned_at IS NULL
+            GROUP BY br.borrow_id, br.transaction_code, br.borrow_date, br.expected_return_date,
+                     m.member_id, m.member_code, m.first_name, m.last_name
+            ORDER BY days_overdue DESC, br.expected_return_date ASC
+            LIMIT %s
+            """,
+            (limit,),
+        )
+        return cursor.fetchall()
+
+
 @borrow_bp.route('/borrow/new', methods=['GET'])
 @login_required
 def new_borrow():
@@ -296,6 +381,36 @@ def new_return():
     if not _is_authorized_borrower():
         return redirect(url_for('dashboard.index'))
     return render_template('borrow/return.html')
+
+
+@borrow_bp.route('/overdue', methods=['GET'])
+@login_required
+def overdue_management():
+    if not _is_authorized_borrower():
+        return redirect(url_for('dashboard.index'))
+
+    db = get_db()
+    sync_summary = _sync_overdue_borrowings(db)
+    db.commit()
+    records = _fetch_overdue_records()
+
+    return render_template('borrow/overdue.html', records=records, sync_summary=sync_summary)
+
+
+@borrow_bp.route('/api/overdue/sync', methods=['POST'])
+@login_required
+def overdue_sync():
+    if not _is_authorized_borrower():
+        return jsonify({'ok': False, 'message': 'Forbidden'}), 403
+
+    db = get_db()
+    try:
+        sync_summary = _sync_overdue_borrowings(db)
+        db.commit()
+        return jsonify({'ok': True, 'sync': sync_summary})
+    except Exception:
+        db.rollback()
+        return jsonify({'ok': False, 'message': 'Failed to sync overdue records.'}), 500
 
 
 @borrow_bp.route('/api/borrow/member-check', methods=['GET'])

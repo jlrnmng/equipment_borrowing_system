@@ -29,6 +29,10 @@
            class="nav-link {% if request.endpoint == 'borrow.new_return' %}active{% endif %}">
             <i class="bi bi-box-arrow-up"></i> Return Equipment
         </a>
+        <a href="{{ url_for('borrow.overdue_management') }}"
+           class="nav-link {% if request.endpoint == 'borrow.overdue_management' %}active{% endif %}">
+            <i class="bi bi-exclamation-triangle"></i> Overdue Management
+        </a>
         <a href="{{ url_for('borrow.notification_center') }}"
            class="nav-link {% if request.endpoint == 'borrow.notification_center' %}active{% endif %}">
             <i class="bi bi-envelope-check"></i> Notifications

@@ -1,0 +1,127 @@
+{% extends 'layouts/main.html' %}
+{% block title %}Overdue Management{% endblock %}
+{% block page_title %}Overdue Management{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+    <div class="col-md-8">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0"><i class="bi bi-exclamation-triangle me-1 text-danger"></i> Overdue Detection Summary</h6>
+                    <button id="syncOverdueBtn" type="button" class="btn btn-sm btn-primary">
+                        <i class="bi bi-arrow-repeat me-1"></i> Refresh Detection
+                    </button>
+                </div>
+                <div class="row g-3">
+                    <div class="col-sm-4">
+                        <small class="text-muted d-block">Marked Overdue</small>
+                        <div class="fs-4 fw-bold text-danger">{{ sync_summary.updated_to_overdue or 0 }}</div>
+                    </div>
+                    <div class="col-sm-4">
+                        <small class="text-muted d-block">Restored Active</small>
+                        <div class="fs-4 fw-bold text-success">{{ sync_summary.restored_to_active or 0 }}</div>
+                    </div>
+                    <div class="col-sm-4">
+                        <small class="text-muted d-block">Current Overdue</small>
+                        <div class="fs-4 fw-bold">{{ sync_summary.total_overdue or 0 }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <small class="text-muted">Staff Guide</small>
+                <ul class="mb-0 mt-2 ps-3 small text-muted">
+                    <li>Click Refresh Detection before reviewing.</li>
+                    <li>Prioritize rows with highest days overdue.</li>
+                    <li>Process return and log violation when needed.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card stat-card">
+    <div class="card-header bg-white fw-semibold">
+        <i class="bi bi-list-check me-1 text-primary"></i> Overdue Transactions
+    </div>
+    <div class="card-body p-0">
+        {% if records %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Transaction</th>
+                        <th>Member</th>
+                        <th>Expected Return</th>
+                        <th>Days Overdue</th>
+                        <th>Hours Overdue</th>
+                        <th>Unreturned Items</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in records %}
+                    <tr>
+                        <td class="ps-3">
+                            <div class="fw-semibold">{{ row.transaction_code }}</div>
+                            <small class="text-muted">Borrowed: {{ row.borrow_date.strftime('%b %d, %Y') if row.borrow_date else '-' }}</small>
+                        </td>
+                        <td>
+                            <div>{{ ((row.first_name or '') ~ ' ' ~ (row.last_name or '')).strip() or 'N/A' }}</div>
+                            <small class="text-muted">{{ row.member_code or '' }}</small>
+                        </td>
+                        <td>{{ row.expected_return_date.strftime('%b %d, %Y') if row.expected_return_date else '-' }}</td>
+                        <td><span class="badge bg-danger">{{ row.days_overdue }} day(s)</span></td>
+                        <td><span class="badge bg-warning text-dark">{{ row.hours_overdue }} hr</span></td>
+                        <td>{{ row.unreturned_items }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-check-circle fs-2 d-block mb-2 text-success"></i>
+            No overdue transactions found.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+(() => {
+    const syncBtn = document.getElementById('syncOverdueBtn');
+    if (!syncBtn) return;
+
+    syncBtn.addEventListener('click', async () => {
+        const original = syncBtn.innerHTML;
+        syncBtn.disabled = true;
+        syncBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Syncing...';
+
+        try {
+            const response = await fetch('{{ url_for("borrow.overdue_sync") }}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                }
+            });
+            const result = await response.json();
+
+            if (!response.ok || !result.ok) {
+                throw new Error(result.message || 'Failed to sync overdue records.');
+            }
+
+            const s = result.sync || {};
+            alert(`Marked overdue: ${s.updated_to_overdue || 0} | Restored active: ${s.restored_to_active || 0} | Current overdue: ${s.total_overdue || 0}`);
+            window.location.reload();
+        } catch (err) {
+            alert(err.message || 'An unexpected error occurred.');
+            syncBtn.disabled = false;
+            syncBtn.innerHTML = original;
+        }
+    });
+})();
+</script>
+{% endblock %}
