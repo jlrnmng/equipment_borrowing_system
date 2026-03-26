@@ -275,22 +275,28 @@ def get_violation_log(violation_type=None, member_code=None, start_date=None, en
     cursor = db.cursor()
     
     query = """
-        SELECT 
-            v.id,
+        SELECT
+            v.violation_id AS id,
             v.violation_type,
             v.description,
-            v.recorded_date,
+            v.violation_date AS recorded_date,
             m.member_code,
-            m.name as member_name,
+            TRIM(CONCAT(
+                COALESCE(m.first_name, ''),
+                ' ',
+                COALESCE(m.middle_name, ''),
+                ' ',
+                COALESCE(m.last_name, '')
+            )) AS member_name,
             m.email,
-            e.code as equipment_code,
-            e.name as equipment_name,
+            e.equipment_code,
+            e.equipment_name,
             br.borrow_date,
-            br.return_date
+            br.actual_return_date AS return_date
         FROM violations v
-        JOIN members m ON v.member_id = m.id
-        LEFT JOIN equipment e ON v.equipment_id = e.id
-        LEFT JOIN borrow_records br ON v.borrow_record_id = br.id
+        JOIN members m ON v.member_id = m.member_id
+        LEFT JOIN equipment e ON v.equipment_id = e.equipment_id
+        LEFT JOIN borrow_records br ON v.borrow_id = br.borrow_id
         WHERE 1=1
     """
     
@@ -305,19 +311,19 @@ def get_violation_log(violation_type=None, member_code=None, start_date=None, en
         params.append(f"%{member_code}%")
     
     if start_date:
-        query += " AND v.recorded_date >= %s"
+        query += " AND v.violation_date >= %s"
         params.append(start_date)
     else:
         # Default to last 90 days if not specified
         start_date = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
-        query += " AND v.recorded_date >= %s"
+        query += " AND v.violation_date >= %s"
         params.append(start_date)
     
     if end_date:
-        query += " AND v.recorded_date <= %s"
+        query += " AND v.violation_date <= %s"
         params.append(end_date)
     
-    query += " ORDER BY v.recorded_date DESC"
+    query += " ORDER BY v.violation_date DESC"
     
     cursor.execute(query, params)
     results = cursor.fetchall()
