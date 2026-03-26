@@ -40,7 +40,7 @@ def get_active_borrowings(member_code=None, equipment_code=None, usage_area=None
         List of active borrow records with member and equipment details
     """
     db = get_db()
-    cursor = db.cursor(dictionary=True)
+    cursor = db.cursor()
     
     query = """
         SELECT 
@@ -97,7 +97,7 @@ def get_overdue_items(days_overdue=None, member_code=None):
         List of overdue records with calculated overdue duration
     """
     db = get_db()
-    cursor = db.cursor(dictionary=True)
+    cursor = db.cursor()
     
     query = """
         SELECT 
@@ -152,7 +152,7 @@ def get_member_borrowing_history(member_code=None, start_date=None, end_date=Non
         List of all borrow records for member(s) with status and dates
     """
     db = get_db()
-    cursor = db.cursor(dictionary=True)
+    cursor = db.cursor()
     
     query = """
         SELECT 
@@ -215,7 +215,7 @@ def get_equipment_usage_report(equipment_code=None, start_date=None, end_date=No
         List of equipment with usage statistics
     """
     db = get_db()
-    cursor = db.cursor(dictionary=True)
+    cursor = db.cursor()
     
     # Default to last 90 days
     if not start_date:
@@ -272,7 +272,7 @@ def get_violation_log(violation_type=None, member_code=None, start_date=None, en
         List of violations with member and equipment details
     """
     db = get_db()
-    cursor = db.cursor(dictionary=True)
+    cursor = db.cursor()
     
     query = """
         SELECT 
@@ -354,7 +354,7 @@ def active_borrowings_report():
     
     # Get unique usage areas for filter dropdown
     db = get_db()
-    cursor = db.cursor(dictionary=True)
+    cursor = db.cursor()
     cursor.execute("SELECT DISTINCT usage_area FROM borrow_records WHERE usage_area IS NOT NULL ORDER BY usage_area")
     usage_areas = cursor.fetchall()
     cursor.close()
