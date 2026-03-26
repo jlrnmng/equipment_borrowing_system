@@ -81,6 +81,7 @@
         }
 
         var statusClass = member.status === 'active' ? 'success' : 'secondary';
+        var profileUrl = '{{ url_for("members.member_profile", member_code="__MEMBER_CODE__") }}'.replace('__MEMBER_CODE__', encodeURIComponent(member.member_code));
         resultEl.innerHTML =
             '<div class="mb-2"><strong>' + member.full_name + '</strong></div>' +
             '<div><strong>Code:</strong> ' + member.member_code + '</div>' +
@@ -89,7 +90,8 @@
             '<div><strong>ID Number:</strong> ' + (member.student_id || '-') + '</div>' +
             '<div><strong>Startup/Agency:</strong> ' + (member.startup || '-') + '</div>' +
             '<div><strong>Borrow Count:</strong> ' + member.current_borrow_count + ' / ' + member.max_borrow_limit + '</div>' +
-            '<div class="mt-2"><span class="badge bg-' + statusClass + ' text-uppercase">' + member.status + '</span></div>';
+            '<div class="mt-2"><span class="badge bg-' + statusClass + ' text-uppercase">' + member.status + '</span></div>' +
+            '<div class="d-grid mt-3"><a class="btn btn-sm btn-outline-primary" href="' + profileUrl + '">View Full Profile</a></div>';
     }
 
     function renderSuggestions(results) {

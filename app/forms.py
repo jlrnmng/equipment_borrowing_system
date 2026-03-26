@@ -31,6 +31,26 @@ class MemberRegistrationForm(FlaskForm):
     submit = SubmitField('Register Member')
 
 
+class MemberProfileForm(FlaskForm):
+    first_name = StringField('First Name', validators=[DataRequired(), Length(max=50)])
+    middle_name = StringField('Middle Name', validators=[Optional(), Length(max=50)])
+    last_name = StringField('Last Name', validators=[DataRequired(), Length(max=50)])
+    email = StringField('Google Email', validators=[DataRequired(), Email(), Length(max=100)])
+    phone = StringField('Phone Number', validators=[Optional(), Length(max=20)])
+    student_id = StringField('ID Number', validators=[Optional(), Length(max=50)])
+    startup = StringField('Startup/Agency', validators=[Optional(), Length(max=100)])
+    status = SelectField(
+        'Status',
+        choices=[('active', 'Active'), ('suspended', 'Suspended'), ('inactive', 'Inactive')],
+        validators=[DataRequired()],
+    )
+    max_borrow_limit = IntegerField(
+        'Max Borrow Limit',
+        validators=[DataRequired(), NumberRange(min=1, max=10)],
+    )
+    submit = SubmitField('Save Changes')
+
+
 class StaffRegistrationForm(FlaskForm):
     full_name = StringField('Full Name', validators=[DataRequired(), Length(max=100)])
     email = StringField('Google Email', validators=[DataRequired(), Email(), Length(max=100)])

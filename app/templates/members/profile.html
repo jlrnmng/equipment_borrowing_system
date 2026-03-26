@@ -1,0 +1,325 @@
+{% extends 'layouts/main.html' %}
+{% block title %}{{ member.member_code }} - Member Profile{% endblock %}
+{% block page_title %}Member Profile{% endblock %}
+{% block page_actions %}
+<a href="{{ url_for('members.scan_member') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-qr-code-scan me-1"></i> Scan / Lookup
+</a>
+<a href="{{ url_for('borrow.new_borrow') }}" class="btn btn-sm btn-primary">
+    <i class="bi bi-box-arrow-in-down me-1"></i> New Borrow
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card stat-card mb-3">
+            <div class="card-header bg-white border-bottom fw-semibold d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-person-vcard me-1"></i> Member Details</span>
+                <span class="badge {% if member.status == 'active' %}bg-success{% elif member.status == 'suspended' %}bg-warning text-dark{% else %}bg-secondary{% endif %} text-uppercase">
+                    {{ member.status }}
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="text-muted small fw-semibold d-block">Member Code</label>
+                        <span class="font-monospace h6">{{ member.member_code }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small fw-semibold d-block">Full Name</label>
+                        <span class="h6">{{ full_name }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small fw-semibold d-block">Email</label>
+                        <span class="h6">{{ member.email or member.google_email or '-' }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small fw-semibold d-block">Google Linked</label>
+                        <span class="h6">
+                            {% if member.google_sub %}
+                                <span class="badge bg-success-subtle text-success-emphasis">Linked</span>
+                            {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary-emphasis">Not Linked</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small fw-semibold d-block">Phone</label>
+                        <span class="h6">{{ member.phone or '-' }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small fw-semibold d-block">ID Number</label>
+                        <span class="h6">{{ member.student_id or '-' }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small fw-semibold d-block">Startup/Agency</label>
+                        <span class="h6">{{ member.startup or '-' }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small fw-semibold d-block">Borrow Limit</label>
+                        <span class="h6">{{ member.current_borrow_count }} / {{ member.max_borrow_limit }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card stat-card mb-3">
+            <div class="card-header bg-white border-bottom fw-semibold">
+                <i class="bi bi-pencil-square me-1"></i> Edit Member Information
+            </div>
+            <div class="card-body">
+                <form method="POST" novalidate>
+                    {{ form.hidden_tag() }}
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            {{ form.first_name.label(class='form-label fw-semibold') }}
+                            {{ form.first_name(class='form-control' + (' is-invalid' if form.first_name.errors else '')) }}
+                            {% for error in form.first_name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.middle_name.label(class='form-label fw-semibold') }}
+                            {{ form.middle_name(class='form-control' + (' is-invalid' if form.middle_name.errors else '')) }}
+                            {% for error in form.middle_name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.last_name.label(class='form-label fw-semibold') }}
+                            {{ form.last_name(class='form-control' + (' is-invalid' if form.last_name.errors else '')) }}
+                            {% for error in form.last_name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.email.label(class='form-label fw-semibold') }}
+                            {{ form.email(class='form-control' + (' is-invalid' if form.email.errors else '')) }}
+                            {% for error in form.email.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.phone.label(class='form-label fw-semibold') }}
+                            {{ form.phone(class='form-control' + (' is-invalid' if form.phone.errors else '')) }}
+                            {% for error in form.phone.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.student_id.label(class='form-label fw-semibold') }}
+                            {{ form.student_id(class='form-control' + (' is-invalid' if form.student_id.errors else '')) }}
+                            {% for error in form.student_id.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.startup.label(class='form-label fw-semibold') }}
+                            {{ form.startup(class='form-control' + (' is-invalid' if form.startup.errors else '')) }}
+                            {% for error in form.startup.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-2">
+                            {{ form.status.label(class='form-label fw-semibold') }}
+                            {{ form.status(class='form-select' + (' is-invalid' if form.status.errors else '')) }}
+                            {% for error in form.status.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-2">
+                            {{ form.max_borrow_limit.label(class='form-label fw-semibold') }}
+                            {{ form.max_borrow_limit(class='form-control' + (' is-invalid' if form.max_borrow_limit.errors else '')) }}
+                            {% for error in form.max_borrow_limit.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                    </div>
+                    <div class="d-grid d-md-flex justify-content-md-end mt-3">
+                        {{ form.submit(class='btn btn-primary') }}
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card stat-card mb-3">
+            <div class="card-header bg-white border-bottom fw-semibold">
+                <i class="bi bi-box-arrow-in-down me-1"></i> Current Borrowed Items
+            </div>
+            <div class="card-body p-0">
+                {% if active_items %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Equipment</th>
+                                <th>Usage Area</th>
+                                <th>Due Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in active_items %}
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">{{ item.equipment_name }}</div>
+                                    <small class="text-muted font-monospace">{{ item.equipment_code }}</small>
+                                </td>
+                                <td>{{ item.usage_area or '-' }}</td>
+                                <td>{{ item.expected_return_date.strftime('%b %d, %Y') if item.expected_return_date else '-' }}</td>
+                                <td>
+                                    <span class="badge {% if item.borrow_status == 'overdue' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                                        {{ item.borrow_status | upper }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-3 text-muted small">No active borrowed items.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card stat-card mb-3">
+            <div class="card-header bg-white border-bottom fw-semibold">
+                <i class="bi bi-clock-history me-1"></i> Borrowing History
+            </div>
+            <div class="card-body p-0">
+                {% if borrow_history %}
+                <div class="table-responsive">
+                    <table class="table table-striped mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Transaction</th>
+                                <th>Borrowed</th>
+                                <th>Returned</th>
+                                <th>Area</th>
+                                <th>Items</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in borrow_history %}
+                            <tr>
+                                <td class="font-monospace">{{ row.transaction_code }}</td>
+                                <td>{{ row.borrow_date.strftime('%b %d, %Y') if row.borrow_date else '-' }}</td>
+                                <td>{{ row.actual_return_date.strftime('%b %d, %Y') if row.actual_return_date else '-' }}</td>
+                                <td>{{ row.usage_area or '-' }}</td>
+                                <td>
+                                    <small class="d-block">{{ row.total_items or 0 }} item(s)</small>
+                                    <small class="text-muted">{{ row.equipment_codes or '-' }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge {% if row.status == 'returned' %}bg-success{% elif row.status == 'overdue' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                        {{ row.status | upper }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-3 text-muted small">No borrowing history found.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card stat-card">
+            <div class="card-header bg-white border-bottom fw-semibold">
+                <i class="bi bi-shield-exclamation me-1"></i> Violation History
+            </div>
+            <div class="card-body p-0">
+                {% if violations %}
+                <div class="table-responsive">
+                    <table class="table table-striped mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Equipment</th>
+                                <th>Description</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in violations %}
+                            <tr>
+                                <td>{{ row.violation_date.strftime('%b %d, %Y') if row.violation_date else '-' }}</td>
+                                <td class="text-uppercase">{{ row.violation_type }}</td>
+                                <td>
+                                    {% if row.equipment_code %}
+                                        <div class="font-monospace">{{ row.equipment_code }}</div>
+                                        <small class="text-muted">{{ row.equipment_name or '' }}</small>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>{{ row.description or '-' }}</td>
+                                <td>
+                                    <span class="badge {% if row.status == 'resolved' %}bg-success{% elif row.status == 'pending' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                                        {{ row.status | upper }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-3 text-muted small">No violations recorded for this member.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card stat-card mb-3">
+            <div class="card-header bg-white border-bottom fw-semibold">
+                <i class="bi bi-qr-code me-1"></i> Member QR Code
+            </div>
+            <div class="card-body text-center">
+                {% if member.qr_code_path %}
+                <img src="{{ url_for('static', filename=member.qr_code_path) }}"
+                     alt="Member QR"
+                     class="img-fluid border rounded p-2 bg-white"
+                     style="max-width: 240px;">
+                <div class="d-grid gap-2 mt-3">
+                    <a href="{{ url_for('static', filename=member.qr_code_path) }}"
+                       class="btn btn-outline-primary"
+                       download="{{ member.member_code }}.png">
+                        <i class="bi bi-download me-1"></i> Download QR
+                    </a>
+                    <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
+                        <i class="bi bi-printer me-1"></i> Print Profile / QR
+                    </button>
+                </div>
+                {% else %}
+                <div class="text-muted small">No QR code image available for this member.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card stat-card mb-3">
+            <div class="card-header bg-white border-bottom fw-semibold">
+                <i class="bi bi-calendar2-check me-1"></i> Google Calendar Status
+            </div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <small class="text-muted d-block">Connection</small>
+                    {% if calendar_status.google_calendar_enabled %}
+                    <span class="badge bg-success">Enabled</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Disabled</span>
+                    {% endif %}
+                </div>
+                <div class="mb-2"><small class="text-muted">Total Events:</small> <strong>{{ calendar_status.total_events }}</strong></div>
+                <div class="mb-2"><small class="text-muted">Active Events:</small> <strong>{{ calendar_status.active_events }}</strong></div>
+                <div class="mb-0"><small class="text-muted">Synced to Google:</small> <strong>{{ calendar_status.synced_events }}</strong></div>
+                {% if calendar_status.last_sync_date %}
+                <hr>
+                <small class="text-muted d-block">Last Sync</small>
+                <strong>{{ calendar_status.last_sync_date.strftime('%b %d, %Y %I:%M %p') }}</strong>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card stat-card">
+            <div class="card-header bg-white border-bottom fw-semibold">
+                <i class="bi bi-info-circle me-1"></i> Audit
+            </div>
+            <div class="card-body small text-muted">
+                <div><strong>Registered:</strong> {{ member.created_at.strftime('%b %d, %Y %I:%M %p') if member.created_at else '-' }}</div>
+                <div class="mt-2"><strong>Last Updated:</strong> {{ member.updated_at.strftime('%b %d, %Y %I:%M %p') if member.updated_at else '-' }}</div>
+                <div class="mt-2"><strong>Created By:</strong> {{ member.created_by_name or 'System / Self Signup' }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

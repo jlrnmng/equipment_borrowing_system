@@ -36,6 +36,176 @@ class Member:
             return cursor.fetchone()
 
     @staticmethod
+    def get_profile_by_member_code(member_code):
+        db = get_db()
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT m.member_id, m.member_code, m.first_name, m.middle_name, m.last_name,
+                       m.email, m.google_email, m.google_sub, m.phone, m.student_id, m.startup,
+                       m.status, m.current_borrow_count, m.max_borrow_limit, m.qr_code_path,
+                       m.google_calendar_enabled, m.created_at, m.updated_at,
+                       s.full_name AS created_by_name
+                FROM members m
+                LEFT JOIN staff s ON s.staff_id = m.created_by
+                WHERE m.member_code = %s
+                LIMIT 1
+                """,
+                (member_code,),
+            )
+            return cursor.fetchone()
+
+    @staticmethod
+    def get_current_borrowed_items(member_id):
+        db = get_db()
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT bi.borrow_item_id, bi.condition_borrowed, bi.borrowed_at,
+                       br.borrow_id, br.transaction_code, br.borrow_date, br.expected_return_date,
+                       br.status AS borrow_status, br.usage_area,
+                       e.equipment_id, e.equipment_code, e.equipment_name, e.category
+                FROM borrow_items bi
+                INNER JOIN borrow_records br ON br.borrow_id = bi.borrow_id
+                INNER JOIN equipment e ON e.equipment_id = bi.equipment_id
+                WHERE br.member_id = %s
+                  AND bi.returned_at IS NULL
+                  AND br.status IN ('active', 'overdue')
+                ORDER BY br.expected_return_date ASC, bi.borrow_item_id ASC
+                """,
+                (member_id,),
+            )
+            return cursor.fetchall()
+
+    @staticmethod
+    def get_borrowing_history(member_id, limit=30):
+        db = get_db()
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT br.borrow_id, br.transaction_code, br.borrow_date, br.expected_return_date,
+                       br.actual_return_date, br.status, br.total_items, br.usage_area,
+                       GROUP_CONCAT(e.equipment_code ORDER BY e.equipment_code SEPARATOR ', ') AS equipment_codes,
+                       GROUP_CONCAT(e.equipment_name ORDER BY e.equipment_name SEPARATOR ', ') AS equipment_names
+                FROM borrow_records br
+                LEFT JOIN borrow_items bi ON bi.borrow_id = br.borrow_id
+                LEFT JOIN equipment e ON e.equipment_id = bi.equipment_id
+                WHERE br.member_id = %s
+                GROUP BY br.borrow_id, br.transaction_code, br.borrow_date, br.expected_return_date,
+                         br.actual_return_date, br.status, br.total_items, br.usage_area
+                ORDER BY br.borrow_date DESC
+                LIMIT %s
+                """,
+                (member_id, int(limit)),
+            )
+            return cursor.fetchall()
+
+    @staticmethod
+    def get_violations(member_id, limit=30):
+        db = get_db()
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT v.violation_id, v.violation_type, v.violation_date, v.days_overdue,
+                       v.description, v.penalty_amount, v.status,
+                       br.transaction_code,
+                       e.equipment_code, e.equipment_name
+                FROM violations v
+                LEFT JOIN borrow_records br ON br.borrow_id = v.borrow_id
+                LEFT JOIN equipment e ON e.equipment_id = v.equipment_id
+                WHERE v.member_id = %s
+                ORDER BY v.violation_date DESC
+                LIMIT %s
+                """,
+                (member_id, int(limit)),
+            )
+            return cursor.fetchall()
+
+    @staticmethod
+    def get_calendar_status(member_id):
+        db = get_db()
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT google_calendar_enabled
+                FROM members
+                WHERE member_id = %s
+                LIMIT 1
+                """,
+                (member_id,),
+            )
+            member_row = cursor.fetchone() or {}
+
+            cursor.execute(
+                """
+                SELECT
+                    COUNT(*) AS total_events,
+                    SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active_events,
+                    SUM(CASE WHEN synced_to_google = 1 THEN 1 ELSE 0 END) AS synced_events,
+                    MAX(last_sync_date) AS last_sync_date
+                FROM google_calendar_events
+                WHERE member_id = %s
+                """,
+                (member_id,),
+            )
+            stats = cursor.fetchone() or {}
+
+        return {
+            'google_calendar_enabled': bool(member_row.get('google_calendar_enabled')),
+            'total_events': int(stats.get('total_events') or 0),
+            'active_events': int(stats.get('active_events') or 0),
+            'synced_events': int(stats.get('synced_events') or 0),
+            'last_sync_date': stats.get('last_sync_date'),
+        }
+
+    @staticmethod
+    def update_profile(
+        member_id,
+        first_name,
+        middle_name,
+        last_name,
+        email,
+        phone,
+        student_id,
+        startup,
+        status,
+        max_borrow_limit,
+    ):
+        db = get_db()
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE members
+                SET first_name = %s,
+                    middle_name = %s,
+                    last_name = %s,
+                    email = %s,
+                    google_email = %s,
+                    phone = %s,
+                    student_id = %s,
+                    startup = %s,
+                    status = %s,
+                    max_borrow_limit = %s,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE member_id = %s
+                """,
+                (
+                    first_name,
+                    middle_name,
+                    last_name,
+                    email,
+                    email,
+                    phone,
+                    student_id,
+                    startup,
+                    status,
+                    max_borrow_limit,
+                    member_id,
+                ),
+            )
+        db.commit()
+
+    @staticmethod
     def search_for_lookup(query, limit=10):
         db = get_db()
         with db.cursor() as cursor:
