@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Login – QR Equipment Borrowing System{% endblock %}
 {% block body %}
-<div class="position-fixed top-0 start-50 translate-middle-x mt-3" style="z-index:9999;width:min(92vw,420px)">
+<div class="position-fixed top-0 start-50 translate-middle-x mt-3 auth-flash">
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% for category, message in messages %}
             <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm">
@@ -11,15 +11,13 @@
         {% endfor %}
     {% endwith %}
 </div>
-<div class="min-vh-100 d-flex align-items-center justify-content-center"
-     style="background:linear-gradient(135deg,#1a2035 0%,#2d3a5e 100%);">
-    <div class="card shadow-lg border-0" style="width:100%;max-width:420px;border-radius:.75rem;">
+<div class="auth-shell">
+    <div class="card auth-card auth-card-sm">
         <div class="card-body p-4 p-sm-5">
             <div class="text-center mb-4">
                 <img src="{{ url_for('static', filename='ASOG-TBI_full-colored_stacked.png') }}"
                      alt="ASOG TBI Logo"
-                     class="img-fluid mb-3"
-                     style="max-height:180px; width:auto;">
+                     class="img-fluid mb-3 auth-logo">
                  <small class="d-block text-muted">Staff Portal – Sign In</small>
             </div>
 
