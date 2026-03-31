@@ -3,6 +3,7 @@ from flask_login import current_user, login_required
 
 from app.models.equipment import Equipment
 from app.models.member_request import MemberBorrowRequest
+from app.models.member_return_request import MemberReturnRequest
 from app.utils.db import get_db
 
 dashboard_bp = Blueprint('dashboard', __name__)
@@ -34,6 +35,7 @@ def index():
         'transactions': [],
     }
     pending_requests = []
+    pending_return_requests = []
 
     try:
         with db.cursor() as cursor:
@@ -79,6 +81,7 @@ def index():
             recent_activity = cursor.fetchall()
 
             pending_requests = MemberBorrowRequest.get_pending_requests(limit=12)
+            pending_return_requests = MemberReturnRequest.get_pending_requests(limit=12)
 
             if search_query:
                 like = f"%{search_query}%"
@@ -136,4 +139,5 @@ def index():
         search_query=search_query,
         search_results=search_results,
         pending_requests=pending_requests,
+        pending_return_requests=pending_return_requests,
     )

@@ -10,6 +10,7 @@ from app.forms import LoginForm
 from app.models.equipment import Equipment
 from app.models.member import Member
 from app.models.member_request import MemberBorrowRequest
+from app.models.member_return_request import MemberReturnRequest
 from app.models.staff import Staff
 from app.utils.qr import extract_equipment_code
 from app.utils.notifications import build_welcome_message, queue_and_send_notification
@@ -352,7 +353,15 @@ def member_dashboard():
         return redirect(url_for('auth.complete_profile'))
 
     requests = MemberBorrowRequest.get_member_requests(member_row['member_id'], limit=25)
-    return render_template('auth/member_dashboard.html', member=member_row, requests=requests)
+    active_return_items = MemberReturnRequest.get_member_active_items(member_row['member_id'])
+    return_requests = MemberReturnRequest.get_member_return_requests(member_row['member_id'], limit=25)
+    return render_template(
+        'auth/member_dashboard.html',
+        member=member_row,
+        requests=requests,
+        active_return_items=active_return_items,
+        return_requests=return_requests,
+    )
 
 
 @auth_bp.route('/api/member/equipment-search', methods=['GET'])
@@ -490,6 +499,38 @@ def submit_member_borrow_request():
         return jsonify({'ok': False, 'message': 'Unable to submit request right now.'}), 500
 
     return jsonify({'ok': True, 'request_code': created['request_code']})
+
+
+@auth_bp.route('/api/member/return-request', methods=['POST'])
+@login_required
+def submit_member_return_request():
+    if getattr(current_user, 'role', None) != 'member':
+        return jsonify({'ok': False, 'message': 'Forbidden'}), 403
+
+    member_row = Member.get_auth_by_member_id(current_user.id)
+    if not Member.is_profile_complete(member_row):
+        return jsonify({'ok': False, 'message': 'Complete your profile first.'}), 400
+
+    payload = request.get_json(silent=True) or {}
+    borrow_item_id = payload.get('borrow_item_id')
+    requested_condition = (payload.get('requested_condition') or '').strip().lower()
+    member_feedback = (payload.get('member_feedback') or '').strip() or None
+
+    if not isinstance(borrow_item_id, int):
+        return jsonify({'ok': False, 'message': 'Invalid borrowed item selection.'}), 400
+    if requested_condition not in ('excellent', 'good', 'fair', 'poor'):
+        return jsonify({'ok': False, 'message': 'Invalid requested return condition.'}), 400
+
+    result = MemberReturnRequest.create_or_resubmit_request(
+        member_id=member_row['member_id'],
+        borrow_item_id=borrow_item_id,
+        requested_condition=requested_condition,
+        member_feedback=member_feedback,
+    )
+    if not result.get('ok'):
+        return jsonify({'ok': False, 'message': result.get('message') or 'Unable to submit return request.'}), 400
+
+    return jsonify({'ok': True, 'return_request_code': result.get('return_request_code')})
 
 
 @auth_bp.route('/logout')

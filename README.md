@@ -1,6 +1,6 @@
 # QR Equipment Borrowing System
 
-A Flask-based web application for managing equipment borrowing in a facility using QR codes. Staff/admin users manage inventory and transactions, while members can sign in with Google, complete their profile, and submit borrow requests for staff approval.
+A Flask-based web application for managing equipment borrowing in a facility using QR codes. Staff/admin users manage inventory and transactions, while members can sign in with Google, complete their profile, submit borrow requests for staff approval, and submit return requests for staff physical-check approval.
 
 ---
 
@@ -37,7 +37,9 @@ A Flask-based web application for managing equipment borrowing in a facility usi
 - Approved member requests are converted into active borrow transactions automatically
 - Equipment QR management: auto-generate on add/edit, regenerate on detail page, and downloadable QR image
 - Member QR management: auto-repair missing QR on profile view + regenerate action
-- Return workflow with condition capture, overdue checks, and violation logging
+- Member-initiated return request workflow with condition/feedback capture
+- Admin queue for pending return requests with physical-check approve/reject actions
+- Approved return requests process actual returns and run overdue/damage violation checks
 - Notification queue pipeline for borrow/return/reminder/overdue emails
 - Automated reminder scheduler (due-tomorrow reminders + overdue warnings)
 - Extended member profile requirements: phone, ID number, startup/agency, college department, program, year level
@@ -87,6 +89,7 @@ equipment_borrowing_system/
 │   │   ├── staff.py         # Staff model (UserMixin, bcrypt helpers)
 │   │   ├── member.py        # Member model helpers + member auth object
 │   │   ├── member_request.py # Member self-service borrow request model
+│   │   ├── member_return_request.py # Member-initiated return request model
 │   │   └── equipment.py     # Equipment model helpers
 │   ├── routes/
 │   │   ├── auth.py          # auth + member profile completion + member dashboard + QR APIs
@@ -132,7 +135,8 @@ equipment_borrowing_system/
 │   ├── 2026_03_17_equipment_usage_restrictions.sql
 │   ├── 2026_03_31_member_borrow_requests.sql
 │   ├── 2026_03_31_member_profile_academic_fields.sql
-│   └── 2026_03_31_equipment_qr_path.sql
+│   ├── 2026_03_31_equipment_qr_path.sql
+│   └── 2026_03_31_member_return_requests.sql
 │
 ├── scripts/
 │   └── create_admin.py      # One-time CLI to create the first admin account
@@ -237,6 +241,7 @@ mysql -u root -p equipment_borrowing < migrations/2026_03_17_equipment_usage_res
 mysql -u root -p equipment_borrowing < migrations/2026_03_31_member_borrow_requests.sql
 mysql -u root -p equipment_borrowing < migrations/2026_03_31_member_profile_academic_fields.sql
 mysql -u root -p equipment_borrowing < migrations/2026_03_31_equipment_qr_path.sql
+mysql -u root -p equipment_borrowing < migrations/2026_03_31_member_return_requests.sql
 
 # (Optional) Load test data
 mysql -u root -p equipment_borrowing < database/seeds/test_data.sql
@@ -325,6 +330,7 @@ The schema includes core borrowing tables plus request/approval tables for self-
 | `app_settings` | OAuth credentials and system config |
 | `member_borrow_requests` | Member-submitted borrow requests pending review |
 | `member_borrow_request_items` | Equipment items attached to each member request |
+| `member_return_requests` | Member-submitted return requests pending physical-check review |
 
 See [`database/database_documentation.md`](database/database_documentation.md) for full field-level documentation.
 

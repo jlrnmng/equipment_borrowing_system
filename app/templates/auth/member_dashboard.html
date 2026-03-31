@@ -110,6 +110,78 @@
                 </div>
             </div>
 
+            <div class="card mb-3">
+                <div class="card-header fw-semibold">Request Return (Member Initiated)</div>
+                <div class="card-body p-0">
+                    {% if active_return_items %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Transaction</th>
+                                    <th>Equipment</th>
+                                    <th>Borrowed Condition</th>
+                                    <th>Expected Return</th>
+                                    <th style="min-width: 280px;">Your Return Details</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in active_return_items %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">{{ item.transaction_code }}</div>
+                                        <div class="small text-muted">Borrow Item ID: {{ item.borrow_item_id }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold">{{ item.equipment_name }}</div>
+                                        <div class="small text-muted">{{ item.equipment_code }}{% if item.category %} • {{ item.category }}{% endif %}</div>
+                                    </td>
+                                    <td><span class="badge bg-secondary text-uppercase">{{ item.condition_borrowed }}</span></td>
+                                    <td>{{ item.expected_return_date }}</td>
+                                    <td>
+                                        {% if item.return_request_status == 'pending' %}
+                                            <div class="small text-warning fw-semibold mb-1">Pending review</div>
+                                            <div class="small text-muted">Requested: {{ item.requested_condition|title }}</div>
+                                            <div class="small text-muted">{{ item.member_feedback or '-' }}</div>
+                                        {% elif item.return_request_status == 'approved' %}
+                                            <div class="small text-success fw-semibold">Approved and processed</div>
+                                        {% else %}
+                                            <div class="d-grid gap-2">
+                                                <select class="form-select form-select-sm return-request-condition" data-borrow-item-id="{{ item.borrow_item_id }}">
+                                                    <option value="excellent">Excellent</option>
+                                                    <option value="good" selected>Good</option>
+                                                    <option value="fair">Fair</option>
+                                                    <option value="poor">Poor</option>
+                                                </select>
+                                                <textarea class="form-control form-control-sm return-request-feedback" data-borrow-item-id="{{ item.borrow_item_id }}" rows="2" placeholder="Feedback, issues, or remarks"></textarea>
+                                                <button type="button" class="btn btn-sm btn-outline-success submit-return-request" data-borrow-item-id="{{ item.borrow_item_id }}">Submit Return Request</button>
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.return_request_status == 'pending' %}
+                                            <span class="badge bg-warning text-dark">Pending</span>
+                                        {% elif item.return_request_status == 'approved' %}
+                                            <span class="badge bg-success">Approved</span>
+                                        {% elif item.return_request_status == 'rejected' %}
+                                            <span class="badge bg-danger">Rejected</span>
+                                            {% if item.review_notes %}<div class="small text-muted mt-1">{{ item.review_notes }}</div>{% endif %}
+                                        {% else %}
+                                            <span class="badge bg-secondary">No Request</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">No active borrowed items available for return request.</div>
+                    {% endif %}
+                </div>
+            </div>
+
             <div class="card">
                 <div class="card-header fw-semibold">Your Request History</div>
                 <div class="card-body p-0">
@@ -149,6 +221,52 @@
                     </div>
                     {% else %}
                     <div class="text-center text-muted py-4">No borrow requests submitted yet.</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header fw-semibold">Your Return Request History</div>
+                <div class="card-body p-0">
+                    {% if return_requests %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Return Request</th>
+                                    <th>Equipment</th>
+                                    <th>Transaction</th>
+                                    <th>Requested Condition</th>
+                                    <th>Status</th>
+                                    <th>Review Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for req in return_requests %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">{{ req.return_request_code }}</div>
+                                        <div class="small text-muted">{{ req.created_at.strftime('%Y-%m-%d %H:%M') if req.created_at else '-' }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold">{{ req.equipment_name }}</div>
+                                        <div class="small text-muted">{{ req.equipment_code }}</div>
+                                    </td>
+                                    <td>{{ req.transaction_code }}</td>
+                                    <td><span class="badge bg-info text-uppercase">{{ req.requested_condition }}</span></td>
+                                    <td>
+                                        <span class="badge {% if req.status == 'pending' %}bg-warning text-dark{% elif req.status == 'approved' %}bg-success{% elif req.status == 'rejected' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                            {{ req.status|title }}
+                                        </span>
+                                    </td>
+                                    <td>{{ req.review_notes or '-' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">No return requests submitted yet.</div>
                     {% endif %}
                 </div>
             </div>
@@ -475,12 +593,73 @@
         });
     }
 
+    function submitReturnRequest(borrowItemId, conditionValue, feedbackValue, triggerButton) {
+        if (!borrowItemId) {
+            showAlert('Invalid borrowed item selected for return request.', 'warning');
+            return;
+        }
+
+        triggerButton.disabled = true;
+        triggerButton.textContent = 'Submitting...';
+
+        fetch('{{ url_for("auth.submit_member_return_request") }}', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                borrow_item_id: Number(borrowItemId),
+                requested_condition: conditionValue,
+                member_feedback: (feedbackValue || '').trim()
+            })
+        })
+            .then(function (response) {
+                return response.json().then(function (data) {
+                    return { ok: response.ok, data: data };
+                });
+            })
+            .then(function (result) {
+                if (!result.ok || !result.data.ok) {
+                    throw new Error((result.data && result.data.message) || 'Unable to submit return request.');
+                }
+                showAlert(
+                    'Return request submitted successfully. Request code: <strong>' +
+                    escapeHtml(result.data.return_request_code) +
+                    '</strong>.',
+                    'success'
+                );
+                setTimeout(function () { window.location.reload(); }, 700);
+            })
+            .catch(function (error) {
+                showAlert(escapeHtml(error.message || 'Unable to submit return request.'), 'danger');
+            })
+            .finally(function () {
+                triggerButton.disabled = false;
+                triggerButton.textContent = 'Submit Return Request';
+            });
+    }
+
     equipmentSearchForm.addEventListener('submit', function (event) {
         event.preventDefault();
         fetchEquipment((equipmentQuery.value || '').trim());
     });
 
     submitRequestBtn.addEventListener('click', submitRequest);
+    document.querySelectorAll('.submit-return-request').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var borrowItemId = btn.getAttribute('data-borrow-item-id');
+            var conditionEl = document.querySelector('.return-request-condition[data-borrow-item-id="' + borrowItemId + '"]');
+            var feedbackEl = document.querySelector('.return-request-feedback[data-borrow-item-id="' + borrowItemId + '"]');
+            submitReturnRequest(
+                borrowItemId,
+                conditionEl ? conditionEl.value : 'good',
+                feedbackEl ? feedbackEl.value : '',
+                btn
+            );
+        });
+    });
     startQrScanBtn.addEventListener('click', startQrScanner);
     stopQrScanBtn.addEventListener('click', stopQrScanner);
     window.addEventListener('beforeunload', stopQrScanner);

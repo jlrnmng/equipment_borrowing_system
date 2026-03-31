@@ -220,6 +220,83 @@
     </div>
 </div>
 
+<div class="card stat-card mb-4">
+    <div class="card-header bg-white border-bottom fw-semibold d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-arrow-return-left me-1 text-success"></i> Pending Member Return Requests</span>
+        <span class="badge bg-success">{{ pending_return_requests|length }}</span>
+    </div>
+    <div class="card-body p-0">
+        {% if pending_return_requests %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Request</th>
+                        <th>Member</th>
+                        <th>Equipment</th>
+                        <th>Transaction</th>
+                        <th>Member Details</th>
+                        <th style="min-width: 300px;">Admin Review</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in pending_return_requests %}
+                    <tr>
+                        <td>
+                            <div class="fw-semibold">{{ req.return_request_code }}</div>
+                            <div class="small text-muted">{{ req.created_at.strftime('%Y-%m-%d %H:%M') if req.created_at else '' }}</div>
+                        </td>
+                        <td>
+                            <div class="fw-semibold">{{ req.member_code }}</div>
+                            <div class="small text-muted">{{ req.first_name }} {{ req.last_name }}</div>
+                        </td>
+                        <td>
+                            <div class="fw-semibold">{{ req.equipment_name }}</div>
+                            <div class="small text-muted">{{ req.equipment_code }}{% if req.category %} • {{ req.category }}{% endif %}</div>
+                        </td>
+                        <td>
+                            <div class="fw-semibold">{{ req.transaction_code }}</div>
+                            <div class="small text-muted">Due: {{ req.expected_return_date }}</div>
+                        </td>
+                        <td>
+                            <div class="small"><strong>Borrowed:</strong> {{ req.condition_borrowed|title }}</div>
+                            <div class="small"><strong>Requested:</strong> {{ req.requested_condition|title }}</div>
+                            <div class="small text-muted">{{ req.member_feedback or '-' }}</div>
+                        </td>
+                        <td>
+                            <div class="d-grid gap-2">
+                                <form method="POST" action="{{ url_for('borrow.approve_member_return_request', return_request_id=req.return_request_id) }}" class="d-flex gap-2">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <select name="final_condition" class="form-select form-select-sm">
+                                        <option value="excellent">Excellent</option>
+                                        <option value="good" selected>Good</option>
+                                        <option value="fair">Fair</option>
+                                        <option value="poor">Poor</option>
+                                    </select>
+                                    <input type="text" name="review_notes" class="form-control form-control-sm" placeholder="Physical check notes (optional)">
+                                    <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                </form>
+                                <form method="POST" action="{{ url_for('borrow.reject_member_return_request', return_request_id=req.return_request_id) }}" class="d-flex gap-2">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="text" name="review_notes" class="form-control form-control-sm" placeholder="Reason for rejection" required>
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Reject</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4">
+            <i class="bi bi-check2-circle fs-2 d-block mb-2"></i>
+            No pending return requests.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
 <div class="row g-3">
     <div class="col-md-5 col-lg-4">
         <div class="card stat-card h-100">
