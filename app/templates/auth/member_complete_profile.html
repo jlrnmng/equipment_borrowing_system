@@ -52,6 +52,29 @@
                     <input id="startup" name="startup" type="text" class="form-control" required value="{{ member.startup or '' }}" maxlength="100" placeholder="Example: Fabrication Lab Team">
                 </div>
 
+                <div class="col-12 col-md-6">
+                    <label for="college_department" class="form-label fw-semibold">College Department <span class="text-danger">*</span></label>
+                    <input id="college_department" name="college_department" type="text" class="form-control" required value="{{ member.college_department or '' }}" maxlength="120" placeholder="Example: College of Engineering">
+                </div>
+
+                <div class="col-12 col-md-6">
+                    <label for="program" class="form-label fw-semibold">Program <span class="text-danger">*</span></label>
+                    <input id="program" name="program" type="text" class="form-control" required value="{{ member.program or '' }}" maxlength="120" placeholder="Example: BS Information Technology">
+                </div>
+
+                <div class="col-12 col-md-6">
+                    <label for="year_level" class="form-label fw-semibold">Year <span class="text-danger">*</span></label>
+                    <select id="year_level" name="year_level" class="form-select" required>
+                        <option value="" {% if not member.year_level %}selected{% endif %}>Select year level</option>
+                        <option value="1st Year" {% if member.year_level == '1st Year' %}selected{% endif %}>1st Year</option>
+                        <option value="2nd Year" {% if member.year_level == '2nd Year' %}selected{% endif %}>2nd Year</option>
+                        <option value="3rd Year" {% if member.year_level == '3rd Year' %}selected{% endif %}>3rd Year</option>
+                        <option value="4th Year" {% if member.year_level == '4th Year' %}selected{% endif %}>4th Year</option>
+                        <option value="5th Year" {% if member.year_level == '5th Year' %}selected{% endif %}>5th Year</option>
+                        <option value="Graduate" {% if member.year_level == 'Graduate' %}selected{% endif %}>Graduate</option>
+                    </select>
+                </div>
+
                 <div class="col-12 d-grid mt-2">
                     <button type="submit" class="btn btn-primary btn-lg">Save and Continue</button>
                 </div>

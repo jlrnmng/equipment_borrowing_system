@@ -315,15 +315,21 @@ def complete_profile():
         phone = (request.form.get('phone') or '').strip()
         student_id = (request.form.get('student_id') or '').strip()
         startup = (request.form.get('startup') or '').strip()
+        college_department = (request.form.get('college_department') or '').strip()
+        program = (request.form.get('program') or '').strip()
+        year_level = (request.form.get('year_level') or '').strip()
 
-        if not phone or not student_id or not startup:
-            flash('Phone number, ID number, and startup/agency are required.', 'warning')
+        if not phone or not student_id or not startup or not college_department or not program or not year_level:
+            flash('Phone, ID number, startup/agency, college department, program, and year are required.', 'warning')
         else:
             Member.complete_profile(
                 member_id=member_row['member_id'],
                 phone=phone,
                 student_id=student_id,
                 startup=startup,
+                college_department=college_department,
+                program=program,
+                year_level=year_level,
             )
             updated_row = Member.get_auth_by_member_id(member_row['member_id'])
             login_user(Member.to_member_user(updated_row))

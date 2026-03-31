@@ -345,7 +345,8 @@ class Member:
                 """
                 SELECT member_id, member_code, email, google_email,
                        first_name, middle_name, last_name,
-                       phone, student_id, startup, status
+                       phone, student_id, startup, college_department,
+                       program, year_level, status
                 FROM members
                 WHERE member_id = %s
                 LIMIT 1
@@ -365,6 +366,9 @@ class Member:
             member_row.get('phone'),
             member_row.get('student_id'),
             member_row.get('startup'),
+            member_row.get('college_department'),
+            member_row.get('program'),
+            member_row.get('year_level'),
         )
         return all((value or '').strip() for value in required_fields)
 
@@ -389,7 +393,7 @@ class Member:
         )
 
     @staticmethod
-    def complete_profile(member_id, phone, student_id, startup):
+    def complete_profile(member_id, phone, student_id, startup, college_department, program, year_level):
         db = get_db()
         with db.cursor() as cursor:
             cursor.execute(
@@ -398,10 +402,13 @@ class Member:
                 SET phone = %s,
                     student_id = %s,
                     startup = %s,
+                    college_department = %s,
+                    program = %s,
+                    year_level = %s,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE member_id = %s
                 """,
-                (phone, student_id, startup, member_id),
+                (phone, student_id, startup, college_department, program, year_level, member_id),
             )
         db.commit()
 
