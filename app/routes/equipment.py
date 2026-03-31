@@ -6,6 +6,7 @@ from flask_login import current_user, login_required
 from app.forms import EquipmentForm
 from app.models.equipment import Equipment
 from app.utils.db import get_db
+from app.utils.qr import generate_equipment_qr
 
 equipment_bp = Blueprint('equipment', __name__)
 
@@ -85,6 +86,13 @@ def add_equipment():
                 notes=form.notes.data.strip() if form.notes.data else None,
                 added_by=current_user.staff_id,
             )
+
+            try:
+                qr_path = generate_equipment_qr(created_equipment['equipment_code'] or created_equipment['inventory_number'])
+                Equipment.update_qr_path(created_equipment['equipment_id'], qr_path)
+                created_equipment['qr_code_path'] = qr_path
+            except Exception:
+                current_app.logger.exception('Failed to generate equipment QR for id=%s', created_equipment.get('equipment_id'))
         except pymysql.err.IntegrityError as exc:
             _rollback_db_safely()
             _flash_integrity_error(exc)
@@ -146,6 +154,14 @@ def equipment_detail(equipment_id):
         flash('Equipment not found.', 'danger')
         return redirect(url_for('equipment.list_equipment'))
 
+    if not equipment.get('qr_code_path'):
+        try:
+            qr_path = generate_equipment_qr(equipment.get('equipment_code') or equipment.get('inventory_number'))
+            Equipment.update_qr_path(equipment['equipment_id'], qr_path)
+            equipment['qr_code_path'] = qr_path
+        except Exception:
+            current_app.logger.exception('Failed to auto-generate missing equipment QR id=%s', equipment.get('equipment_id'))
+
     return render_template('equipment/detail.html', equipment=equipment)
 
 
@@ -166,7 +182,7 @@ def edit_equipment(equipment_id):
 
     if form.validate_on_submit():
         try:
-            Equipment.update_equipment(
+            updated_equipment = Equipment.update_equipment(
                 equipment_id=equipment_id,
                 equipment_name=form.equipment_name.data.strip(),
                 category=form.category.data.strip(),
@@ -181,6 +197,12 @@ def edit_equipment(equipment_id):
                 restricted_areas=form.restricted_areas.data.strip() if form.restricted_areas.data else None,
                 notes=form.notes.data.strip() if form.notes.data else None,
             )
+
+            try:
+                qr_path = generate_equipment_qr(updated_equipment.get('equipment_code') or updated_equipment.get('inventory_number'))
+                Equipment.update_qr_path(equipment_id, qr_path)
+            except Exception:
+                current_app.logger.exception('Failed to refresh equipment QR id=%s', equipment_id)
         except pymysql.err.IntegrityError as exc:
             _rollback_db_safely()
             _flash_integrity_error(exc)
@@ -212,3 +234,27 @@ def edit_equipment(equipment_id):
         flash('Please correct the highlighted fields and try again.', 'warning')
 
     return render_template('equipment/edit.html', form=form, equipment=equipment)
+
+
+@equipment_bp.route('/equipment/<int:equipment_id>/qr/regenerate', methods=['POST'])
+@login_required
+def regenerate_equipment_qr(equipment_id):
+    if not _is_authorized_manager():
+        flash('You are not authorized to manage equipment.', 'danger')
+        return redirect(url_for('dashboard.index'))
+
+    equipment = Equipment.get_by_id(equipment_id)
+    if not equipment:
+        flash('Equipment not found.', 'danger')
+        return redirect(url_for('equipment.list_equipment'))
+
+    try:
+        qr_path = generate_equipment_qr(equipment.get('equipment_code') or equipment.get('inventory_number'))
+        Equipment.update_qr_path(equipment_id, qr_path)
+    except Exception:
+        current_app.logger.exception('Failed to regenerate equipment QR id=%s', equipment_id)
+        flash('Unable to regenerate equipment QR right now.', 'danger')
+        return redirect(url_for('equipment.equipment_detail', equipment_id=equipment_id))
+
+    flash('Equipment QR code regenerated successfully.', 'success')
+    return redirect(url_for('equipment.equipment_detail', equipment_id=equipment_id))

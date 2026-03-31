@@ -51,6 +51,21 @@
                                 <button type="submit" class="btn btn-outline-primary">Search</button>
                             </form>
 
+                            <div class="border rounded p-3 mb-3 bg-light-subtle">
+                                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-2">
+                                    <div>
+                                        <div class="fw-semibold">Scan Equipment QR</div>
+                                        <div class="small text-muted">Use your camera to scan an equipment QR code and add it to the selection list.</div>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" id="startQrScanBtn" class="btn btn-sm btn-outline-primary">Start Scanner</button>
+                                        <button type="button" id="stopQrScanBtn" class="btn btn-sm btn-outline-secondary" disabled>Stop</button>
+                                    </div>
+                                </div>
+                                <div id="qrScanStatus" class="small text-muted mb-2">Scanner is off.</div>
+                                <div id="qr-reader" class="border rounded bg-white" style="min-height: 180px;"></div>
+                            </div>
+
                             <div id="equipmentSearchResults" class="border rounded p-2 small mb-3" style="max-height: 220px; overflow: auto;">
                                 Loading available equipment...
                             </div>
@@ -143,10 +158,15 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<script src="https://unpkg.com/html5-qrcode" defer></script>
 <script>
 (function () {
     var csrfToken = '{{ csrf_token() }}';
     var selectedItems = new Map();
+    var qrScanner = null;
+    var qrIsRunning = false;
+    var qrLastValue = null;
+    var qrLastHandledAt = 0;
 
     var equipmentSearchForm = document.getElementById('equipmentSearchForm');
     var equipmentQuery = document.getElementById('equipmentQuery');
@@ -157,6 +177,9 @@
     var borrowNotes = document.getElementById('borrowNotes');
     var submitRequestBtn = document.getElementById('submitRequestBtn');
     var requestAlert = document.getElementById('requestAlert');
+    var qrScanStatus = document.getElementById('qrScanStatus');
+    var startQrScanBtn = document.getElementById('startQrScanBtn');
+    var stopQrScanBtn = document.getElementById('stopQrScanBtn');
 
     function escapeHtml(value) {
         return (value || '')
@@ -173,6 +196,21 @@
             message +
             '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
             '</div>';
+    }
+
+    function setQrStatus(message, type) {
+        var cls = 'small mb-2 ';
+        if (type === 'danger') {
+            cls += 'text-danger';
+        } else if (type === 'success') {
+            cls += 'text-success';
+        } else if (type === 'warning') {
+            cls += 'text-warning';
+        } else {
+            cls += 'text-muted';
+        }
+        qrScanStatus.className = cls;
+        qrScanStatus.textContent = message;
     }
 
     function setDefaultDate() {
@@ -277,6 +315,109 @@
             });
     }
 
+    function addItemFromQrPayload(decodedText) {
+        var now = Date.now();
+        if (decodedText === qrLastValue && (now - qrLastHandledAt) < 3000) {
+            return;
+        }
+        qrLastValue = decodedText;
+        qrLastHandledAt = now;
+
+        setQrStatus('QR detected. Validating equipment...', 'warning');
+        fetch('{{ url_for("auth.member_equipment_from_qr") }}?qr_data=' + encodeURIComponent(decodedText), {
+            credentials: 'same-origin'
+        })
+            .then(function (response) {
+                return response.json().then(function (data) {
+                    return { ok: response.ok, data: data };
+                });
+            })
+            .then(function (result) {
+                if (!result.ok || !result.data.ok) {
+                    throw new Error((result.data && result.data.message) || 'Invalid equipment QR.');
+                }
+
+                var item = result.data.item;
+                if (!selectedItems.has(item.equipment_id)) {
+                    selectedItems.set(item.equipment_id, {
+                        equipment_id: item.equipment_id,
+                        equipment_code: item.equipment_code,
+                        equipment_name: item.equipment_name,
+                        category: item.category,
+                        condition_requested: item.condition_status || 'good'
+                    });
+                    renderSelectedItems();
+                    setQrStatus('Added: ' + item.equipment_code + ' - ' + item.equipment_name, 'success');
+                } else {
+                    setQrStatus('Equipment already selected: ' + item.equipment_code, 'warning');
+                }
+            })
+            .catch(function (error) {
+                setQrStatus(error.message || 'Unable to process scanned QR.', 'danger');
+            });
+    }
+
+    function startQrScanner() {
+        if (qrIsRunning) {
+            return;
+        }
+
+        if (typeof Html5Qrcode === 'undefined') {
+            setQrStatus('QR scanner library failed to load. Refresh the page and try again.', 'danger');
+            return;
+        }
+
+        if (!qrScanner) {
+            qrScanner = new Html5Qrcode('qr-reader');
+        }
+
+        qrScanner.start(
+            { facingMode: 'environment' },
+            {
+                fps: 10,
+                qrbox: function (viewfinderWidth, viewfinderHeight) {
+                    var edge = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.7);
+                    return { width: edge, height: edge };
+                }
+            },
+            function (decodedText) {
+                addItemFromQrPayload(decodedText);
+            },
+            function () {
+                return;
+            }
+        )
+            .then(function () {
+                qrIsRunning = true;
+                startQrScanBtn.disabled = true;
+                stopQrScanBtn.disabled = false;
+                setQrStatus('Scanner is running. Point the camera to an equipment QR code.', 'success');
+            })
+            .catch(function (error) {
+                setQrStatus('Unable to start scanner: ' + (error && error.message ? error.message : error), 'danger');
+            });
+    }
+
+    function stopQrScanner() {
+        if (!qrScanner || !qrIsRunning) {
+            return;
+        }
+
+        qrScanner.stop()
+            .then(function () {
+                qrIsRunning = false;
+                startQrScanBtn.disabled = false;
+                stopQrScanBtn.disabled = true;
+                setQrStatus('Scanner is off.', 'muted');
+            })
+            .catch(function () {
+                qrIsRunning = false;
+                startQrScanBtn.disabled = false;
+                stopQrScanBtn.disabled = true;
+                setQrStatus('Scanner stopped with warnings. You can start it again.', 'warning');
+            });
+    }
+
     function submitRequest() {
         var items = Array.from(selectedItems.values());
         if (!items.length) {
@@ -340,6 +481,9 @@
     });
 
     submitRequestBtn.addEventListener('click', submitRequest);
+    startQrScanBtn.addEventListener('click', startQrScanner);
+    stopQrScanBtn.addEventListener('click', stopQrScanner);
+    window.addEventListener('beforeunload', stopQrScanner);
 
     setDefaultDate();
     fetchEquipment('');

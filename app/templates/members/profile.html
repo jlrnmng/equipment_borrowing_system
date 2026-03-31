@@ -276,12 +276,24 @@
                        download="{{ member.member_code }}.png">
                         <i class="bi bi-download me-1"></i> Download QR
                     </a>
+                    <form method="POST" action="{{ url_for('members.regenerate_member_qr', member_code=member.member_code) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-outline-warning w-100">
+                            <i class="bi bi-arrow-repeat me-1"></i> Regenerate QR
+                        </button>
+                    </form>
                     <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
                         <i class="bi bi-printer me-1"></i> Print Profile / QR
                     </button>
                 </div>
                 {% else %}
                 <div class="text-muted small">No QR code image available for this member.</div>
+                <form method="POST" action="{{ url_for('members.regenerate_member_qr', member_code=member.member_code) }}" class="mt-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-outline-warning btn-sm">
+                        <i class="bi bi-arrow-repeat me-1"></i> Generate QR
+                    </button>
+                </form>
                 {% endif %}
             </div>
         </div>

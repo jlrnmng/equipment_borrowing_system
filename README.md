@@ -32,8 +32,11 @@ A Flask-based web application for managing equipment borrowing in a facility usi
 - Equipment code generation + inventory/status tracking
 - Borrow transactions with member eligibility checks and equipment assignment
 - Member self-service borrow request dashboard (search equipment, submit request, view request history)
+- Member dashboard camera scanner: scan equipment QR to add items instantly to a borrow request
 - Admin dashboard queue for pending member requests with approve/reject actions
 - Approved member requests are converted into active borrow transactions automatically
+- Equipment QR management: auto-generate on add/edit, regenerate on detail page, and downloadable QR image
+- Member QR management: auto-repair missing QR on profile view + regenerate action
 - Return workflow with condition capture, overdue checks, and violation logging
 - Notification queue pipeline for borrow/return/reminder/overdue emails
 - Automated reminder scheduler (due-tomorrow reminders + overdue warnings)
@@ -86,11 +89,11 @@ equipment_borrowing_system/
 │   │   ├── member_request.py # Member self-service borrow request model
 │   │   └── equipment.py     # Equipment model helpers
 │   ├── routes/
-│   │   ├── auth.py          # auth + member profile completion + member dashboard APIs
+│   │   ├── auth.py          # auth + member profile completion + member dashboard + QR APIs
 │   │   ├── borrow.py        # borrow/return/overdue/notifications APIs + pages
 │   │   ├── dashboard.py     # /dashboard + quick search + pending request queue
-│   │   ├── equipment.py     # equipment CRUD pages
-│   │   ├── members.py       # signup + member QR scan page
+│   │   ├── equipment.py     # equipment CRUD pages + equipment QR regenerate endpoint
+│   │   ├── members.py       # signup + member QR scan/profile QR regenerate
 │   │   └── staff_admin.py   # /staff/register
 │   ├── templates/
 │   │   ├── base.html        # Shared <head>, Bootstrap, CSS
@@ -113,7 +116,7 @@ equipment_borrowing_system/
 │   └── utils/
 │       ├── db.py            # get_db() / close_db() per-request connection
 │       ├── notifications.py # notification queue + SMTP sender helpers
-│       └── qr.py            # member QR generation helper
+│       └── qr.py            # member/equipment QR generation + payload extraction helpers
 │
 ├── config/
 │   └── config.py            # DevelopmentConfig / ProductionConfig
@@ -128,7 +131,8 @@ equipment_borrowing_system/
 │   ├── 2026_03_16_equipment_label_fields.sql
 │   ├── 2026_03_17_equipment_usage_restrictions.sql
 │   ├── 2026_03_31_member_borrow_requests.sql
-│   └── 2026_03_31_member_profile_academic_fields.sql
+│   ├── 2026_03_31_member_profile_academic_fields.sql
+│   └── 2026_03_31_equipment_qr_path.sql
 │
 ├── scripts/
 │   └── create_admin.py      # One-time CLI to create the first admin account
@@ -232,6 +236,7 @@ mysql -u root -p equipment_borrowing < database/migrations/equipment_borrowing.s
 mysql -u root -p equipment_borrowing < migrations/2026_03_17_equipment_usage_restrictions.sql
 mysql -u root -p equipment_borrowing < migrations/2026_03_31_member_borrow_requests.sql
 mysql -u root -p equipment_borrowing < migrations/2026_03_31_member_profile_academic_fields.sql
+mysql -u root -p equipment_borrowing < migrations/2026_03_31_equipment_qr_path.sql
 
 # (Optional) Load test data
 mysql -u root -p equipment_borrowing < database/seeds/test_data.sql

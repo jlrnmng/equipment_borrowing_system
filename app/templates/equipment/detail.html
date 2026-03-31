@@ -131,13 +131,37 @@
                 <i class="bi bi-qr-code me-1"></i> Equipment Code
             </div>
             <div class="card-body text-center">
-                <div class="mb-3">
-                    <small class="text-muted d-block mb-2">Scan this code for quick access</small>
-                    <div class="bg-light p-3 rounded">
+                {% if equipment.qr_code_path %}
+                <img src="{{ url_for('static', filename=equipment.qr_code_path) }}"
+                     alt="Equipment QR"
+                     class="img-fluid border rounded p-2 bg-white"
+                     style="max-width: 240px;">
+                {% endif %}
+
+                <div class="my-3">
+                    <small class="text-muted d-block mb-2">Scan this QR to select equipment for borrow request</small>
+                    <div class="bg-light p-2 rounded">
                         <span class="font-monospace fw-bold">{{ equipment.equipment_code or equipment.inventory_number }}</span>
                     </div>
                 </div>
-                <small class="text-muted">Use this equipment code during management and the inventory number for physical label matching.</small>
+
+                <div class="d-grid gap-2">
+                    {% if equipment.qr_code_path %}
+                    <a href="{{ url_for('static', filename=equipment.qr_code_path) }}"
+                       class="btn btn-outline-primary"
+                       download="{{ equipment.equipment_code or equipment.inventory_number }}.png">
+                        <i class="bi bi-download me-1"></i> Download QR
+                    </a>
+                    {% endif %}
+                    <form method="POST" action="{{ url_for('equipment.regenerate_equipment_qr', equipment_id=equipment.equipment_id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-outline-warning w-100">
+                            <i class="bi bi-arrow-repeat me-1"></i> Regenerate QR
+                        </button>
+                    </form>
+                </div>
+
+                <small class="text-muted d-block mt-2">Use this equipment code during management and the inventory number for physical label matching.</small>
             </div>
         </div>
 

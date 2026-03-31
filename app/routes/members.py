@@ -1,11 +1,11 @@
-import re
-
 import pymysql
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app.forms import MemberProfileForm
 from app.models.member import Member
+from app.utils.db import get_db
+from app.utils.qr import extract_member_code, generate_member_qr
 
 members_bp = Blueprint('members', __name__)
 
@@ -15,13 +15,7 @@ def _is_authorized_scanner():
 
 
 def _extract_member_code(value):
-    text = (value or '').strip().upper()
-    if not text:
-        return None
-
-    # Accept raw member code and QR payload variants, e.g. MEMBER:MEM001
-    match = re.search(r'(MEM\d{3,})', text)
-    return match.group(1) if match else None
+    return extract_member_code(value)
 
 
 def _serialize_member(row):
@@ -111,6 +105,20 @@ def member_profile(member_code):
         flash('Member not found.', 'danger')
         return redirect(url_for('members.scan_member'))
 
+    if not profile.get('qr_code_path'):
+        try:
+            qr_path = generate_member_qr(profile['member_code'])
+            db = get_db()
+            with db.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE members SET qr_code_path = %s, updated_at = CURRENT_TIMESTAMP WHERE member_id = %s",
+                    (qr_path, profile['member_id']),
+                )
+            db.commit()
+            profile['qr_code_path'] = qr_path
+        except Exception:
+            current_app.logger.exception('Failed to auto-generate missing member QR for %s', profile.get('member_code'))
+
     form = MemberProfileForm()
 
     if form.validate_on_submit():
@@ -171,3 +179,38 @@ def member_profile(member_code):
         violations=violations,
         calendar_status=calendar_status,
     )
+
+
+@members_bp.route('/members/<member_code>/qr/regenerate', methods=['POST'])
+@login_required
+def regenerate_member_qr(member_code):
+    if not _is_authorized_scanner():
+        flash('You are not authorized to manage member QR codes.', 'danger')
+        return redirect(url_for('dashboard.index'))
+
+    normalized_code = _extract_member_code(member_code)
+    if not normalized_code:
+        flash('Invalid member code format.', 'warning')
+        return redirect(url_for('members.scan_member'))
+
+    profile = Member.get_profile_by_member_code(normalized_code)
+    if not profile:
+        flash('Member not found.', 'danger')
+        return redirect(url_for('members.scan_member'))
+
+    try:
+        qr_path = generate_member_qr(normalized_code)
+        db = get_db()
+        with db.cursor() as cursor:
+            cursor.execute(
+                "UPDATE members SET qr_code_path = %s, updated_at = CURRENT_TIMESTAMP WHERE member_id = %s",
+                (qr_path, profile['member_id']),
+            )
+        db.commit()
+    except Exception:
+        current_app.logger.exception('Failed regenerating member QR for %s', normalized_code)
+        flash('Unable to regenerate member QR right now.', 'danger')
+        return redirect(url_for('members.member_profile', member_code=normalized_code))
+
+    flash('Member QR code regenerated successfully.', 'success')
+    return redirect(url_for('members.member_profile', member_code=normalized_code))

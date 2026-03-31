@@ -198,6 +198,41 @@ class Equipment:
         return row
 
     @staticmethod
+    def get_by_code_or_inventory(identifier):
+        """Get one equipment row by equipment_code or inventory_number."""
+        db = get_db()
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT *
+                FROM equipment
+                WHERE equipment_code = %s OR inventory_number = %s
+                LIMIT 1
+                """,
+                (identifier, identifier),
+            )
+            row = cursor.fetchone()
+        if row and 'status' in row:
+            row['status'] = Equipment._normalize_status_value(row.get('status'))
+        return row
+
+    @staticmethod
+    def update_qr_path(equipment_id, qr_path):
+        """Persist generated equipment QR image path."""
+        db = get_db()
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE equipment
+                SET qr_code_path = %s,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE equipment_id = %s
+                """,
+                (qr_path, equipment_id),
+            )
+        db.commit()
+
+    @staticmethod
     def get_all(status=None, location=None, search=None):
         """Get all equipment with optional filters."""
         db = get_db()

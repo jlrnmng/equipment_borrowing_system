@@ -11,6 +11,7 @@ from app.models.equipment import Equipment
 from app.models.member import Member
 from app.models.member_request import MemberBorrowRequest
 from app.models.staff import Staff
+from app.utils.qr import extract_equipment_code
 from app.utils.notifications import build_welcome_message, queue_and_send_notification
 from app.utils.qr import generate_member_qr
 
@@ -380,9 +381,48 @@ def member_equipment_search():
                     'condition_status': row.get('condition_status'),
                     'location': row.get('location'),
                     'status': row.get('status'),
+                    'qr_code_path': row.get('qr_code_path'),
                 }
                 for row in rows
             ],
+        }
+    )
+
+
+@auth_bp.route('/api/member/equipment-from-qr', methods=['GET'])
+@login_required
+def member_equipment_from_qr():
+    if getattr(current_user, 'role', None) != 'member':
+        return jsonify({'ok': False, 'message': 'Forbidden'}), 403
+
+    member_row = Member.get_auth_by_member_id(current_user.id)
+    if not Member.is_profile_complete(member_row):
+        return jsonify({'ok': False, 'message': 'Complete your profile first.'}), 400
+
+    qr_data = (request.args.get('qr_data') or '').strip()
+    equipment_code = extract_equipment_code(qr_data)
+    if not equipment_code:
+        return jsonify({'ok': False, 'message': 'Invalid equipment QR payload.'}), 400
+
+    equipment = Equipment.get_by_code_or_inventory(equipment_code)
+    if not equipment:
+        return jsonify({'ok': False, 'message': 'Equipment not found for scanned QR.'}), 404
+
+    if (equipment.get('status') or '').lower() != 'available':
+        return jsonify({'ok': False, 'message': 'Scanned equipment is not available.'}), 400
+
+    return jsonify(
+        {
+            'ok': True,
+            'item': {
+                'equipment_id': equipment.get('equipment_id'),
+                'equipment_code': equipment.get('equipment_code'),
+                'equipment_name': equipment.get('equipment_name'),
+                'category': equipment.get('category'),
+                'condition_status': equipment.get('condition_status'),
+                'location': equipment.get('location'),
+                'status': equipment.get('status'),
+            },
         }
     )
 
