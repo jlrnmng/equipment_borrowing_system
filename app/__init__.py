@@ -96,5 +96,12 @@ def create_app(config_name=None):
 
 @login_manager.user_loader
 def load_user(user_id):
+    from app.models.member import Member
     from app.models.staff import Staff
+
+    user_id = str(user_id)
+    if user_id.startswith('member:'):
+        member_id = int(user_id.split(':', 1)[1])
+        return Member.to_member_user(Member.get_auth_by_member_id(member_id))
+
     return Staff.get_by_id(int(user_id))

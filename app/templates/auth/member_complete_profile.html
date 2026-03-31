@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Complete Your Profile – QR Equipment Borrowing System{% endblock %}
+{% block body %}
+<div class="auth-shell py-4">
+    <div class="card auth-card auth-card-md">
+        <div class="card-body p-4 p-sm-5">
+            <div class="text-center mb-4">
+                <i class="bi bi-person-lines-fill fs-2 text-primary d-inline-block mb-2"></i>
+                <h4 class="fw-bold mb-1">Complete Your Profile</h4>
+                <p class="text-muted mb-0">Please provide your details first before accessing your member dashboard.</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('auth.complete_profile') }}" class="row g-3" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="col-12 col-md-6">
+                    <label class="form-label fw-semibold">First Name</label>
+                    <input type="text" class="form-control" value="{{ member.first_name }}" readonly>
+                </div>
+
+                <div class="col-12 col-md-6">
+                    <label class="form-label fw-semibold">Last Name</label>
+                    <input type="text" class="form-control" value="{{ member.last_name }}" readonly>
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label fw-semibold">Google Email</label>
+                    <input type="email" class="form-control" value="{{ member.email or member.google_email }}" readonly>
+                </div>
+
+                <div class="col-12 col-md-6">
+                    <label for="phone" class="form-label fw-semibold">Phone Number <span class="text-danger">*</span></label>
+                    <input id="phone" name="phone" type="text" class="form-control" required value="{{ member.phone or '' }}" maxlength="20" placeholder="09xxxxxxxxx">
+                </div>
+
+                <div class="col-12 col-md-6">
+                    <label for="student_id" class="form-label fw-semibold">ID Number <span class="text-danger">*</span></label>
+                    <input id="student_id" name="student_id" type="text" class="form-control" required value="{{ member.student_id or '' }}" maxlength="50" placeholder="Enter your school or organization ID">
+                </div>
+
+                <div class="col-12">
+                    <label for="startup" class="form-label fw-semibold">Startup / Agency <span class="text-danger">*</span></label>
+                    <input id="startup" name="startup" type="text" class="form-control" required value="{{ member.startup or '' }}" maxlength="100" placeholder="Example: Fabrication Lab Team">
+                </div>
+
+                <div class="col-12 d-grid mt-2">
+                    <button type="submit" class="btn btn-primary btn-lg">Save and Continue</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

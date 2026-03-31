@@ -1,0 +1,348 @@
+{% extends 'base.html' %}
+{% block title %}Member Dashboard – QR Equipment Borrowing System{% endblock %}
+{% block body %}
+<div class="auth-shell py-4">
+    <div class="card auth-card" style="max-width: 980px;">
+        <div class="card-body p-4 p-sm-5">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+                <div>
+                    <h4 class="fw-bold mb-1">Member Borrow Dashboard</h4>
+                    <p class="text-muted mb-0">Search available equipment and send a borrow request for staff approval.</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger">
+                        <i class="bi bi-box-arrow-right me-1"></i> Log Out
+                    </a>
+                </div>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endwith %}
+
+            <div id="requestAlert"></div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-lg-4">
+                    <div class="card h-100">
+                        <div class="card-header fw-semibold">Your Account</div>
+                        <div class="card-body">
+                            <div class="small text-muted mb-1">Member Code</div>
+                            <div class="fw-semibold mb-2">{{ member.member_code }}</div>
+                            <div class="small text-muted mb-1">Name</div>
+                            <div class="fw-semibold mb-2">{{ member.first_name }} {{ member.last_name }}</div>
+                            <div class="small text-muted mb-1">Email</div>
+                            <div class="fw-semibold">{{ member.email or member.google_email }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-8">
+                    <div class="card h-100">
+                        <div class="card-header fw-semibold">New Borrow Request</div>
+                        <div class="card-body">
+                            <form id="equipmentSearchForm" class="d-flex gap-2 mb-3">
+                                <input id="equipmentQuery" type="text" class="form-control" placeholder="Search by code, name, category">
+                                <button type="submit" class="btn btn-outline-primary">Search</button>
+                            </form>
+
+                            <div id="equipmentSearchResults" class="border rounded p-2 small mb-3" style="max-height: 220px; overflow: auto;">
+                                Loading available equipment...
+                            </div>
+
+                            <div class="table-responsive mb-3">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Selected Equipment</th>
+                                            <th style="width: 180px;">Condition</th>
+                                            <th style="width: 80px;">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="selectedItemsBody">
+                                        <tr id="emptySelectedRow">
+                                            <td colspan="3" class="text-center text-muted py-3">No equipment selected.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <label for="expectedReturnDate" class="form-label fw-semibold mb-1">Expected Return Date</label>
+                                    <input id="expectedReturnDate" type="date" class="form-control">
+                                </div>
+                                <div class="col-md-8">
+                                    <label for="usageArea" class="form-label fw-semibold mb-1">Usage Area</label>
+                                    <input id="usageArea" type="text" class="form-control" placeholder="Example: Fabrication Lab A">
+                                </div>
+                                <div class="col-12">
+                                    <label for="borrowNotes" class="form-label fw-semibold mb-1">Notes (optional)</label>
+                                    <textarea id="borrowNotes" class="form-control" rows="2" placeholder="Reason or context of your request"></textarea>
+                                </div>
+                            </div>
+
+                            <div class="d-grid mt-3">
+                                <button id="submitRequestBtn" type="button" class="btn btn-primary">Submit Borrow Request</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header fw-semibold">Your Request History</div>
+                <div class="card-body p-0">
+                    {% if requests %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Request Code</th>
+                                    <th>Submitted</th>
+                                    <th>Items</th>
+                                    <th>Expected Return</th>
+                                    <th>Usage Area</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for req in requests %}
+                                <tr>
+                                    <td class="fw-semibold">{{ req.request_code }}</td>
+                                    <td>{{ req.created_at.strftime('%Y-%m-%d %H:%M') if req.created_at else '-' }}</td>
+                                    <td>
+                                        <div class="fw-semibold">{{ req.total_items }} item(s)</div>
+                                        <div class="small text-muted">{{ req.equipment_codes or '-' }}</div>
+                                    </td>
+                                    <td>{{ req.expected_return_date }}</td>
+                                    <td>{{ req.usage_area }}</td>
+                                    <td>
+                                        <span class="badge {% if req.status == 'pending' %}bg-warning text-dark{% elif req.status == 'approved' %}bg-success{% elif req.status == 'rejected' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                            {{ req.status|title }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">No borrow requests submitted yet.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+    var csrfToken = '{{ csrf_token() }}';
+    var selectedItems = new Map();
+
+    var equipmentSearchForm = document.getElementById('equipmentSearchForm');
+    var equipmentQuery = document.getElementById('equipmentQuery');
+    var equipmentResults = document.getElementById('equipmentSearchResults');
+    var selectedItemsBody = document.getElementById('selectedItemsBody');
+    var expectedReturnDate = document.getElementById('expectedReturnDate');
+    var usageArea = document.getElementById('usageArea');
+    var borrowNotes = document.getElementById('borrowNotes');
+    var submitRequestBtn = document.getElementById('submitRequestBtn');
+    var requestAlert = document.getElementById('requestAlert');
+
+    function escapeHtml(value) {
+        return (value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function showAlert(message, type) {
+        requestAlert.innerHTML =
+            '<div class="alert alert-' + type + ' alert-dismissible fade show" role="alert">' +
+            message +
+            '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
+            '</div>';
+    }
+
+    function setDefaultDate() {
+        var date = new Date();
+        date.setDate(date.getDate() + 7);
+        expectedReturnDate.value = date.toISOString().slice(0, 10);
+    }
+
+    function renderSelectedItems() {
+        var entries = Array.from(selectedItems.values());
+        if (!entries.length) {
+            selectedItemsBody.innerHTML = '<tr id="emptySelectedRow"><td colspan="3" class="text-center text-muted py-3">No equipment selected.</td></tr>';
+            return;
+        }
+
+        selectedItemsBody.innerHTML = entries.map(function (item) {
+            return (
+                '<tr data-equipment-id="' + item.equipment_id + '">' +
+                '<td><div class="fw-semibold">' + escapeHtml(item.equipment_name) + '</div><div class="small text-muted">' +
+                escapeHtml(item.equipment_code) + ' • ' + escapeHtml(item.category || '-') + '</div></td>' +
+                '<td>' +
+                '<select class="form-select form-select-sm item-condition" data-equipment-id="' + item.equipment_id + '">' +
+                '<option value="excellent"' + (item.condition_requested === 'excellent' ? ' selected' : '') + '>Excellent</option>' +
+                '<option value="good"' + (item.condition_requested === 'good' ? ' selected' : '') + '>Good</option>' +
+                '<option value="fair"' + (item.condition_requested === 'fair' ? ' selected' : '') + '>Fair</option>' +
+                '<option value="poor"' + (item.condition_requested === 'poor' ? ' selected' : '') + '>Poor</option>' +
+                '</select>' +
+                '</td>' +
+                '<td><button type="button" class="btn btn-sm btn-outline-danger remove-item" data-equipment-id="' + item.equipment_id + '">Remove</button></td>' +
+                '</tr>'
+            );
+        }).join('');
+
+        selectedItemsBody.querySelectorAll('.remove-item').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var id = Number(btn.getAttribute('data-equipment-id'));
+                selectedItems.delete(id);
+                renderSelectedItems();
+            });
+        });
+
+        selectedItemsBody.querySelectorAll('.item-condition').forEach(function (select) {
+            select.addEventListener('change', function () {
+                var id = Number(select.getAttribute('data-equipment-id'));
+                var item = selectedItems.get(id);
+                if (item) {
+                    item.condition_requested = select.value;
+                }
+            });
+        });
+    }
+
+    function renderEquipmentResults(results) {
+        if (!results || !results.length) {
+            equipmentResults.innerHTML = '<span class="text-muted">No available equipment found.</span>';
+            return;
+        }
+
+        var html = '<div class="list-group">';
+        results.forEach(function (item) {
+            html +=
+                '<button type="button" class="list-group-item list-group-item-action add-equipment" data-item="' + encodeURIComponent(JSON.stringify(item)) + '">' +
+                '<div class="d-flex justify-content-between align-items-start gap-2">' +
+                '<div><div class="fw-semibold">' + escapeHtml(item.equipment_name) + '</div>' +
+                '<div class="small text-muted">' + escapeHtml(item.equipment_code) + ' • ' + escapeHtml(item.category || '-') + '</div></div>' +
+                '<span class="badge bg-light text-dark border">' + escapeHtml(item.condition_status || 'good') + '</span>' +
+                '</div>' +
+                '</button>';
+        });
+        html += '</div>';
+        equipmentResults.innerHTML = html;
+
+        equipmentResults.querySelectorAll('.add-equipment').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var item = JSON.parse(decodeURIComponent(btn.getAttribute('data-item')));
+                if (!selectedItems.has(item.equipment_id)) {
+                    selectedItems.set(item.equipment_id, {
+                        equipment_id: item.equipment_id,
+                        equipment_code: item.equipment_code,
+                        equipment_name: item.equipment_name,
+                        category: item.category,
+                        condition_requested: item.condition_status || 'good'
+                    });
+                    renderSelectedItems();
+                }
+            });
+        });
+    }
+
+    function fetchEquipment(query) {
+        equipmentResults.innerHTML = '<span class="text-muted">Loading available equipment...</span>';
+        return fetch('{{ url_for("auth.member_equipment_search") }}?query=' + encodeURIComponent(query || ''), { credentials: 'same-origin' })
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                if (!data.ok) {
+                    throw new Error(data.message || 'Unable to load equipment.');
+                }
+                renderEquipmentResults(data.results || []);
+            })
+            .catch(function (error) {
+                equipmentResults.innerHTML = '<span class="text-danger">' + escapeHtml(error.message || 'Unable to search equipment right now.') + '</span>';
+            });
+    }
+
+    function submitRequest() {
+        var items = Array.from(selectedItems.values());
+        if (!items.length) {
+            showAlert('Select at least one equipment item.', 'warning');
+            return;
+        }
+        if (!expectedReturnDate.value) {
+            showAlert('Expected return date is required.', 'warning');
+            return;
+        }
+        if (!usageArea.value.trim()) {
+            showAlert('Usage area is required.', 'warning');
+            return;
+        }
+
+        submitRequestBtn.disabled = true;
+        submitRequestBtn.textContent = 'Submitting...';
+
+        fetch('{{ url_for("auth.submit_member_borrow_request") }}', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                expected_return_date: expectedReturnDate.value,
+                usage_area: usageArea.value.trim(),
+                notes: borrowNotes.value.trim(),
+                items: items
+            })
+        })
+        .then(function (response) {
+            return response.json().then(function (data) {
+                return { ok: response.ok, data: data };
+            });
+        })
+        .then(function (result) {
+            if (!result.ok || !result.data.ok) {
+                throw new Error((result.data && result.data.message) || 'Unable to submit request.');
+            }
+
+            showAlert('Borrow request submitted successfully. Request code: <strong>' + escapeHtml(result.data.request_code) + '</strong>.', 'success');
+            selectedItems.clear();
+            renderSelectedItems();
+            borrowNotes.value = '';
+            setTimeout(function () { window.location.reload(); }, 900);
+        })
+        .catch(function (error) {
+            showAlert(escapeHtml(error.message || 'Unable to submit request.'), 'danger');
+        })
+        .finally(function () {
+            submitRequestBtn.disabled = false;
+            submitRequestBtn.textContent = 'Submit Borrow Request';
+        });
+    }
+
+    equipmentSearchForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        fetchEquipment((equipmentQuery.value || '').trim());
+    });
+
+    submitRequestBtn.addEventListener('click', submitRequest);
+
+    setDefaultDate();
+    fetchEquipment('');
+})();
+</script>
+{% endblock %}

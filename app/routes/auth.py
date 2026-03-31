@@ -1,17 +1,32 @@
 from urllib.parse import urlsplit
 import secrets
+from datetime import datetime
 
-from flask import Blueprint, current_app, flash, make_response, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, flash, jsonify, make_response, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 
 from app import oauth
 from app.forms import LoginForm
+from app.models.equipment import Equipment
 from app.models.member import Member
+from app.models.member_request import MemberBorrowRequest
 from app.models.staff import Staff
 from app.utils.notifications import build_welcome_message, queue_and_send_notification
 from app.utils.qr import generate_member_qr
 
 auth_bp = Blueprint('auth', __name__)
+
+
+def _member_redirect_after_login(member_row):
+    member_user = Member.to_member_user(member_row)
+    login_user(member_user)
+
+    if not Member.is_profile_complete(member_row):
+        flash('Please complete your profile details before accessing your dashboard.', 'warning')
+        return redirect(url_for('auth.complete_profile'))
+
+    flash(f'Welcome, {member_user.full_name}!', 'success')
+    return redirect(url_for('auth.member_dashboard'))
 
 
 def get_google_oauth_config():
@@ -46,6 +61,10 @@ def _split_google_name(full_name):
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
+        if getattr(current_user, 'role', None) == 'member':
+            if not getattr(current_user, 'profile_complete', False):
+                return redirect(url_for('auth.complete_profile'))
+            return redirect(url_for('auth.member_dashboard'))
         return redirect(url_for('dashboard.index'))
 
     form = LoginForm()
@@ -221,8 +240,9 @@ def google_callback():
         if not existing_sub:
             Member.link_google_identity(member_row['member_id'], email, google_sub)
 
-        flash('Member account verified via Google. Member portal will be available in next phase.', 'info')
-        return redirect(url_for('auth.login'))
+        member_row = Member.get_auth_by_member_id(member_row['member_id'])
+
+        return _member_redirect_after_login(member_row)
 
     if oauth_flow == 'signup':
         first_name, last_name = _split_google_name(full_name)
@@ -260,7 +280,7 @@ def google_callback():
             current_app.logger.exception('Failed to queue/send welcome notification for member %s', member_code)
 
         flash('Google signup successful. Your member account has been created.', 'success')
-        return redirect(url_for('auth.login'))
+        return _member_redirect_after_login(Member.get_auth_by_member_id(created_member['member_id']))
 
     return redirect(url_for('auth.request_access', email=email))
 
@@ -278,6 +298,152 @@ def signup():
         google_oauth_enabled=is_google_oauth_enabled(),
         allowed_domain=get_google_oauth_config()['allowed_domain'],
     )
+
+
+@auth_bp.route('/member/complete-profile', methods=['GET', 'POST'])
+@login_required
+def complete_profile():
+    if getattr(current_user, 'role', None) != 'member':
+        return redirect(url_for('dashboard.index'))
+
+    member_row = Member.get_auth_by_member_id(current_user.id)
+    if not member_row:
+        flash('Member account not found. Please sign in again.', 'danger')
+        return redirect(url_for('auth.logout'))
+
+    if request.method == 'POST':
+        phone = (request.form.get('phone') or '').strip()
+        student_id = (request.form.get('student_id') or '').strip()
+        startup = (request.form.get('startup') or '').strip()
+
+        if not phone or not student_id or not startup:
+            flash('Phone number, ID number, and startup/agency are required.', 'warning')
+        else:
+            Member.complete_profile(
+                member_id=member_row['member_id'],
+                phone=phone,
+                student_id=student_id,
+                startup=startup,
+            )
+            updated_row = Member.get_auth_by_member_id(member_row['member_id'])
+            login_user(Member.to_member_user(updated_row))
+            flash('Profile completed successfully.', 'success')
+            return redirect(url_for('auth.member_dashboard'))
+
+    return render_template('auth/member_complete_profile.html', member=member_row)
+
+
+@auth_bp.route('/member/dashboard', methods=['GET'])
+@login_required
+def member_dashboard():
+    if getattr(current_user, 'role', None) != 'member':
+        return redirect(url_for('dashboard.index'))
+
+    member_row = Member.get_auth_by_member_id(current_user.id)
+    if not Member.is_profile_complete(member_row):
+        flash('Please complete your profile details first.', 'warning')
+        return redirect(url_for('auth.complete_profile'))
+
+    requests = MemberBorrowRequest.get_member_requests(member_row['member_id'], limit=25)
+    return render_template('auth/member_dashboard.html', member=member_row, requests=requests)
+
+
+@auth_bp.route('/api/member/equipment-search', methods=['GET'])
+@login_required
+def member_equipment_search():
+    if getattr(current_user, 'role', None) != 'member':
+        return jsonify({'ok': False, 'message': 'Forbidden'}), 403
+
+    member_row = Member.get_auth_by_member_id(current_user.id)
+    if not Member.is_profile_complete(member_row):
+        return jsonify({'ok': False, 'message': 'Complete your profile first.'}), 400
+
+    query = (request.args.get('query') or '').strip()
+    rows = Equipment.get_all(status='available', search=query or None)
+    rows = rows[:80]
+
+    return jsonify(
+        {
+            'ok': True,
+            'results': [
+                {
+                    'equipment_id': row.get('equipment_id'),
+                    'equipment_code': row.get('equipment_code'),
+                    'equipment_name': row.get('equipment_name'),
+                    'category': row.get('category'),
+                    'condition_status': row.get('condition_status'),
+                    'location': row.get('location'),
+                    'status': row.get('status'),
+                }
+                for row in rows
+            ],
+        }
+    )
+
+
+@auth_bp.route('/api/member/borrow-request', methods=['POST'])
+@login_required
+def submit_member_borrow_request():
+    if getattr(current_user, 'role', None) != 'member':
+        return jsonify({'ok': False, 'message': 'Forbidden'}), 403
+
+    member_row = Member.get_auth_by_member_id(current_user.id)
+    if not Member.is_profile_complete(member_row):
+        return jsonify({'ok': False, 'message': 'Complete your profile first.'}), 400
+
+    payload = request.get_json(silent=True) or {}
+    expected_return_date_raw = (payload.get('expected_return_date') or '').strip()
+    usage_area = (payload.get('usage_area') or '').strip()
+    notes = (payload.get('notes') or '').strip() or None
+    items = payload.get('items') or []
+
+    try:
+        expected_return_date = datetime.strptime(expected_return_date_raw, '%Y-%m-%d').date()
+    except Exception:
+        return jsonify({'ok': False, 'message': 'Expected return date is invalid.'}), 400
+
+    if expected_return_date < datetime.now().date():
+        return jsonify({'ok': False, 'message': 'Expected return date cannot be in the past.'}), 400
+    if not usage_area:
+        return jsonify({'ok': False, 'message': 'Usage area is required.'}), 400
+    if not isinstance(items, list) or not items:
+        return jsonify({'ok': False, 'message': 'Select at least one equipment item.'}), 400
+
+    parsed_items = []
+    selected_ids = []
+    for item in items:
+        equipment_id = item.get('equipment_id')
+        condition_requested = (item.get('condition_requested') or 'good').strip().lower()
+
+        if not isinstance(equipment_id, int):
+            return jsonify({'ok': False, 'message': 'Invalid equipment selection.'}), 400
+        if condition_requested not in ('excellent', 'good', 'fair', 'poor'):
+            return jsonify({'ok': False, 'message': 'Invalid condition value.'}), 400
+        if equipment_id in selected_ids:
+            continue
+
+        selected_ids.append(equipment_id)
+        parsed_items.append({'equipment_id': equipment_id, 'condition_requested': condition_requested})
+
+    available_rows = Equipment.get_all(status='available')
+    available_ids = {row.get('equipment_id') for row in available_rows}
+    unavailable = [str(item_id) for item_id in selected_ids if item_id not in available_ids]
+    if unavailable:
+        return jsonify({'ok': False, 'message': 'Some selected items are no longer available.'}), 400
+
+    try:
+        created = MemberBorrowRequest.create_request(
+            member_id=member_row['member_id'],
+            expected_return_date=expected_return_date,
+            usage_area=usage_area,
+            notes=notes,
+            items=parsed_items,
+        )
+    except Exception:
+        current_app.logger.exception('Failed to create member borrow request for member %s', member_row['member_code'])
+        return jsonify({'ok': False, 'message': 'Unable to submit request right now.'}), 500
+
+    return jsonify({'ok': True, 'request_code': created['request_code']})
 
 
 @auth_bp.route('/logout')

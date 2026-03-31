@@ -1,4 +1,5 @@
 import json
+from flask_login import UserMixin
 
 from app.utils.db import get_db
 
@@ -335,3 +336,91 @@ class Member:
                 (google_email, google_sub, member_id),
             )
         db.commit()
+
+    @staticmethod
+    def get_auth_by_member_id(member_id):
+        db = get_db()
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT member_id, member_code, email, google_email,
+                       first_name, middle_name, last_name,
+                       phone, student_id, startup, status
+                FROM members
+                WHERE member_id = %s
+                LIMIT 1
+                """,
+                (member_id,),
+            )
+            return cursor.fetchone()
+
+    @staticmethod
+    def is_profile_complete(member_row):
+        if not member_row:
+            return False
+
+        required_fields = (
+            member_row.get('first_name'),
+            member_row.get('last_name'),
+            member_row.get('phone'),
+            member_row.get('student_id'),
+            member_row.get('startup'),
+        )
+        return all((value or '').strip() for value in required_fields)
+
+    @staticmethod
+    def to_member_user(member_row):
+        if not member_row:
+            return None
+
+        first_name = (member_row.get('first_name') or '').strip()
+        middle_name = (member_row.get('middle_name') or '').strip()
+        last_name = (member_row.get('last_name') or '').strip()
+        full_name = f"{first_name} {middle_name} {last_name}".replace('  ', ' ').strip() or member_row.get('member_code')
+        email = (member_row.get('email') or member_row.get('google_email') or '').strip().lower()
+
+        return MemberUser(
+            member_id=member_row['member_id'],
+            member_code=member_row['member_code'],
+            email=email,
+            full_name=full_name,
+            status=member_row.get('status') or 'inactive',
+            profile_complete=Member.is_profile_complete(member_row),
+        )
+
+    @staticmethod
+    def complete_profile(member_id, phone, student_id, startup):
+        db = get_db()
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE members
+                SET phone = %s,
+                    student_id = %s,
+                    startup = %s,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE member_id = %s
+                """,
+                (phone, student_id, startup, member_id),
+            )
+        db.commit()
+
+
+class MemberUser(UserMixin):
+    """Represents an authenticated member account via Google OAuth."""
+
+    def __init__(self, member_id, member_code, email, full_name, status, profile_complete):
+        self.id = member_id
+        self.member_code = member_code
+        self.email = email
+        self.full_name = full_name
+        self.role = 'member'
+        self._status = status
+        self.profile_complete = profile_complete
+
+    @property
+    def is_active(self):
+        return self._status == 'active'
+
+    def get_id(self):
+        return f"member:{self.id}"

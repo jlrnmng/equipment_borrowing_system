@@ -1,5 +1,5 @@
-from flask import Blueprint, render_template, request
-from flask_login import login_required
+from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask_login import current_user, login_required
 
 from app.models.equipment import Equipment
 from app.utils.db import get_db
@@ -11,6 +11,12 @@ dashboard_bp = Blueprint('dashboard', __name__)
 @dashboard_bp.route('/dashboard')
 @login_required
 def index():
+    if getattr(current_user, 'role', None) == 'member':
+        if not getattr(current_user, 'profile_complete', False):
+            flash('Please complete your profile details before accessing your dashboard.', 'warning')
+            return redirect(url_for('auth.complete_profile'))
+        return redirect(url_for('auth.member_dashboard'))
+
     db = get_db()
     search_query = (request.args.get('q') or '').strip()
     stats = {
