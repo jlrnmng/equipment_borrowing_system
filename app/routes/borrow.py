@@ -8,6 +8,7 @@ from app.models.equipment import Equipment
 from app.models.member import Member
 from app.models.member_request import MemberBorrowRequest
 from app.models.member_return_request import MemberReturnRequest
+from app.utils.request_expiry import expire_stale_requests
 from app.utils.db import get_db
 from app.utils.notifications import (
     build_borrow_confirmation_message,
@@ -421,6 +422,8 @@ def approve_member_request(request_id):
     if not _is_authorized_borrower():
         return redirect(url_for('dashboard.index'))
 
+    expire_stale_requests(expiry_minutes=current_app.config.get('REQUEST_EXPIRY_MINUTES', 30))
+
     request_row, request_items = MemberBorrowRequest.get_request_detail(request_id)
     if not request_row:
         flash('Borrow request not found.', 'warning')
@@ -549,6 +552,8 @@ def reject_member_request(request_id):
     if not _is_authorized_borrower():
         return redirect(url_for('dashboard.index'))
 
+    expire_stale_requests(expiry_minutes=current_app.config.get('REQUEST_EXPIRY_MINUTES', 30))
+
     request_row, _ = MemberBorrowRequest.get_request_detail(request_id)
     if not request_row:
         flash('Borrow request not found.', 'warning')
@@ -597,6 +602,8 @@ def reject_member_request(request_id):
 def approve_member_return_request(return_request_id):
     if not _is_authorized_borrower():
         return redirect(url_for('dashboard.index'))
+
+    expire_stale_requests(expiry_minutes=current_app.config.get('REQUEST_EXPIRY_MINUTES', 30))
 
     request_row = MemberReturnRequest.get_request_detail(return_request_id)
     if not request_row:
@@ -651,6 +658,8 @@ def approve_member_return_request(return_request_id):
 def reject_member_return_request(return_request_id):
     if not _is_authorized_borrower():
         return redirect(url_for('dashboard.index'))
+
+    expire_stale_requests(expiry_minutes=current_app.config.get('REQUEST_EXPIRY_MINUTES', 30))
 
     request_row = MemberReturnRequest.get_request_detail(return_request_id)
     if not request_row:

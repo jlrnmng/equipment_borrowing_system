@@ -210,9 +210,12 @@
                                     <td>{{ req.expected_return_date }}</td>
                                     <td>{{ req.usage_area }}</td>
                                     <td>
-                                        <span class="badge {% if req.status == 'pending' %}bg-warning text-dark{% elif req.status == 'approved' %}bg-success{% elif req.status == 'rejected' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                        <span class="badge {% if req.status == 'pending' %}bg-warning text-dark{% elif req.status == 'approved' %}bg-success{% elif req.status == 'rejected' %}bg-danger{% elif req.status == 'expired' %}bg-dark{% else %}bg-secondary{% endif %}">
                                             {{ req.status|title }}
                                         </span>
+                                        {% if req.review_notes %}
+                                        <div class="small text-muted mt-1">{{ req.review_notes }}</div>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -255,7 +258,7 @@
                                     <td>{{ req.transaction_code }}</td>
                                     <td><span class="badge bg-info text-uppercase">{{ req.requested_condition }}</span></td>
                                     <td>
-                                        <span class="badge {% if req.status == 'pending' %}bg-warning text-dark{% elif req.status == 'approved' %}bg-success{% elif req.status == 'rejected' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                        <span class="badge {% if req.status == 'pending' %}bg-warning text-dark{% elif req.status == 'approved' %}bg-success{% elif req.status == 'rejected' %}bg-danger{% elif req.status == 'expired' %}bg-dark{% else %}bg-secondary{% endif %}">
                                             {{ req.status|title }}
                                         </span>
                                     </td>

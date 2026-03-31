@@ -7,6 +7,7 @@ from flask import current_app
 
 from app.utils.db import get_db
 from app.utils.notifications import process_existing_notification
+from app.utils.request_expiry import expire_stale_requests
 
 _scheduler = None
 
@@ -259,6 +260,10 @@ def run_reminder_cycle():
     """Single execution cycle for overdue sync + reminder queue + optional sender."""
     db = get_db()
     try:
+        expiry_summary = expire_stale_requests(
+            expiry_minutes=current_app.config.get('REQUEST_EXPIRY_MINUTES', 30),
+            auto_commit=False,
+        )
         sync_summary = sync_overdue_status(db)
         queued_summary = queue_due_and_overdue_notifications(db)
         db.commit()
@@ -271,6 +276,7 @@ def run_reminder_cycle():
         sent_summary = process_pending_notifications(limit=50)
 
     return {
+        'request_expiry': expiry_summary,
         'sync': sync_summary,
         'queued': queued_summary,
         'delivery': sent_summary,

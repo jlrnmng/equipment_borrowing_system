@@ -1,9 +1,10 @@
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app.models.equipment import Equipment
 from app.models.member_request import MemberBorrowRequest
 from app.models.member_return_request import MemberReturnRequest
+from app.utils.request_expiry import expire_stale_requests
 from app.utils.db import get_db
 
 dashboard_bp = Blueprint('dashboard', __name__)
@@ -20,6 +21,7 @@ def index():
         return redirect(url_for('auth.member_dashboard'))
 
     db = get_db()
+    expire_stale_requests(expiry_minutes=current_app.config.get('REQUEST_EXPIRY_MINUTES', 30))
     search_query = (request.args.get('q') or '').strip()
     stats = {
         'available_equipment': 0,

@@ -17,7 +17,7 @@ class MemberReturnRequest:
                     requested_condition ENUM('excellent', 'good', 'fair', 'poor') NOT NULL,
                     member_feedback TEXT NULL,
                     final_condition ENUM('excellent', 'good', 'fair', 'poor') NULL,
-                    status ENUM('pending', 'approved', 'rejected', 'cancelled') DEFAULT 'pending',
+                    status ENUM('pending', 'approved', 'rejected', 'cancelled', 'expired') DEFAULT 'pending',
                     reviewed_by INT NULL,
                     reviewed_at TIMESTAMP NULL,
                     review_notes TEXT NULL,
@@ -201,7 +201,7 @@ class MemberReturnRequest:
             if existing_id and existing_status in ('pending', 'approved'):
                 return {'ok': False, 'message': 'A return request already exists for this item.'}
 
-            if existing_id and existing_status in ('rejected', 'cancelled'):
+            if existing_id and existing_status in ('rejected', 'cancelled', 'expired'):
                 cursor.execute(
                     """
                     UPDATE member_return_requests

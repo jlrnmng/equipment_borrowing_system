@@ -12,6 +12,7 @@ from app.models.member import Member
 from app.models.member_request import MemberBorrowRequest
 from app.models.member_return_request import MemberReturnRequest
 from app.models.staff import Staff
+from app.utils.request_expiry import expire_stale_requests
 from app.utils.qr import extract_equipment_code
 from app.utils.notifications import build_welcome_message, queue_and_send_notification
 from app.utils.qr import generate_member_qr
@@ -351,6 +352,8 @@ def member_dashboard():
     if not Member.is_profile_complete(member_row):
         flash('Please complete your profile details first.', 'warning')
         return redirect(url_for('auth.complete_profile'))
+
+    expire_stale_requests(expiry_minutes=current_app.config.get('REQUEST_EXPIRY_MINUTES', 30))
 
     requests = MemberBorrowRequest.get_member_requests(member_row['member_id'], limit=25)
     active_return_items = MemberReturnRequest.get_member_active_items(member_row['member_id'])

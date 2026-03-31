@@ -35,6 +35,7 @@ A Flask-based web application for managing equipment borrowing in a facility usi
 - Member dashboard camera scanner: scan equipment QR to add items instantly to a borrow request
 - Admin dashboard queue for pending member requests with approve/reject actions
 - Approved member requests are converted into active borrow transactions automatically
+- Pending member borrow/return requests auto-expire after 30 minutes (kept in history for reporting/audit)
 - Equipment QR management: auto-generate on add/edit, regenerate on detail page, and downloadable QR image
 - Member QR management: auto-repair missing QR on profile view + regenerate action
 - Member-initiated return request workflow with condition/feedback capture
@@ -136,7 +137,8 @@ equipment_borrowing_system/
 │   ├── 2026_03_31_member_borrow_requests.sql
 │   ├── 2026_03_31_member_profile_academic_fields.sql
 │   ├── 2026_03_31_equipment_qr_path.sql
-│   └── 2026_03_31_member_return_requests.sql
+│   ├── 2026_03_31_member_return_requests.sql
+│   └── 2026_03_31_request_status_expired.sql
 │
 ├── scripts/
 │   └── create_admin.py      # One-time CLI to create the first admin account
@@ -165,7 +167,7 @@ equipment_borrowing_system/
 
 **1. Clone the repository**
 ```bash
-git clone <https://github.com/jlrnmng/equipment_borrowing_system>
+git clone <your-repository-url>
 cd equipment_borrowing_system
 ```
 
@@ -187,43 +189,48 @@ pip install -r requirements.txt
 
 **4. Configure environment variables**
 
-Copy the example and fill in your values:
-```bash
-copy .env .env.local   # Windows
-# or
-cp .env .env.local     # macOS/Linux
-```
+Create a local `.env` file and set values for your environment.
+Never commit real credentials to Git.
 
-Edit `.env`:
+Example `.env` template:
 ```
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=equipment_borrowing
-DB_USER=root
-DB_PASSWORD=
+DB_HOST=<db-host>
+DB_PORT=<db-port>
+DB_NAME=<db-name>
+DB_USER=<db-user>
+DB_PASSWORD=<db-password>
 
 FLASK_APP=main.py
 FLASK_ENV=development
-SECRET_KEY=replace-with-a-long-random-string
+SECRET_KEY=<long-random-secret-key>
+
+# Google OAuth
+GOOGLE_CLIENT_ID=<google-client-id>
+GOOGLE_CLIENT_SECRET=<google-client-secret>
+GOOGLE_REDIRECT_URI=<google-redirect-uri>
+GOOGLE_ALLOWED_DOMAIN=<allowed-domain>
 
 # Mail / notifications
 MAIL_NOTIFICATIONS_ENABLED=true
-MAIL_SERVER=smtp.gmail.com
-MAIL_PORT=587
+MAIL_SERVER=<smtp-host>
+MAIL_PORT=<smtp-port>
 MAIL_USE_TLS=true
 MAIL_USE_SSL=false
-MAIL_USERNAME=
-MAIL_PASSWORD=
-MAIL_DEFAULT_SENDER=
+MAIL_USERNAME=<smtp-username>
+MAIL_PASSWORD=<smtp-password-or-app-password>
+MAIL_DEFAULT_SENDER=<sender-email>
 
 # Reminder automation
 REMINDER_AUTOMATION_ENABLED=true
 REMINDER_JOB_INTERVAL_MINUTES=15
 REMINDER_PROCESS_PENDING_ON_RUN=true
+REQUEST_EXPIRY_MINUTES=30
 ```
 
-> **Important:** Change `SECRET_KEY` to a long random string before deploying.  
-> Generate one with: `python -c "import secrets; print(secrets.token_hex(32))"`
+> **Important:**
+> - Do not commit `.env`, credentials, OAuth secrets, or private keys.
+> - Rotate any credential immediately if it was ever pushed to a public repo.
+> - Keep only placeholder values in documentation and sample config files.
 
 **5. Set up the database**
 
@@ -242,6 +249,7 @@ mysql -u root -p equipment_borrowing < migrations/2026_03_31_member_borrow_reque
 mysql -u root -p equipment_borrowing < migrations/2026_03_31_member_profile_academic_fields.sql
 mysql -u root -p equipment_borrowing < migrations/2026_03_31_equipment_qr_path.sql
 mysql -u root -p equipment_borrowing < migrations/2026_03_31_member_return_requests.sql
+mysql -u root -p equipment_borrowing < migrations/2026_03_31_request_status_expired.sql
 
 # (Optional) Load test data
 mysql -u root -p equipment_borrowing < database/seeds/test_data.sql
@@ -309,6 +317,7 @@ The script checks for duplicate emails and generates a unique `STAFF###` code au
 | `REMINDER_AUTOMATION_ENABLED` | Enable background reminder scheduler | `true` |
 | `REMINDER_JOB_INTERVAL_MINUTES` | Scheduler run interval in minutes | `15` |
 | `REMINDER_PROCESS_PENDING_ON_RUN` | Process queued notifications every reminder cycle | `true` |
+| `REQUEST_EXPIRY_MINUTES` | Minutes before pending borrow/return requests auto-expire | `30` |
 
 ---
 

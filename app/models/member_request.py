@@ -16,7 +16,7 @@ class MemberBorrowRequest:
                     expected_return_date DATE NOT NULL,
                     usage_area VARCHAR(120) NOT NULL,
                     notes TEXT NULL,
-                    status ENUM('pending', 'approved', 'rejected', 'cancelled') DEFAULT 'pending',
+                    status ENUM('pending', 'approved', 'rejected', 'cancelled', 'expired') DEFAULT 'pending',
                     reviewed_by INT NULL,
                     reviewed_at TIMESTAMP NULL,
                     review_notes TEXT NULL,
