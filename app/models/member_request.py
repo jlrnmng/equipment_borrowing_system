@@ -124,3 +124,72 @@ class MemberBorrowRequest:
                 (member_id, int(limit)),
             )
             return cursor.fetchall()
+
+    @staticmethod
+    def get_pending_requests(limit=20):
+        db = get_db()
+        MemberBorrowRequest._ensure_tables(db)
+
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT r.request_id, r.request_code, r.expected_return_date,
+                       r.usage_area, r.notes, r.status, r.created_at,
+                       m.member_id, m.member_code, m.first_name, m.last_name,
+                       COUNT(ri.request_item_id) AS total_items,
+                       GROUP_CONCAT(e.equipment_code ORDER BY e.equipment_code SEPARATOR ', ') AS equipment_codes
+                FROM member_borrow_requests r
+                INNER JOIN members m ON m.member_id = r.member_id
+                LEFT JOIN member_borrow_request_items ri ON ri.request_id = r.request_id
+                LEFT JOIN equipment e ON e.equipment_id = ri.equipment_id
+                WHERE r.status = 'pending'
+                GROUP BY r.request_id, r.request_code, r.expected_return_date,
+                         r.usage_area, r.notes, r.status, r.created_at,
+                         m.member_id, m.member_code, m.first_name, m.last_name
+                ORDER BY r.created_at ASC
+                LIMIT %s
+                """,
+                (int(limit),),
+            )
+            return cursor.fetchall()
+
+    @staticmethod
+    def get_request_detail(request_id):
+        db = get_db()
+        MemberBorrowRequest._ensure_tables(db)
+
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT r.request_id, r.request_code, r.member_id, r.expected_return_date,
+                       r.usage_area, r.notes, r.status, r.created_at,
+                       m.member_code, m.first_name, m.middle_name, m.last_name,
+                       m.email, m.google_email, m.startup, m.status AS member_status,
+                       m.current_borrow_count, m.max_borrow_limit
+                FROM member_borrow_requests r
+                INNER JOIN members m ON m.member_id = r.member_id
+                WHERE r.request_id = %s
+                LIMIT 1
+                """,
+                (request_id,),
+            )
+            request_row = cursor.fetchone()
+
+            if not request_row:
+                return None, []
+
+            cursor.execute(
+                """
+                SELECT ri.request_item_id, ri.equipment_id, ri.condition_requested,
+                       e.equipment_code, e.equipment_name, e.category, e.status,
+                       e.requires_supervision, e.restricted_areas
+                FROM member_borrow_request_items ri
+                INNER JOIN equipment e ON e.equipment_id = ri.equipment_id
+                WHERE ri.request_id = %s
+                ORDER BY ri.request_item_id ASC
+                """,
+                (request_id,),
+            )
+            items = cursor.fetchall()
+
+        return request_row, items

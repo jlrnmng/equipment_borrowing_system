@@ -57,7 +57,7 @@ build/
 *.egg-info/
 
 # QR Codes (if generated)
-qr_codes/
+qr/
 uploads/
 
 # Local inventory workbook

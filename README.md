@@ -1,6 +1,6 @@
 # QR Equipment Borrowing System
 
-A Flask-based web application for managing equipment borrowing in a facility using QR codes. Staff and admins can register staff accounts, normal users can sign up manually as members, and staff can manage equipment and transactions.
+A Flask-based web application for managing equipment borrowing in a facility using QR codes. Staff/admin users manage inventory and transactions, while members can sign in with Google, complete their profile, and submit borrow requests for staff approval.
 
 ---
 
@@ -22,18 +22,23 @@ A Flask-based web application for managing equipment borrowing in a facility usi
 
 ## Features
 
-**Currently implemented (through Day 7 afternoon):**
+**Currently implemented:**
 - Staff login / logout with bcrypt-hashed passwords
 - Google OAuth login flow (domain-restricted)
 - Manual login reserved for bootstrap admin account
-- Public member manual signup (`/signup`) with QR code generation
+- Member Google signup/login with profile completion gate before member dashboard
 - Staff account registration by admin or staff (`/staff/register`)
 - Equipment management: add, list, detail, and edit
 - Equipment code generation + inventory/status tracking
 - Borrow transactions with member eligibility checks and equipment assignment
+- Member self-service borrow request dashboard (search equipment, submit request, view request history)
+- Admin dashboard queue for pending member requests with approve/reject actions
+- Approved member requests are converted into active borrow transactions automatically
 - Return workflow with condition capture, overdue checks, and violation logging
 - Notification queue pipeline for borrow/return/reminder/overdue emails
 - Automated reminder scheduler (due-tomorrow reminders + overdue warnings)
+- Extended member profile requirements: phone, ID number, startup/agency, college department, program, year level
+- Shared UI polish stylesheet for consistent shell/auth/dashboard presentation
 - CSRF protection on all forms
 - Session timeout after 30 minutes of inactivity
 - No back-button bypass after logout (cache headers)
@@ -77,12 +82,13 @@ equipment_borrowing_system/
 │   ├── forms.py             # WTForms form classes
 │   ├── models/
 │   │   ├── staff.py         # Staff model (UserMixin, bcrypt helpers)
-│   │   ├── member.py        # Member model helpers
+│   │   ├── member.py        # Member model helpers + member auth object
+│   │   ├── member_request.py # Member self-service borrow request model
 │   │   └── equipment.py     # Equipment model helpers
 │   ├── routes/
-│   │   ├── auth.py          # /login, /logout, /auth/google, /signup
+│   │   ├── auth.py          # auth + member profile completion + member dashboard APIs
 │   │   ├── borrow.py        # borrow/return/overdue/notifications APIs + pages
-│   │   ├── dashboard.py     # /dashboard + quick search
+│   │   ├── dashboard.py     # /dashboard + quick search + pending request queue
 │   │   ├── equipment.py     # equipment CRUD pages
 │   │   ├── members.py       # signup + member QR scan page
 │   │   └── staff_admin.py   # /staff/register
@@ -93,7 +99,9 @@ equipment_borrowing_system/
 │   │   ├── auth/
 │   │   │   ├── login.html
 │   │   │   ├── request_access.html
-│   │   │   └── signup.html
+│   │   │   ├── signup.html
+│   │   │   ├── member_complete_profile.html
+│   │   │   └── member_dashboard.html
 │   │   ├── borrow/          # new, return, overdue, notifications, receipts
 │   │   ├── dashboard/
 │   │   │   └── index.html
@@ -114,7 +122,13 @@ equipment_borrowing_system/
 │   ├── migrations/
 │   │   └── equipment_borrowing.sql   # Full schema (10 tables)
 │   └── seeds/
-│       └── test_data.sql             # 5 members, 10 equipment, 1 staff
+│       └── test_data.sql             # test seed data
+│
+├── migrations/
+│   ├── 2026_03_16_equipment_label_fields.sql
+│   ├── 2026_03_17_equipment_usage_restrictions.sql
+│   ├── 2026_03_31_member_borrow_requests.sql
+│   └── 2026_03_31_member_profile_academic_fields.sql
 │
 ├── scripts/
 │   └── create_admin.py      # One-time CLI to create the first admin account
@@ -214,6 +228,11 @@ mysql -u root -p -e "CREATE DATABASE equipment_borrowing CHARACTER SET utf8mb4 C
 # Run the schema migration
 mysql -u root -p equipment_borrowing < database/migrations/equipment_borrowing.sql
 
+# Run incremental app migrations (skip files already applied in existing DBs)
+mysql -u root -p equipment_borrowing < migrations/2026_03_17_equipment_usage_restrictions.sql
+mysql -u root -p equipment_borrowing < migrations/2026_03_31_member_borrow_requests.sql
+mysql -u root -p equipment_borrowing < migrations/2026_03_31_member_profile_academic_fields.sql
+
 # (Optional) Load test data
 mysql -u root -p equipment_borrowing < database/seeds/test_data.sql
 ```
@@ -234,7 +253,9 @@ python main.py
 Then open **http://127.0.0.1:5000** in your browser.
 
 Account flow:
-- Member manual signup: **/signup**
+- Member Google signup entry: **/signup**
+- Member profile completion: **/member/complete-profile**
+- Member self-service dashboard: **/member/dashboard**
 - Staff login page: **/login**
 - Staff registration (admin/staff only): **/staff/register**
 
@@ -283,7 +304,7 @@ The script checks for duplicate emails and generates a unique `STAFF###` code au
 
 ## Database
 
-The schema contains **10 tables** with OAuth 2.0 and Gmail API fields already in place for future use:
+The schema includes core borrowing tables plus request/approval tables for self-service member flow:
 
 | Table | Purpose |
 |---|---|
@@ -297,6 +318,8 @@ The schema contains **10 tables** with OAuth 2.0 and Gmail API fields already in
 | `activity_log` | Full audit trail |
 | `google_calendar_events` | Calendar reminders (Phase 2) |
 | `app_settings` | OAuth credentials and system config |
+| `member_borrow_requests` | Member-submitted borrow requests pending review |
+| `member_borrow_request_items` | Equipment items attached to each member request |
 
 See [`database/database_documentation.md`](database/database_documentation.md) for full field-level documentation.
 
@@ -330,5 +353,6 @@ See [`2-week_development_plan.txt`](2-week_development_plan.txt) for the full sp
 | Day 6 Morning — Overdue tracking | ✅ Done |
 | Day 6 Afternoon — Reminder automation | ✅ Done |
 | Day 7 Morning — Dashboard metrics + search | ✅ Done |
-| Day 7 Afternoon — Reports & CSV export | 🔲 Next |
+| Day 7 Afternoon — Reports & CSV export | ✅ Done |
+| Member self-service request + approval flow | ✅ Done |
 | Post-launch — Calendar, advanced notifications, HTML emails | 🔲 Phase 2 |

@@ -2,6 +2,7 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app.models.equipment import Equipment
+from app.models.member_request import MemberBorrowRequest
 from app.utils.db import get_db
 
 dashboard_bp = Blueprint('dashboard', __name__)
@@ -32,6 +33,7 @@ def index():
         'equipment': [],
         'transactions': [],
     }
+    pending_requests = []
 
     try:
         with db.cursor() as cursor:
@@ -75,6 +77,8 @@ def index():
                 "ORDER BY al.created_at DESC LIMIT 5"
             )
             recent_activity = cursor.fetchall()
+
+            pending_requests = MemberBorrowRequest.get_pending_requests(limit=12)
 
             if search_query:
                 like = f"%{search_query}%"
@@ -131,4 +135,5 @@ def index():
         recent_activity=recent_activity,
         search_query=search_query,
         search_results=search_results,
+        pending_requests=pending_requests,
     )

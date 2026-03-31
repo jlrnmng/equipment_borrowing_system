@@ -1,10 +1,12 @@
 from datetime import datetime, timedelta
 
 from flask import Blueprint, current_app, jsonify, redirect, render_template, request, url_for
+from flask import flash
 from flask_login import current_user, login_required
 
 from app.models.equipment import Equipment
 from app.models.member import Member
+from app.models.member_request import MemberBorrowRequest
 from app.utils.db import get_db
 from app.utils.notifications import (
     build_borrow_confirmation_message,
@@ -273,6 +275,182 @@ def _fetch_return_receipt_data(return_record):
             (current_user.id, return_record['borrow_item_id']),
         )
         return cursor.fetchone()
+
+@borrow_bp.route('/borrow/requests/<int:request_id>/approve', methods=['POST'])
+@login_required
+def approve_member_request(request_id):
+    if not _is_authorized_borrower():
+        return redirect(url_for('dashboard.index'))
+
+    request_row, request_items = MemberBorrowRequest.get_request_detail(request_id)
+    if not request_row:
+        flash('Borrow request not found.', 'warning')
+        return redirect(url_for('dashboard.index'))
+
+    if request_row.get('status') != 'pending':
+        flash('This request is already reviewed.', 'warning')
+        return redirect(url_for('dashboard.index'))
+
+    member_row = Member.get_by_member_code((request_row.get('member_code') or '').strip().upper())
+    eligibility = _build_member_eligibility(member_row)
+    if not member_row or not eligibility.get('eligible'):
+        flash(f"Cannot approve request {request_row.get('request_code')}: {eligibility.get('message', 'Member is not eligible.')}", 'danger')
+        return redirect(url_for('dashboard.index'))
+
+    if not request_items:
+        flash('Cannot approve a request without equipment items.', 'danger')
+        return redirect(url_for('dashboard.index'))
+
+    unavailable = [item for item in request_items if (item.get('status') or '').lower() != 'available']
+    if unavailable:
+        codes = ', '.join((item.get('equipment_code') or str(item.get('equipment_id'))) for item in unavailable)
+        flash(f'Cannot approve request because these items are unavailable: {codes}', 'danger')
+        return redirect(url_for('dashboard.index'))
+
+    review_notes = (request.form.get('review_notes') or '').strip() or None
+    expected_return_date = request_row.get('expected_return_date')
+    if not expected_return_date or expected_return_date < datetime.now().date():
+        flash('Cannot approve request with an invalid or past expected return date.', 'danger')
+        return redirect(url_for('dashboard.index'))
+
+    db = get_db()
+    try:
+        transaction_code = _generate_transaction_code(db)
+        requires_supervision = any(bool(item.get('requires_supervision')) for item in request_items)
+        borrowed_during_working_hours = _is_within_working_hours()
+
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO borrow_records (
+                    transaction_code,
+                    member_id,
+                    expected_return_date,
+                    status,
+                    total_items,
+                    usage_area,
+                    requires_supervision,
+                    borrowed_during_working_hours,
+                    processed_by,
+                    notes
+                ) VALUES (%s, %s, %s, 'active', %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    transaction_code,
+                    member_row['member_id'],
+                    expected_return_date,
+                    len(request_items),
+                    request_row.get('usage_area'),
+                    requires_supervision,
+                    borrowed_during_working_hours,
+                    current_user.id,
+                    request_row.get('notes'),
+                ),
+            )
+            borrow_id = cursor.lastrowid
+
+            for item in request_items:
+                cursor.execute(
+                    """
+                    INSERT INTO borrow_items (borrow_id, equipment_id, condition_borrowed)
+                    VALUES (%s, %s, %s)
+                    """,
+                    (borrow_id, item['equipment_id'], item.get('condition_requested') or 'good'),
+                )
+
+            for item in request_items:
+                cursor.execute(
+                    "UPDATE equipment SET status = 'borrowed', updated_at = CURRENT_TIMESTAMP WHERE equipment_id = %s",
+                    (item['equipment_id'],),
+                )
+
+            cursor.execute(
+                """
+                UPDATE members
+                SET current_borrow_count = current_borrow_count + %s,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE member_id = %s
+                """,
+                (len(request_items), member_row['member_id']),
+            )
+
+            cursor.execute(
+                """
+                UPDATE member_borrow_requests
+                SET status = 'approved',
+                    reviewed_by = %s,
+                    reviewed_at = NOW(),
+                    review_notes = %s,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE request_id = %s
+                """,
+                (current_user.id, review_notes, request_id),
+            )
+
+        _log_activity(
+            db,
+            action='BORROW_REQUEST_APPROVED',
+            description=f"Approved member request {request_row.get('request_code')} and created transaction {transaction_code}.",
+            member_id=member_row['member_id'],
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        current_app.logger.exception('Failed to approve member borrow request %s', request_id)
+        flash('Unable to approve request due to an unexpected error.', 'danger')
+        return redirect(url_for('dashboard.index'))
+
+    flash(f"Request {request_row.get('request_code')} approved. Borrow transaction {transaction_code} created.", 'success')
+    return redirect(url_for('dashboard.index'))
+
+
+@borrow_bp.route('/borrow/requests/<int:request_id>/reject', methods=['POST'])
+@login_required
+def reject_member_request(request_id):
+    if not _is_authorized_borrower():
+        return redirect(url_for('dashboard.index'))
+
+    request_row, _ = MemberBorrowRequest.get_request_detail(request_id)
+    if not request_row:
+        flash('Borrow request not found.', 'warning')
+        return redirect(url_for('dashboard.index'))
+
+    if request_row.get('status') != 'pending':
+        flash('This request is already reviewed.', 'warning')
+        return redirect(url_for('dashboard.index'))
+
+    review_notes = (request.form.get('review_notes') or '').strip() or None
+    db = get_db()
+    try:
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE member_borrow_requests
+                SET status = 'rejected',
+                    reviewed_by = %s,
+                    reviewed_at = NOW(),
+                    review_notes = %s,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE request_id = %s
+                """,
+                (current_user.id, review_notes, request_id),
+            )
+
+        _log_activity(
+            db,
+            action='BORROW_REQUEST_REJECTED',
+            description=f"Rejected member request {request_row.get('request_code')}.",
+            member_id=request_row.get('member_id'),
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        current_app.logger.exception('Failed to reject member borrow request %s', request_id)
+        flash('Unable to reject request due to an unexpected error.', 'danger')
+        return redirect(url_for('dashboard.index'))
+
+    flash(f"Request {request_row.get('request_code')} has been rejected.", 'info')
+    return redirect(url_for('dashboard.index'))
 
 
 def _sync_overdue_borrowings(db):
