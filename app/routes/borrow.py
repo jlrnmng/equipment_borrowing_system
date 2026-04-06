@@ -1322,7 +1322,8 @@ def return_receipt(borrow_item_id):
 @borrow_bp.route('/notifications', methods=['GET'])
 @login_required
 def notification_center():
-    if not _is_authorized_borrower():
+    role = getattr(current_user, 'role', None)
+    if role not in ('admin', 'staff', 'member'):
         return redirect(url_for('dashboard.index'))
 
     mail_configured = bool(
@@ -1335,38 +1336,71 @@ def notification_center():
 
     db = get_db()
     with db.cursor() as cursor:
-        cursor.execute(
-            """
-            SELECT
-                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_count,
-                SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) AS sent_count,
-                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed_count,
-                COUNT(*) AS total_count
-            FROM notifications
-            """
-        )
-        stats = cursor.fetchone() or {}
+        if role == 'member':
+            cursor.execute(
+                """
+                SELECT
+                    SUM(CASE WHEN n.status = 'pending' THEN 1 ELSE 0 END) AS pending_count,
+                    SUM(CASE WHEN n.status = 'sent' THEN 1 ELSE 0 END) AS sent_count,
+                    SUM(CASE WHEN n.status = 'failed' THEN 1 ELSE 0 END) AS failed_count,
+                    COUNT(*) AS total_count
+                FROM notifications n
+                WHERE n.member_id = %s
+                """,
+                (current_user.id,),
+            )
+            stats = cursor.fetchone() or {}
 
-        cursor.execute(
-            """
-            SELECT n.notification_id, n.notification_type, n.recipient_email, n.subject,
-                 n.status, n.retry_count, n.error_message, n.created_at, n.sent_at,
-                   m.member_code, m.first_name, m.last_name,
-                   br.transaction_code
-            FROM notifications n
-            LEFT JOIN members m ON m.member_id = n.member_id
-            LEFT JOIN borrow_records br ON br.borrow_id = n.borrow_id
-            ORDER BY n.created_at DESC
-            LIMIT 100
-            """
-        )
-        notifications = cursor.fetchall()
+            cursor.execute(
+                """
+                SELECT n.notification_id, n.notification_type, n.recipient_email, n.subject,
+                     n.status, n.retry_count, n.error_message, n.created_at, n.sent_at,
+                       m.member_code, m.first_name, m.last_name,
+                       br.transaction_code
+                FROM notifications n
+                LEFT JOIN members m ON m.member_id = n.member_id
+                LEFT JOIN borrow_records br ON br.borrow_id = n.borrow_id
+                WHERE n.member_id = %s
+                ORDER BY n.created_at DESC
+                LIMIT 100
+                """,
+                (current_user.id,),
+            )
+            notifications = cursor.fetchall()
+        else:
+            cursor.execute(
+                """
+                SELECT
+                    SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_count,
+                    SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) AS sent_count,
+                    SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed_count,
+                    COUNT(*) AS total_count
+                FROM notifications
+                """
+            )
+            stats = cursor.fetchone() or {}
+
+            cursor.execute(
+                """
+                SELECT n.notification_id, n.notification_type, n.recipient_email, n.subject,
+                     n.status, n.retry_count, n.error_message, n.created_at, n.sent_at,
+                       m.member_code, m.first_name, m.last_name,
+                       br.transaction_code
+                FROM notifications n
+                LEFT JOIN members m ON m.member_id = n.member_id
+                LEFT JOIN borrow_records br ON br.borrow_id = n.borrow_id
+                ORDER BY n.created_at DESC
+                LIMIT 100
+                """
+            )
+            notifications = cursor.fetchall()
 
     return render_template(
         'borrow/notifications.html',
         stats=stats,
         notifications=notifications,
         mail_configured=mail_configured,
+        can_manage_notifications=role in ('admin', 'staff'),
     )
 
 

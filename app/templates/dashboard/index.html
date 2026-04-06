@@ -193,7 +193,12 @@
                             <div class="small text-muted">Code(s): {{ req.equipment_codes or '-' }}</div>
                         </td>
                         <td>{{ req.expected_return_date }}</td>
-                        <td>{{ req.usage_area }}</td>
+                        <td>
+                            <div>{{ req.usage_area }}</div>
+                            {% if req.notes %}
+                            <div class="small text-muted mt-1">{{ req.notes }}</div>
+                            {% endif %}
+                        </td>
                         <td>
                             <div class="d-grid gap-2">
                                 <form method="POST" action="{{ url_for('borrow.approve_member_request', request_id=req.request_id) }}" class="d-flex gap-2">

@@ -73,14 +73,6 @@
 </div>
 
 <!-- Alerts Section -->
-{% with messages = get_flashed_messages(with_categories=true) %}
-    {% for category, message in messages %}
-        <div class="alert alert-{{ category }} alert-dismissible fade show mb-4" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    {% endfor %}
-{% endwith %}
 <div id="requestAlert"></div>
 
 <div class="mb-4" id="search">
@@ -172,6 +164,35 @@
                         <div class="col-12 col-md-6 col-lg-12">
                             <label for="usageArea" class="form-label fw-semibold mb-1">Usage Area</label>
                             <input id="usageArea" type="text" class="form-control" placeholder="e.g., Fabrication Lab A" required>
+                        </div>
+                    </div>
+
+                    <div id="paperRequirementSection" class="border rounded p-3 mb-3 bg-light-subtle d-none">
+                        <div class="fw-semibold mb-2">Paper Requirement (Printer/Scanner)</div>
+                        <div class="small text-muted mb-3">Tell us if you will use bond paper from the lab or bring your own.</div>
+                        <div class="mb-2">
+                            <label for="paperSource" class="form-label fw-semibold mb-1">Paper Source</label>
+                            <select id="paperSource" class="form-select">
+                                <option value="">Select source</option>
+                                <option value="bondpaper">Need bond paper</option>
+                                <option value="own">Will provide my own paper</option>
+                            </select>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-12 col-md-6">
+                                <label for="paperType" class="form-label fw-semibold mb-1">Paper Type</label>
+                                <select id="paperType" class="form-select">
+                                    <option value="">Select type</option>
+                                    <option value="Long">Long</option>
+                                    <option value="Short">Short</option>
+                                    <option value="A4">A4</option>
+                                    <option value="Special">Special</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label for="paperQuantity" class="form-label fw-semibold mb-1">Quantity (sheets)</label>
+                                <input id="paperQuantity" type="number" min="1" step="1" class="form-control" placeholder="e.g., 20">
+                            </div>
                         </div>
                     </div>
 
@@ -422,6 +443,10 @@
     var borrowNotes = document.getElementById('borrowNotes');
     var submitRequestBtn = document.getElementById('submitRequestBtn');
     var requestAlert = document.getElementById('requestAlert');
+    var paperRequirementSection = document.getElementById('paperRequirementSection');
+    var paperSource = document.getElementById('paperSource');
+    var paperType = document.getElementById('paperType');
+    var paperQuantity = document.getElementById('paperQuantity');
     var qrScanStatus = document.getElementById('qrScanStatus');
     var startQrScanBtn = document.getElementById('startQrScanBtn');
     var stopQrScanBtn = document.getElementById('stopQrScanBtn');
@@ -464,10 +489,28 @@
         expectedReturnDate.value = date.toISOString().slice(0, 10);
     }
 
+    function isPrinterOrScanner(item) {
+        var text = ((item.category || '') + ' ' + (item.equipment_name || '')).toLowerCase();
+        return text.indexOf('printer') !== -1 || text.indexOf('scanner') !== -1;
+    }
+
+    function updatePaperRequirementVisibility() {
+        var needsPaperDetails = Array.from(selectedItems.values()).some(isPrinterOrScanner);
+        if (needsPaperDetails) {
+            paperRequirementSection.classList.remove('d-none');
+        } else {
+            paperRequirementSection.classList.add('d-none');
+            paperSource.value = '';
+            paperType.value = '';
+            paperQuantity.value = '';
+        }
+    }
+
     function renderSelectedItems() {
         var entries = Array.from(selectedItems.values());
         if (!entries.length) {
             selectedItemsBody.innerHTML = '<tr id="emptySelectedRow"><td colspan="3" class="text-center text-muted py-3">No equipment selected</td></tr>';
+            updatePaperRequirementVisibility();
             return;
         }
 
@@ -507,6 +550,8 @@
                 }
             });
         });
+
+        updatePaperRequirementVisibility();
     }
 
     function loadAvailableEquipment() {
@@ -677,6 +722,34 @@
                 return;
             }
 
+            var needsPaperDetails = Array.from(selectedItems.values()).some(isPrinterOrScanner);
+            var paperRequest = null;
+            if (needsPaperDetails) {
+                if (!paperSource.value) {
+                    showAlert('Please select whether you need bond paper or will provide your own.', 'warning');
+                    paperSource.focus();
+                    return;
+                }
+                if (!paperType.value) {
+                    showAlert('Please select the paper type (Long, Short, A4, or Special).', 'warning');
+                    paperType.focus();
+                    return;
+                }
+
+                var quantityValue = Number(paperQuantity.value);
+                if (!Number.isInteger(quantityValue) || quantityValue < 1) {
+                    showAlert('Please enter a valid paper quantity.', 'warning');
+                    paperQuantity.focus();
+                    return;
+                }
+
+                paperRequest = {
+                    source: paperSource.value,
+                    type: paperType.value,
+                    quantity: quantityValue
+                };
+            }
+
             var items = Array.from(selectedItems.values()).map(function (item) {
                 return {
                     equipment_id: item.equipment_id,
@@ -688,7 +761,8 @@
                 items: items,
                 expected_return_date: expectedReturnDate.value,
                 usage_area: usageArea.value,
-                notes: borrowNotes.value
+                notes: borrowNotes.value,
+                paper_request: paperRequest
             };
 
             fetch('/api/member/borrow-request', {

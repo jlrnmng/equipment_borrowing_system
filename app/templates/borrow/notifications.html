@@ -42,6 +42,7 @@
         <div class="fw-semibold">
             <i class="bi bi-envelope-check me-1 text-primary"></i> Recent Notifications
         </div>
+        {% if can_manage_notifications %}
         <div class="d-flex gap-2">
             <button id="runRemindersBtn" type="button" class="btn btn-sm btn-outline-primary">
                 <i class="bi bi-arrow-repeat me-1"></i> Run Reminder Cycle
@@ -50,6 +51,7 @@
                 <i class="bi bi-play-circle me-1"></i> Process Pending
             </button>
         </div>
+        {% endif %}
     </div>
     <div class="card-body p-0">
         {% if notifications %}
@@ -132,9 +134,14 @@
 
 <script>
 (() => {
+    const canManageNotifications = {{ 'true' if can_manage_notifications else 'false' }};
     const btn = document.getElementById('processPendingBtn');
     const runBtn = document.getElementById('runRemindersBtn');
     const csrfToken = '{{ csrf_token() }}';
+
+    if (!canManageNotifications) {
+        return;
+    }
 
     if (runBtn) {
         runBtn.addEventListener('click', async () => {

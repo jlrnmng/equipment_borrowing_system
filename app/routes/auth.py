@@ -467,6 +467,7 @@ def submit_member_borrow_request():
     expected_return_date_raw = (payload.get('expected_return_date') or '').strip()
     usage_area = (payload.get('usage_area') or '').strip()
     notes = (payload.get('notes') or '').strip() or None
+    paper_request = payload.get('paper_request') or None
     items = payload.get('items') or []
 
     try:
@@ -502,6 +503,42 @@ def submit_member_borrow_request():
     unavailable = [str(item_id) for item_id in selected_ids if item_id not in available_ids]
     if unavailable:
         return jsonify({'ok': False, 'message': 'Some selected items are no longer available.'}), 400
+
+    selected_lookup = {row.get('equipment_id'): row for row in available_rows if row.get('equipment_id') in selected_ids}
+    needs_paper_details = False
+    for equipment_id in selected_ids:
+        row = selected_lookup.get(equipment_id) or {}
+        category = (row.get('category') or '').lower()
+        name = (row.get('equipment_name') or '').lower()
+        if 'printer' in category or 'scanner' in category or 'printer' in name or 'scanner' in name:
+            needs_paper_details = True
+            break
+
+    if needs_paper_details:
+        if not isinstance(paper_request, dict):
+            return jsonify({'ok': False, 'message': 'Paper details are required for printer/scanner requests.'}), 400
+
+        source = (paper_request.get('source') or '').strip().lower()
+        paper_type = (paper_request.get('type') or '').strip()
+        quantity = paper_request.get('quantity')
+
+        if source not in ('bondpaper', 'own'):
+            return jsonify({'ok': False, 'message': 'Select paper source: bond paper or own paper.'}), 400
+
+        if paper_type not in ('Long', 'Short', 'A4', 'Special'):
+            return jsonify({'ok': False, 'message': 'Select a valid paper type (Long, Short, A4, or Special).'}), 400
+
+        try:
+            quantity_int = int(quantity)
+        except Exception:
+            return jsonify({'ok': False, 'message': 'Paper quantity must be a whole number.'}), 400
+
+        if quantity_int < 1:
+            return jsonify({'ok': False, 'message': 'Paper quantity must be at least 1 sheet.'}), 400
+
+        source_label = 'Need bond paper' if source == 'bondpaper' else 'Will provide own paper'
+        paper_details_line = f"[Paper Request] {source_label}; Type: {paper_type}; Quantity: {quantity_int} sheet(s)"
+        notes = f"{notes}\n{paper_details_line}" if notes else paper_details_line
 
     try:
         created = MemberBorrowRequest.create_request(
