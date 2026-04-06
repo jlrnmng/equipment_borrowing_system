@@ -38,6 +38,7 @@ A Flask-based web application for managing equipment borrowing in a facility usi
 - Member dashboard redesign with quick-action cards, stats summary, and clearer section hierarchy
 - Member borrow flow moved to a guided modal (search, QR scan, select items, submit request)
 - Member active borrowing, return request, and request history sections are easier to scan and navigate
+- Admin approval now sends Gmail notifications to members for approved borrow and return requests when mail is configured
 - Admin dashboard queue for pending member requests with approve/reject actions
 - Approved member requests are converted into active borrow transactions automatically
 - Pending member borrow/return requests auto-expire after 30 minutes (kept in history for reporting/audit)
@@ -83,10 +84,17 @@ The member-side experience was updated to improve navigation and reduce friction
   - Optional QR scan input
   - Item selection with condition choice
   - Expected return date + usage area + notes
+- Borrow submission now validates required fields more clearly and uses the member-specific API endpoints directly
 - Styling refresh focused on readability and responsiveness:
   - Better spacing and visual hierarchy
   - Improved empty states and table headers
   - Mobile-friendly action buttons and layout behavior
+
+## Recent Fixes
+
+- Fixed a member borrow-request 400 issue caused by missing client-side validation and CSRF header mismatch handling.
+- Approval actions for borrow and return requests now send member email notifications through the existing notification pipeline.
+- Notification queue entries now distinguish queued mail from true pending delivery when SMTP is not configured.
 
 For a full breakdown, see `UI_IMPROVEMENTS.md`.
 

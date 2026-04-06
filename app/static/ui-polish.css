@@ -121,6 +121,41 @@ a:hover {
     border-radius: 12px;
 }
 
+.app-toast {
+    color: #fff;
+    min-width: 290px;
+    max-width: min(92vw, 520px);
+    box-shadow: var(--ui-shadow-md);
+    border-radius: 12px;
+}
+
+.app-toast .toast-body {
+    display: flex;
+    align-items: center;
+    line-height: 1.35;
+}
+
+.app-toast-success {
+    background: linear-gradient(180deg, #2b9c6e 0%, #20845a 100%);
+}
+
+.app-toast-danger {
+    background: linear-gradient(180deg, #d65346 0%, #c73f32 100%);
+}
+
+.app-toast-warning {
+    background: linear-gradient(180deg, #f1b55a 0%, #dd9a34 100%);
+    color: #2b1a00;
+}
+
+.app-toast-warning .btn-close {
+    filter: invert(0.1);
+}
+
+.app-toast-info {
+    background: linear-gradient(180deg, #2c84da 0%, #0f5cc0 100%);
+}
+
 .sidebar {
     min-height: 100vh;
     width: 256px;

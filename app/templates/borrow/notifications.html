@@ -85,6 +85,9 @@
                             <span class="badge bg-success">Sent</span>
                             {% elif item.status == 'failed' %}
                             <span class="badge bg-danger">Failed</span>
+                            {% elif item.status == 'pending' and not mail_configured %}
+                            <span class="badge bg-secondary">Queued</span>
+                            <small class="d-block text-muted">Mail not configured</small>
                             {% else %}
                             <span class="badge bg-warning text-dark">Pending</span>
                             {% endif %}
@@ -154,14 +157,16 @@
                 const sync = result.summary?.sync || {};
                 const queued = result.summary?.queued || {};
                 const delivery = result.summary?.delivery || {};
-                alert(
+                window.showAppToast(
                     `Sync: +${sync.updated_to_overdue || 0} overdue, ${sync.total_overdue || 0} total overdue\n` +
                     `Queued: ${queued.queued_due_reminders || 0} due reminders, ${queued.queued_overdue_warnings || 0} overdue warnings\n` +
-                    `Delivery: processed ${delivery.processed || 0}, sent ${delivery.sent || 0}, failed ${delivery.failed || 0}`
+                    `Delivery: processed ${delivery.processed || 0}, sent ${delivery.sent || 0}, failed ${delivery.failed || 0}`,
+                    'success',
+                    7000
                 );
                 window.location.reload();
             } catch (err) {
-                alert(err.message || 'An unexpected error occurred.');
+                window.showAppToast(err.message || 'An unexpected error occurred.', 'danger');
                 runBtn.disabled = false;
                 runBtn.innerHTML = original;
             }
@@ -187,10 +192,10 @@
                 throw new Error(result.message || 'Failed to process pending notifications.');
             }
 
-            alert(`Processed: ${result.processed} | Sent: ${result.sent} | Failed: ${result.failed}`);
+            window.showAppToast(`Processed: ${result.processed} | Sent: ${result.sent} | Failed: ${result.failed}`, 'success');
             window.location.reload();
         } catch (err) {
-            alert(err.message || 'An unexpected error occurred.');
+            window.showAppToast(err.message || 'An unexpected error occurred.', 'danger');
             btn.disabled = false;
             btn.innerHTML = original;
         }

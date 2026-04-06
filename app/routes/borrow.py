@@ -542,6 +542,28 @@ def approve_member_request(request_id):
         flash('Unable to approve request due to an unexpected error.', 'danger')
         return redirect(url_for('dashboard.index'))
 
+    # Notify member after admin approval. If mail is not configured, this is queued as pending.
+    recipient_email = (request_row.get('email') or request_row.get('google_email') or '').strip()
+    if recipient_email:
+        try:
+            member_name = f"{request_row.get('first_name', '')} {request_row.get('last_name', '')}".strip() or request_row.get('member_code')
+            queue_and_send_notification(
+                member_id=member_row['member_id'],
+                borrow_id=borrow_id,
+                notification_type='borrow_confirmation',
+                recipient_email=recipient_email,
+                subject=f'Borrow Request Approved - {transaction_code}',
+                message=build_borrow_confirmation_message(
+                    member_name=member_name,
+                    transaction_code=transaction_code,
+                    expected_return_date=str(expected_return_date),
+                    usage_area=request_row.get('usage_area') or '-',
+                    total_items=len(request_items),
+                ),
+            )
+        except Exception:
+            current_app.logger.exception('Failed to queue/send approval notification for borrow request %s', request_id)
+
     flash(f"Request {request_row.get('request_code')} approved. Borrow transaction {transaction_code} created.", 'success')
     return redirect(url_for('dashboard.index'))
 
@@ -644,6 +666,28 @@ def approve_member_return_request(return_request_id):
         current_app.logger.exception('Failed to approve member return request %s', return_request_id)
         flash('Unable to approve return request due to an unexpected error.', 'danger')
         return redirect(url_for('dashboard.index'))
+
+    # Notify member after return approval. If mail is not configured, this is queued as pending.
+    recipient_email = (request_row.get('email') or request_row.get('google_email') or '').strip()
+    if recipient_email:
+        try:
+            member_name = f"{request_row.get('first_name', '')} {request_row.get('last_name', '')}".strip() or request_row.get('member_code')
+            queue_and_send_notification(
+                member_id=request_row['member_id'],
+                borrow_id=request_row['borrow_id'],
+                notification_type='return_confirmation',
+                recipient_email=recipient_email,
+                subject=f"Return Request Approved - {request_row.get('transaction_code')}",
+                message=build_return_confirmation_message(
+                    member_name=member_name,
+                    transaction_code=request_row.get('transaction_code') or '-',
+                    equipment_name=request_row.get('equipment_name') or 'Equipment item',
+                    condition_returned=final_condition,
+                    days_overdue=receipt_meta['days_overdue'],
+                ),
+            )
+        except Exception:
+            current_app.logger.exception('Failed to queue/send approval notification for return request %s', return_request_id)
 
     flash(
         f"Return request {request_row.get('return_request_code')} approved and processed for "
@@ -1281,6 +1325,14 @@ def notification_center():
     if not _is_authorized_borrower():
         return redirect(url_for('dashboard.index'))
 
+    mail_configured = bool(
+        current_app.config.get('MAIL_NOTIFICATIONS_ENABLED', True)
+        and current_app.config.get('MAIL_SERVER')
+        and current_app.config.get('MAIL_PORT')
+        and current_app.config.get('MAIL_USERNAME')
+        and current_app.config.get('MAIL_PASSWORD')
+    )
+
     db = get_db()
     with db.cursor() as cursor:
         cursor.execute(
@@ -1310,7 +1362,12 @@ def notification_center():
         )
         notifications = cursor.fetchall()
 
-    return render_template('borrow/notifications.html', stats=stats, notifications=notifications)
+    return render_template(
+        'borrow/notifications.html',
+        stats=stats,
+        notifications=notifications,
+        mail_configured=mail_configured,
+    )
 
 
 @borrow_bp.route('/api/notifications/process-pending', methods=['POST'])

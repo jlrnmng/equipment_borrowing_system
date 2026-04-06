@@ -14,8 +14,46 @@
 </head>
 <body>
     {% block body %}{% endblock %}
+    <div id="appToastContainer" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080;"></div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        window.showAppToast = function (message, variant, delay) {
+            var container = document.getElementById('appToastContainer');
+            if (!container) {
+                return;
+            }
+
+            var kind = variant || 'info';
+            var autoHideDelay = Number(delay || 4500);
+            var iconMap = {
+                success: 'bi-check-circle-fill',
+                danger: 'bi-x-circle-fill',
+                warning: 'bi-exclamation-triangle-fill',
+                info: 'bi-info-circle-fill'
+            };
+            var icon = iconMap[kind] || iconMap.info;
+
+            var toastEl = document.createElement('div');
+            toastEl.className = 'toast align-items-center border-0 app-toast app-toast-' + kind;
+            toastEl.setAttribute('role', 'alert');
+            toastEl.setAttribute('aria-live', 'assertive');
+            toastEl.setAttribute('aria-atomic', 'true');
+            toastEl.innerHTML =
+                '<div class="d-flex">' +
+                '<div class="toast-body"><i class="bi ' + icon + ' me-2"></i><span></span></div>' +
+                '<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>' +
+                '</div>';
+
+            toastEl.querySelector('.toast-body span').textContent = String(message || 'Done');
+            container.appendChild(toastEl);
+
+            var toast = new bootstrap.Toast(toastEl, { delay: autoHideDelay });
+            toastEl.addEventListener('hidden.bs.toast', function () {
+                toastEl.remove();
+            });
+            toast.show();
+        };
+
         // Force a network re-check when returning via back/forward navigation.
         // This prevents stale pages from being restored from browser history cache.
         window.addEventListener('pageshow', function (event) {

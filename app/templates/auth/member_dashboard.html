@@ -183,7 +183,7 @@
                     </div>
                     <div class="col-md-6">
                         <label for="usageArea" class="form-label fw-semibold mb-1">Usage Area</label>
-                        <input id="usageArea" type="text" class="form-control" placeholder="e.g., Fabrication Lab A">
+                        <input id="usageArea" type="text" class="form-control" placeholder="e.g., Fabrication Lab A" required>
                     </div>
                 </div>
                 <div class="mb-3">
@@ -670,6 +670,15 @@
                 showAlert('Please select at least one equipment.', 'warning');
                 return;
             }
+            if (!expectedReturnDate.value) {
+                showAlert('Please choose an expected return date.', 'warning');
+                return;
+            }
+            if (!usageArea.value.trim()) {
+                showAlert('Usage area is required for borrow requests.', 'warning');
+                usageArea.focus();
+                return;
+            }
 
             var items = Array.from(selectedItems.values()).map(function (item) {
                 return {
@@ -689,6 +698,7 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
                     'X-CSRF-Token': csrfToken
                 },
                 body: JSON.stringify(payload)
@@ -720,6 +730,7 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
                     'X-CSRF-Token': csrfToken
                 },
                 body: JSON.stringify({
