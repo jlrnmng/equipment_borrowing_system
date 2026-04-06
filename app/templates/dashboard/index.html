@@ -188,7 +188,9 @@
                         </td>
                         <td>
                             <div class="fw-semibold">{{ req.total_items }} item(s)</div>
-                            <div class="small text-muted">{{ req.equipment_codes or '-' }}</div>
+                            <div class="small text-muted">{{ req.equipment_names or '-' }}</div>
+                            <div class="small text-muted">Serial(s): {{ req.equipment_serials or '-' }}</div>
+                            <div class="small text-muted">Code(s): {{ req.equipment_codes or '-' }}</div>
                         </td>
                         <td>{{ req.expected_return_date }}</td>
                         <td>{{ req.usage_area }}</td>
@@ -320,7 +322,8 @@
                         </td>
                         <td>
                             <div class="fw-semibold">{{ req.equipment_name }}</div>
-                            <div class="small text-muted">{{ req.equipment_code }}{% if req.category %} • {{ req.category }}{% endif %}</div>
+                            <div class="small text-muted">Serial: {{ req.serial_number or req.inventory_number or '-' }}</div>
+                            <div class="small text-muted">Code: {{ req.equipment_code or '-' }}{% if req.category %} • {{ req.category }}{% endif %}</div>
                         </td>
                         <td>
                             <div class="fw-semibold">{{ req.transaction_code }}</div>

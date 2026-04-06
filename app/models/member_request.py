@@ -110,6 +110,7 @@ class MemberBorrowRequest:
                        r.created_at, r.updated_at,
                        GROUP_CONCAT(e.equipment_code ORDER BY e.equipment_code SEPARATOR ', ') AS equipment_codes,
                        GROUP_CONCAT(e.equipment_name ORDER BY e.equipment_name SEPARATOR ', ') AS equipment_names,
+                      GROUP_CONCAT(COALESCE(NULLIF(e.serial_number, ''), e.inventory_number) ORDER BY e.equipment_name SEPARATOR ', ') AS equipment_serials,
                        COUNT(ri.request_item_id) AS total_items
                 FROM member_borrow_requests r
                 LEFT JOIN member_borrow_request_items ri ON ri.request_id = r.request_id
@@ -137,7 +138,9 @@ class MemberBorrowRequest:
                        r.usage_area, r.notes, r.status, r.created_at,
                        m.member_id, m.member_code, m.first_name, m.last_name,
                        COUNT(ri.request_item_id) AS total_items,
-                       GROUP_CONCAT(e.equipment_code ORDER BY e.equipment_code SEPARATOR ', ') AS equipment_codes
+                      GROUP_CONCAT(e.equipment_name ORDER BY e.equipment_name SEPARATOR ', ') AS equipment_names,
+                      GROUP_CONCAT(COALESCE(NULLIF(e.serial_number, ''), e.inventory_number) ORDER BY e.equipment_name SEPARATOR ', ') AS equipment_serials,
+                      GROUP_CONCAT(e.equipment_code ORDER BY e.equipment_name SEPARATOR ', ') AS equipment_codes
                 FROM member_borrow_requests r
                 INNER JOIN members m ON m.member_id = r.member_id
                 LEFT JOIN member_borrow_request_items ri ON ri.request_id = r.request_id

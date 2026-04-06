@@ -63,7 +63,8 @@ class MemberReturnRequest:
                 """
                 SELECT bi.borrow_item_id, bi.borrow_id, bi.condition_borrowed,
                        br.transaction_code, br.expected_return_date, br.status AS borrow_status,
-                       e.equipment_id, e.equipment_code, e.equipment_name, e.category,
+                      e.equipment_id, e.equipment_code, e.equipment_name, e.category,
+                      e.serial_number, e.inventory_number,
                        rr.return_request_id, rr.return_request_code, rr.status AS return_request_status,
                        rr.requested_condition, rr.member_feedback, rr.created_at AS request_created_at,
                        rr.review_notes
@@ -93,7 +94,8 @@ class MemberReturnRequest:
                        rr.final_condition, rr.status, rr.review_notes,
                        rr.created_at, rr.updated_at,
                        br.transaction_code, br.expected_return_date,
-                       e.equipment_code, e.equipment_name, e.category
+                      e.equipment_code, e.equipment_name, e.category,
+                      e.serial_number, e.inventory_number
                 FROM member_return_requests rr
                 INNER JOIN borrow_items bi ON bi.borrow_item_id = rr.borrow_item_id
                 INNER JOIN borrow_records br ON br.borrow_id = bi.borrow_id
@@ -119,7 +121,8 @@ class MemberReturnRequest:
                        rr.status, rr.created_at,
                        m.member_id, m.member_code, m.first_name, m.last_name,
                        br.transaction_code, br.expected_return_date,
-                       e.equipment_code, e.equipment_name, e.category,
+                      e.equipment_code, e.equipment_name, e.category,
+                      e.serial_number, e.inventory_number,
                        bi.borrow_item_id, bi.condition_borrowed
                 FROM member_return_requests rr
                 INNER JOIN members m ON m.member_id = rr.member_id

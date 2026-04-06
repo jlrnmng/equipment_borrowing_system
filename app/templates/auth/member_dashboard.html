@@ -209,7 +209,8 @@
                         <tr>
                             <td>
                                 <div class="fw-semibold">{{ item.equipment_name }}</div>
-                                <div class="small text-muted">{{ item.equipment_code }}</div>
+                                <div class="small text-muted">Serial: {{ item.serial_number or item.inventory_number or '-' }}</div>
+                                <div class="small text-muted">Code: {{ item.equipment_code or '-' }}</div>
                             </td>
                             <td>{{ item.borrowed_date or '-' }}</td>
                             <td>
@@ -268,7 +269,8 @@
                         <tr>
                             <td>
                                 <div class="fw-semibold">{{ item.equipment_name }}</div>
-                                <div class="small text-muted">{{ item.equipment_code }}</div>
+                                <div class="small text-muted">Serial: {{ item.serial_number or item.inventory_number or '-' }}</div>
+                                <div class="small text-muted">Code: {{ item.equipment_code or '-' }}</div>
                             </td>
                             <td>
                                 <select class="form-select form-select-sm return-request-condition" data-borrow-item-id="{{ item.borrow_item_id }}" {% if item.return_request_status == 'pending' %}disabled{% endif %}>
@@ -323,7 +325,9 @@
                             <td>{{ req.created_at.strftime('%Y-%m-%d %H:%M') if req.created_at else '-' }}</td>
                             <td>
                                 <div class="fw-semibold">{{ req.total_items }} item(s)</div>
-                                <div class="small text-muted">{{ req.equipment_codes or '-' }}</div>
+                                <div class="small text-muted">{{ req.equipment_names or '-' }}</div>
+                                <div class="small text-muted">Serial(s): {{ req.equipment_serials or '-' }}</div>
+                                <div class="small text-muted">Code(s): {{ req.equipment_codes or '-' }}</div>
                             </td>
                             <td>{{ req.expected_return_date }}</td>
                             <td>{{ req.usage_area }}</td>
@@ -376,7 +380,8 @@
                             </td>
                             <td>
                                 <div class="fw-semibold">{{ req.equipment_name }}</div>
-                                <div class="small text-muted">{{ req.equipment_code }}</div>
+                                <div class="small text-muted">Serial: {{ req.serial_number or req.inventory_number or '-' }}</div>
+                                <div class="small text-muted">Code: {{ req.equipment_code or '-' }}</div>
                             </td>
                             <td><span class="badge bg-info text-uppercase">{{ req.requested_condition }}</span></td>
                             <td>
@@ -467,10 +472,11 @@
         }
 
         selectedItemsBody.innerHTML = entries.map(function (item) {
+            var serialDisplay = item.serial_number || item.inventory_number || '-';
             return (
                 '<tr data-equipment-id="' + item.equipment_id + '">' +
                 '<td><div class="fw-semibold">' + escapeHtml(item.equipment_name) + '</div><div class="small text-muted">' +
-                escapeHtml(item.equipment_code) + ' • ' + escapeHtml(item.category || '-') + '</div></td>' +
+                'Serial: ' + escapeHtml(serialDisplay) + ' • Code: ' + escapeHtml(item.equipment_code || '-') + ' • ' + escapeHtml(item.category || '-') + '</div></td>' +
                 '<td>' +
                 '<select class="form-select form-select-sm item-condition" data-equipment-id="' + item.equipment_id + '">' +
                 '<option value="excellent"' + (item.condition_requested === 'excellent' ? ' selected' : '') + '>Excellent</option>' +
@@ -514,15 +520,16 @@
                 }
 
                 equipmentResults.innerHTML = data.results.map(function (eq) {
+                    var serialDisplay = eq.serial_number || eq.inventory_number || '-';
                     return (
                         '<div class="card card-sm mb-2">' +
                         '<div class="card-body p-2">' +
                         '<div class="d-flex justify-content-between align-items-start gap-2">' +
                         '<div>' +
                         '<div class="fw-semibold">' + escapeHtml(eq.equipment_name) + '</div>' +
-                        '<div class="small text-muted">' + escapeHtml(eq.equipment_code) + ' • ' + escapeHtml(eq.category || '-') + '</div>' +
+                        '<div class="small text-muted">Serial: ' + escapeHtml(serialDisplay) + ' • Code: ' + escapeHtml(eq.equipment_code || '-') + ' • ' + escapeHtml(eq.category || '-') + '</div>' +
                         '</div>' +
-                        '<button type="button" class="btn btn-sm btn-outline-primary add-equipment-btn" data-equipment-id="' + eq.equipment_id + '" data-equipment-name="' + escapeHtml(eq.equipment_name) + '" data-equipment-code="' + escapeHtml(eq.equipment_code) + '" data-category="' + escapeHtml(eq.category || '-') + '">Add</button>' +
+                        '<button type="button" class="btn btn-sm btn-outline-primary add-equipment-btn" data-equipment-id="' + eq.equipment_id + '" data-equipment-name="' + escapeHtml(eq.equipment_name) + '" data-equipment-code="' + escapeHtml(eq.equipment_code || '') + '" data-serial-number="' + escapeHtml(eq.serial_number || '') + '" data-inventory-number="' + escapeHtml(eq.inventory_number || '') + '" data-category="' + escapeHtml(eq.category || '-') + '">Add</button>' +
                         '</div>' +
                         '</div>' +
                         '</div>'
@@ -546,6 +553,8 @@
                         equipment_id: id,
                         equipment_name: btn.getAttribute('data-equipment-name'),
                         equipment_code: btn.getAttribute('data-equipment-code'),
+                        serial_number: btn.getAttribute('data-serial-number'),
+                        inventory_number: btn.getAttribute('data-inventory-number'),
                         category: btn.getAttribute('data-category'),
                         condition_requested: 'good'
                     });
@@ -573,15 +582,16 @@
                     return;
                 }
                 equipmentResults.innerHTML = data.results.map(function (eq) {
+                    var serialDisplay = eq.serial_number || eq.inventory_number || '-';
                     return (
                         '<div class="card card-sm mb-2">' +
                         '<div class="card-body p-2">' +
                         '<div class="d-flex justify-content-between align-items-start gap-2">' +
                         '<div>' +
                         '<div class="fw-semibold">' + escapeHtml(eq.equipment_name) + '</div>' +
-                        '<div class="small text-muted">' + escapeHtml(eq.equipment_code) + ' • ' + escapeHtml(eq.category || '-') + '</div>' +
+                        '<div class="small text-muted">Serial: ' + escapeHtml(serialDisplay) + ' • Code: ' + escapeHtml(eq.equipment_code || '-') + ' • ' + escapeHtml(eq.category || '-') + '</div>' +
                         '</div>' +
-                        '<button type="button" class="btn btn-sm btn-outline-primary add-equipment-btn" data-equipment-id="' + eq.equipment_id + '" data-equipment-name="' + escapeHtml(eq.equipment_name) + '" data-equipment-code="' + escapeHtml(eq.equipment_code) + '" data-category="' + escapeHtml(eq.category || '-') + '">Add</button>' +
+                        '<button type="button" class="btn btn-sm btn-outline-primary add-equipment-btn" data-equipment-id="' + eq.equipment_id + '" data-equipment-name="' + escapeHtml(eq.equipment_name) + '" data-equipment-code="' + escapeHtml(eq.equipment_code || '') + '" data-serial-number="' + escapeHtml(eq.serial_number || '') + '" data-inventory-number="' + escapeHtml(eq.inventory_number || '') + '" data-category="' + escapeHtml(eq.category || '-') + '">Add</button>' +
                         '</div>' +
                         '</div>' +
                         '</div>'

@@ -398,6 +398,8 @@ def member_equipment_search():
                 {
                     'equipment_id': row.get('equipment_id'),
                     'equipment_code': row.get('equipment_code'),
+                    'serial_number': row.get('serial_number'),
+                    'inventory_number': row.get('inventory_number'),
                     'equipment_name': row.get('equipment_name'),
                     'category': row.get('category'),
                     'condition_status': row.get('condition_status'),
@@ -439,6 +441,8 @@ def member_equipment_from_qr():
             'item': {
                 'equipment_id': equipment.get('equipment_id'),
                 'equipment_code': equipment.get('equipment_code'),
+                'serial_number': equipment.get('serial_number'),
+                'inventory_number': equipment.get('inventory_number'),
                 'equipment_name': equipment.get('equipment_name'),
                 'category': equipment.get('category'),
                 'condition_status': equipment.get('condition_status'),
