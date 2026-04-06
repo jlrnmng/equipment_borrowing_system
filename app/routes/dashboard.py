@@ -38,6 +38,7 @@ def index():
     }
     pending_requests = []
     pending_return_requests = []
+    active_borrowings = []
 
     try:
         with db.cursor() as cursor:
@@ -84,6 +85,27 @@ def index():
 
             pending_requests = MemberBorrowRequest.get_pending_requests(limit=12)
             pending_return_requests = MemberReturnRequest.get_pending_requests(limit=12)
+
+            cursor.execute(
+                """
+                SELECT br.borrow_id, br.transaction_code, br.borrow_date, br.expected_return_date,
+                       br.status, br.total_items, br.usage_area, br.borrowed_during_working_hours,
+                       m.member_code, m.first_name, m.last_name,
+                       GROUP_CONCAT(e.equipment_code ORDER BY e.equipment_code SEPARATOR ', ') AS equipment_codes,
+                       DATEDIFF(br.expected_return_date, CURDATE()) AS days_left
+                FROM borrow_records br
+                INNER JOIN members m ON m.member_id = br.member_id
+                LEFT JOIN borrow_items bi ON bi.borrow_id = br.borrow_id
+                LEFT JOIN equipment e ON e.equipment_id = bi.equipment_id
+                WHERE br.status IN ('active', 'overdue')
+                GROUP BY br.borrow_id, br.transaction_code, br.borrow_date, br.expected_return_date,
+                         br.status, br.total_items, br.usage_area, br.borrowed_during_working_hours,
+                         m.member_code, m.first_name, m.last_name
+                ORDER BY br.expected_return_date ASC, br.borrow_date DESC
+                LIMIT 12
+                """
+            )
+            active_borrowings = cursor.fetchall()
 
             if search_query:
                 like = f"%{search_query}%"
@@ -142,4 +164,5 @@ def index():
         search_results=search_results,
         pending_requests=pending_requests,
         pending_return_requests=pending_return_requests,
+        active_borrowings=active_borrowings,
     )

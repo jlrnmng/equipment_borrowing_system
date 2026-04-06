@@ -83,117 +83,105 @@
 {% endwith %}
 <div id="requestAlert"></div>
 
-<!-- Quick Actions -->
 <div class="mb-4" id="search">
-    <h5 class="fw-bold mb-3">Quick Actions</h5>
-    <div class="row g-2">
-        <div class="col-6 col-md-4 col-lg-2">
-            <button class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#searchEquipmentModal">
-                <i class="bi bi-search"></i><br><small>Search Equipment</small>
-            </button>
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-2 mb-3">
+        <div>
+            <h5 class="fw-bold mb-1">Borrow Equipment</h5>
+            <p class="text-muted mb-0">Search equipment, pick items, set the return date, and submit the request from one screen.</p>
         </div>
-        <div class="col-6 col-md-4 col-lg-2">
-            <a href="#requests" class="btn btn-outline-primary w-100">
-                <i class="bi bi-file-earmark"></i><br><small>My Requests</small>
-            </a>
-        </div>
-        <div class="col-6 col-md-4 col-lg-2">
-            <a href="#returns" class="btn btn-outline-primary w-100">
-                <i class="bi bi-arrow-left-circle"></i><br><small>Return Items</small>
-            </a>
-        </div>
-        <div class="col-6 col-md-4 col-lg-2">
-            <a href="{{ url_for('borrow.notification_center') }}" class="btn btn-outline-primary w-100">
-                <i class="bi bi-bell"></i><br><small>Notifications</small>
-            </a>
-        </div>
-        <div class="col-6 col-md-4 col-lg-2">
-            <a href="{{ url_for('auth.complete_profile') }}" class="btn btn-outline-secondary w-100">
-                <i class="bi bi-person-gear"></i><br><small>My Profile</small>
-            </a>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="#requests" class="btn btn-outline-primary btn-sm"><i class="bi bi-file-earmark me-1"></i> My Requests</a>
+            <a href="#returns" class="btn btn-outline-primary btn-sm"><i class="bi bi-arrow-left-circle me-1"></i> Return Items</a>
+            <a href="{{ url_for('borrow.notification_center') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-bell me-1"></i> Notifications</a>
+            <a href="{{ url_for('auth.complete_profile') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-person-gear me-1"></i> My Profile</a>
         </div>
     </div>
-</div>
 
-<!-- Search Equipment Modal -->
-<div class="modal fade" id="searchEquipmentModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header border-bottom">
-                <h5 class="modal-title fw-bold">Search & Borrow Equipment</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Search Equipment</label>
-                    <form id="equipmentSearchForm" class="d-flex gap-2 mb-3">
-                        <input id="equipmentQuery" type="text" class="form-control" placeholder="Search by code, name, category" autofocus>
-                        <button type="submit" class="btn btn-primary">Search</button>
+    <div class="row g-3">
+        <div class="col-lg-7">
+            <div class="card stat-card h-100">
+                <div class="card-header bg-white border-bottom fw-semibold">
+                    <i class="bi bi-search me-1 text-primary"></i> Search Equipment
+                </div>
+                <div class="card-body">
+                    <form id="equipmentSearchForm" class="row g-2 mb-3">
+                        <div class="col-12 col-md-8">
+                            <input id="equipmentQuery" type="text" class="form-control" placeholder="Search by code, name, or category" autofocus>
+                        </div>
+                        <div class="col-12 col-md-4 d-grid">
+                            <button type="submit" class="btn btn-primary">Search</button>
+                        </div>
                     </form>
-                </div>
 
-                <div class="mb-3">
-                    <div class="card border">
-                        <div class="card-header bg-light small fw-semibold">
-                            <i class="bi bi-qr-code"></i> Or scan QR code
-                        </div>
-                        <div class="card-body p-3">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="small">Use your camera to scan an equipment QR code</span>
-                                <div class="d-flex gap-1">
-                                    <button type="button" id="startQrScanBtn" class="btn btn-sm btn-outline-primary">Start</button>
-                                    <button type="button" id="stopQrScanBtn" class="btn btn-sm btn-outline-secondary" disabled>Stop</button>
-                                </div>
+                    <div class="border rounded p-3 mb-3 bg-light-subtle">
+                        <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                            <div>
+                                <div class="fw-semibold">Scan QR code</div>
+                                <div class="small text-muted">Use your camera to scan a QR code and auto-fill the search.</div>
                             </div>
-                            <div id="qrScanStatus" class="small text-muted mb-2">Scanner is off.</div>
-                            <div id="qr-reader" class="border rounded bg-white" style="min-height: 120px;"></div>
+                            <div class="d-flex gap-1">
+                                <button type="button" id="startQrScanBtn" class="btn btn-sm btn-outline-primary">Start</button>
+                                <button type="button" id="stopQrScanBtn" class="btn btn-sm btn-outline-secondary" disabled>Stop</button>
+                            </div>
+                        </div>
+                        <div id="qrScanStatus" class="small text-muted mb-2">Scanner is off.</div>
+                        <div id="qr-reader" class="border rounded bg-white" style="min-height: 120px;"></div>
+                    </div>
+
+                    <div>
+                        <label class="form-label fw-semibold">Available Equipment</label>
+                        <div id="equipmentSearchResults" class="border rounded p-3 small bg-light" style="max-height: 300px; overflow: auto;">
+                            <div class="text-muted text-center py-4">Search equipment to begin</div>
                         </div>
                     </div>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Available Equipment</label>
-                    <div id="equipmentSearchResults" class="border rounded p-3 small bg-light" style="max-height: 300px; overflow: auto;">
-                        <div class="text-muted text-center py-4">Start by searching or scanning equipment</div>
-                    </div>
-                </div>
-
-                <label class="form-label fw-semibold mt-4 mb-2">Selected Equipment</label>
-                <div class="table-responsive mb-3">
-                    <table class="table table-sm align-middle mb-0 small">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Equipment</th>
-                                <th style="width: 120px;">Condition</th>
-                                <th style="width: 60px;">Remove</th>
-                            </tr>
-                        </thead>
-                        <tbody id="selectedItemsBody">
-                            <tr id="emptySelectedRow">
-                                <td colspan="3" class="text-center text-muted py-3">No equipment selected</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="row g-2 mb-3">
-                    <div class="col-md-6">
-                        <label for="expectedReturnDate" class="form-label fw-semibold mb-1">Return Date</label>
-                        <input id="expectedReturnDate" type="date" class="form-control" value="{{ default_return_date or '' }}">
-                    </div>
-                    <div class="col-md-6">
-                        <label for="usageArea" class="form-label fw-semibold mb-1">Usage Area</label>
-                        <input id="usageArea" type="text" class="form-control" placeholder="e.g., Fabrication Lab A" required>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label for="borrowNotes" class="form-label fw-semibold mb-1">Notes (optional)</label>
-                    <textarea id="borrowNotes" class="form-control" rows="2" placeholder="Reason or details of your request"></textarea>
                 </div>
             </div>
-            <div class="modal-footer border-top gap-2">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button id="submitRequestBtn" type="button" class="btn btn-primary">Submit Request</button>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card stat-card h-100">
+                <div class="card-header bg-white border-bottom fw-semibold">
+                    <i class="bi bi-clipboard-check me-1 text-primary"></i> Prepare Request
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Selected Equipment</label>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0 small">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Item</th>
+                                        <th style="width: 110px;">Condition</th>
+                                        <th style="width: 60px;">Remove</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="selectedItemsBody">
+                                    <tr id="emptySelectedRow">
+                                        <td colspan="3" class="text-center text-muted py-3">No equipment selected</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-12 col-md-6 col-lg-12">
+                            <label for="expectedReturnDate" class="form-label fw-semibold mb-1">Return Date</label>
+                            <input id="expectedReturnDate" type="date" class="form-control" value="{{ default_return_date or '' }}">
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-12">
+                            <label for="usageArea" class="form-label fw-semibold mb-1">Usage Area</label>
+                            <input id="usageArea" type="text" class="form-control" placeholder="e.g., Fabrication Lab A" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="borrowNotes" class="form-label fw-semibold mb-1">Notes (optional)</label>
+                        <textarea id="borrowNotes" class="form-control" rows="2" placeholder="Reason or details of your request"></textarea>
+                    </div>
+
+                    <button id="submitRequestBtn" type="button" class="btn btn-primary w-100">Submit Borrow Request</button>
+                </div>
             </div>
         </div>
     </div>
@@ -432,7 +420,6 @@
     var qrScanStatus = document.getElementById('qrScanStatus');
     var startQrScanBtn = document.getElementById('startQrScanBtn');
     var stopQrScanBtn = document.getElementById('stopQrScanBtn');
-    var searchEquipmentModal = document.getElementById('searchEquipmentModal');
 
     function escapeHtml(value) {
         return (value || '')
@@ -752,16 +739,9 @@
         });
     });
 
-    if (searchEquipmentModal) {
-        searchEquipmentModal.addEventListener('shown.bs.modal', function () {
-            if (!equipmentQuery.value.trim()) {
-                loadAvailableEquipment();
-            }
-        });
-    }
-
     // Set default date on page load
     setDefaultDate();
+    loadAvailableEquipment();
 })();
 </script>
 {% endblock %}

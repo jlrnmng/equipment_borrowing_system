@@ -104,10 +104,44 @@
                 });
             }
 
+            function refreshCompactTopbarButtons() {
+                var isCompact = window.innerWidth <= 575;
+                var buttons = document.querySelectorAll('.topbar-right .btn');
+
+                buttons.forEach(function (btn) {
+                    var rawLabel = (btn.getAttribute('data-compact-label') || btn.textContent || '').replace(/\s+/g, ' ').trim();
+                    if (!rawLabel) {
+                        rawLabel = 'Action';
+                    }
+                    btn.setAttribute('data-compact-label', rawLabel);
+
+                    if (isCompact) {
+                        btn.setAttribute('aria-label', rawLabel);
+                        btn.setAttribute('title', rawLabel);
+                        if (window.bootstrap && !btn._compactTooltip) {
+                            btn.setAttribute('data-bs-toggle', 'tooltip');
+                            btn.setAttribute('data-bs-placement', 'bottom');
+                            btn._compactTooltip = new bootstrap.Tooltip(btn);
+                        }
+                    } else {
+                        if (btn._compactTooltip) {
+                            btn._compactTooltip.dispose();
+                            btn._compactTooltip = null;
+                        }
+                        btn.removeAttribute('data-bs-toggle');
+                        btn.removeAttribute('data-bs-placement');
+                        btn.removeAttribute('title');
+                    }
+                });
+            }
+
+            refreshCompactTopbarButtons();
+
             window.addEventListener('resize', function () {
                 if (window.innerWidth >= 992) {
                     setSidebarOpen(false);
                 }
+                refreshCompactTopbarButtons();
             });
         })();
     </script>

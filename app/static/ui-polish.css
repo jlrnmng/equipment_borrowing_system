@@ -449,14 +449,31 @@ a:hover {
     }
 
     .page-actions .btn {
-        flex: 1 1 auto;
-        min-width: 0;
-        padding-left: 0.55rem;
-        padding-right: 0.55rem;
+        flex: 0 0 auto;
+        width: 34px;
+        min-width: 34px;
+        height: 34px;
+        padding: 0;
     }
 
     .topbar-right > .btn-outline-danger {
         flex: 0 0 auto;
+        width: 34px;
+        min-width: 34px;
+        height: 34px;
+        padding: 0;
+    }
+
+    .topbar-right .btn {
+        font-size: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .topbar-right .btn i {
+        margin-right: 0 !important;
+        font-size: 0.95rem;
     }
 
     .card .card-header,

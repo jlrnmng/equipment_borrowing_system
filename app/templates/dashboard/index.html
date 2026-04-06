@@ -222,6 +222,74 @@
 
 <div class="card stat-card mb-4">
     <div class="card-header bg-white border-bottom fw-semibold d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-clock-history me-1 text-primary"></i> Active Borrowings</span>
+        <span class="badge bg-primary">{{ active_borrowings|length }}</span>
+    </div>
+    <div class="card-body p-0">
+        {% if active_borrowings %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Transaction</th>
+                        <th>Member</th>
+                        <th>Items</th>
+                        <th>Usage Area</th>
+                        <th>Expected Return</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in active_borrowings %}
+                    <tr>
+                        <td>
+                            <div class="fw-semibold">{{ row.transaction_code }}</div>
+                            <div class="small text-muted">Borrowed {{ row.borrow_date.strftime('%b %d, %Y') if row.borrow_date else '-' }}</div>
+                        </td>
+                        <td>
+                            <div class="fw-semibold">{{ row.member_code }}</div>
+                            <div class="small text-muted">{{ row.first_name }} {{ row.last_name }}</div>
+                        </td>
+                        <td>
+                            <div class="fw-semibold">{{ row.total_items or 0 }} item(s)</div>
+                            <div class="small text-muted">{{ row.equipment_codes or '-' }}</div>
+                        </td>
+                        <td>{{ row.usage_area or '-' }}</td>
+                        <td>
+                            <div class="fw-semibold">{{ row.expected_return_date }}</div>
+                            {% if row.days_left is not none %}
+                                {% if row.days_left < 0 %}
+                                <div class="small text-danger">Overdue by {{ row.days_left|abs }} day(s)</div>
+                                {% elif row.days_left == 0 %}
+                                <div class="small text-warning">Due today</div>
+                                {% else %}
+                                <div class="small text-muted">{{ row.days_left }} day(s) left</div>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if row.status == 'overdue' %}
+                            <span class="badge bg-danger">Overdue</span>
+                            {% else %}
+                            <span class="badge bg-success">Active</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4">
+            <i class="bi bi-box2 fs-2 d-block mb-2"></i>
+            No active borrowings at the moment.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card stat-card mb-4">
+    <div class="card-header bg-white border-bottom fw-semibold d-flex justify-content-between align-items-center">
         <span><i class="bi bi-arrow-return-left me-1 text-success"></i> Pending Member Return Requests</span>
         <span class="badge bg-success">{{ pending_return_requests|length }}</span>
     </div>
