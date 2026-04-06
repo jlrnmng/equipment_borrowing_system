@@ -20,6 +20,24 @@ from app.utils.qr import generate_member_qr
 auth_bp = Blueprint('auth', __name__)
 
 
+def _get_google_allowed_domains():
+    """Return normalized allowed domains for Google OAuth email checks."""
+    raw_value = current_app.config.get('GOOGLE_ALLOWED_DOMAIN', 'my.cspc.edu.ph') or ''
+    configured = [part.strip().lower() for part in str(raw_value).split(',') if part.strip()]
+
+    # Keep legacy/default domain and explicitly allow cpsc.edu.ph addresses.
+    defaults = ['my.cspc.edu.ph', 'cpsc.edu.ph']
+    ordered = configured + defaults
+
+    seen = set()
+    domains = []
+    for domain in ordered:
+        if domain not in seen:
+            seen.add(domain)
+            domains.append(domain)
+    return domains
+
+
 def _member_redirect_after_login(member_row):
     member_user = Member.to_member_user(member_row)
     login_user(member_user)
@@ -34,11 +52,13 @@ def _member_redirect_after_login(member_row):
 
 def get_google_oauth_config():
     """Return Google OAuth settings from app config (never hardcode credentials)."""
+    allowed_domains = _get_google_allowed_domains()
     return {
         'client_id': current_app.config.get('GOOGLE_CLIENT_ID'),
         'client_secret': current_app.config.get('GOOGLE_CLIENT_SECRET'),
         'redirect_uri': current_app.config.get('GOOGLE_REDIRECT_URI'),
-        'allowed_domain': current_app.config.get('GOOGLE_ALLOWED_DOMAIN', 'my.cspc.edu.ph'),
+        'allowed_domain': allowed_domains[0],
+        'allowed_domains': allowed_domains,
     }
 
 
@@ -48,8 +68,15 @@ def is_google_oauth_enabled():
 
 
 def is_allowed_domain(email):
-    domain = get_google_oauth_config()['allowed_domain'].lower()
-    return email.lower().endswith(f"@{domain}")
+    email_value = (email or '').strip().lower()
+    if '@' not in email_value:
+        return False
+
+    email_domain = email_value.split('@', 1)[1]
+    for domain in _get_google_allowed_domains():
+        if email_domain == domain or email_domain.endswith(f".{domain}"):
+            return True
+    return False
 
 
 def _split_google_name(full_name):
@@ -103,7 +130,7 @@ def login():
         'auth/login.html',
         form=form,
         google_oauth_enabled=google_oauth_enabled,
-        allowed_domain=get_google_oauth_config()['allowed_domain'],
+        allowed_domains=get_google_oauth_config()['allowed_domains'],
     )
 
 
@@ -199,7 +226,8 @@ def google_callback():
         return redirect(url_for('auth.login'))
 
     if not is_allowed_domain(email):
-        flash('Only @my.cspc.edu.ph accounts are allowed.', 'danger')
+        domains_label = ', '.join(f"@{d}" for d in _get_google_allowed_domains())
+        flash(f'Only {domains_label} accounts are allowed.', 'danger')
         return redirect(url_for('auth.login'))
 
     staff_row = Staff.get_by_email(email)
@@ -299,7 +327,7 @@ def signup():
     return render_template(
         'auth/signup.html',
         google_oauth_enabled=is_google_oauth_enabled(),
-        allowed_domain=get_google_oauth_config()['allowed_domain'],
+        allowed_domains=get_google_oauth_config()['allowed_domains'],
     )
 
 

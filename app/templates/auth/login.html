@@ -31,7 +31,12 @@
                 </form>
             </div>
             <div class="text-center text-muted small mb-3">
-                Allowed domain: <strong>@{{ allowed_domain }}</strong>
+                Allowed domains:
+                <strong>
+                    {% for domain in allowed_domains %}
+                        @{{ domain }}{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                </strong>
             </div>
             <div class="d-flex align-items-center my-3">
                 <hr class="flex-grow-1">
