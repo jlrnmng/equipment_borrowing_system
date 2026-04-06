@@ -125,7 +125,7 @@
             <table class="table table-hover mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th class="fw-semibold">Code / Inventory</th>
+                        <th class="fw-semibold">Serial / Code</th>
                         <th class="fw-semibold">Equipment Name</th>
                         <th class="fw-semibold">Category</th>
                         <th class="fw-semibold">Brand</th>
@@ -139,8 +139,8 @@
                     {% for item in equipment %}
                     <tr>
                         <td>
-                            <div class="font-monospace fw-semibold">{{ item.equipment_code or item.inventory_number }}</div>
-                            <div class="small text-muted">{{ item.inventory_number }}</div>
+                            <div class="font-monospace fw-semibold">{{ item.serial_number or item.inventory_number }}</div>
+                            <div class="small text-muted">{{ item.equipment_code or '-' }}</div>
                         </td>
                         <td>{{ item.equipment_name }}</td>
                         <td>{{ item.category or '-' }}</td>
