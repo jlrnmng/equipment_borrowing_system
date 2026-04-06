@@ -1,6 +1,6 @@
 from urllib.parse import urlsplit
 import secrets
-from datetime import datetime
+from datetime import datetime, time
 
 from flask import Blueprint, current_app, flash, jsonify, make_response, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required, login_user, logout_user
@@ -361,11 +361,7 @@ def member_dashboard():
     
     # Calculate pending requests count
     pending_requests_count = sum(1 for req in requests if req.get('status') == 'pending')
-    
-    # Calculate default return date (7 days from today)
-    from datetime import datetime, timedelta
-    default_return_date = (datetime.today() + timedelta(days=7)).strftime('%Y-%m-%d')
-    
+
     return render_template(
         'auth/member_dashboard.html',
         member=member_row,
@@ -373,7 +369,6 @@ def member_dashboard():
         active_return_items=active_return_items,
         return_requests=return_requests,
         pending_requests_count=pending_requests_count,
-        default_return_date=default_return_date,
     )
 
 
@@ -464,19 +459,16 @@ def submit_member_borrow_request():
         return jsonify({'ok': False, 'message': 'Complete your profile first.'}), 400
 
     payload = request.get_json(silent=True) or {}
-    expected_return_date_raw = (payload.get('expected_return_date') or '').strip()
     usage_area = (payload.get('usage_area') or '').strip()
     notes = (payload.get('notes') or '').strip() or None
     paper_request = payload.get('paper_request') or None
     items = payload.get('items') or []
 
-    try:
-        expected_return_date = datetime.strptime(expected_return_date_raw, '%Y-%m-%d').date()
-    except Exception:
-        return jsonify({'ok': False, 'message': 'Expected return date is invalid.'}), 400
-
-    if expected_return_date < datetime.now().date():
-        return jsonify({'ok': False, 'message': 'Expected return date cannot be in the past.'}), 400
+    # Member self-service borrow requests are same-day only.
+    expected_return_date = datetime.now().date()
+    now_time = datetime.now().time()
+    if not (time(8, 0) <= now_time <= time(16, 30)):
+        return jsonify({'ok': False, 'message': 'Borrow requests are only allowed from 8:00 AM to 4:30 PM.'}), 400
     if not usage_area:
         return jsonify({'ok': False, 'message': 'Usage area is required.'}), 400
     if not isinstance(items, list) or not items:

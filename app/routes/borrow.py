@@ -26,10 +26,11 @@ def _is_authorized_borrower():
 
 def _is_within_working_hours(now=None):
     now = now or datetime.now()
-    # Monday=0 to Friday=4, 08:00-17:00
+    # Monday=0 to Friday=4, 08:00-16:30
     if now.weekday() > 4:
         return False
-    return 8 <= now.hour < 17
+    current_minutes = now.hour * 60 + now.minute
+    return 8 * 60 <= current_minutes <= (16 * 60 + 30)
 
 
 def _get_member_from_query():
@@ -842,7 +843,6 @@ def new_borrow():
     now = datetime.now()
     return render_template(
         'borrow/new.html',
-        default_return_date=(now + timedelta(days=7)).strftime('%Y-%m-%d'),
         borrowed_during_working_hours=_is_within_working_hours(now),
         current_datetime=now.strftime('%Y-%m-%d %H:%M'),
     )
@@ -962,7 +962,7 @@ def borrow_precheck():
     if not usage_area:
         warnings.append('Usage area is required for in-facility tracking.')
     if not in_working_hours:
-        warnings.append('Borrowing is outside working hours (Mon-Fri, 8:00-17:00).')
+        warnings.append('Borrowing is outside working hours (Mon-Fri, 8:00-16:30).')
     if unavailable_items:
         warnings.append('One or more selected equipment items are no longer available.')
 
@@ -993,7 +993,6 @@ def submit_borrow():
     payload = request.get_json(silent=True) or {}
     member_code = (payload.get('member_code') or '').strip().upper()
     usage_area = (payload.get('usage_area') or '').strip()
-    expected_return_date_raw = (payload.get('expected_return_date') or '').strip()
     notes = (payload.get('notes') or '').strip() or None
     items = payload.get('items') or []
 
@@ -1002,12 +1001,11 @@ def submit_borrow():
     if not usage_area:
         return jsonify({'ok': False, 'message': 'Usage area is required.'}), 400
 
-    expected_return_date = _parse_expected_return_date(expected_return_date_raw)
-    if not expected_return_date:
-        return jsonify({'ok': False, 'message': 'Expected return date is invalid.'}), 400
+    if not _is_within_working_hours():
+        return jsonify({'ok': False, 'message': 'Borrow transactions are only allowed from 8:00 AM to 4:30 PM.'}), 400
 
-    if expected_return_date < datetime.now().date():
-        return jsonify({'ok': False, 'message': 'Expected return date cannot be in the past.'}), 400
+    # Admin/staff manual borrow follows same-day return policy.
+    expected_return_date = datetime.now().date()
 
     if not items:
         return jsonify({'ok': False, 'message': 'At least one equipment item is required.'}), 400

@@ -26,7 +26,7 @@
             <div class="card-header bg-white border-bottom fw-semibold"><i class="bi bi-shield-check me-1"></i> In-Facility Policy</div>
             <div class="card-body small">
                 <div><strong>Current Time:</strong> {{ current_datetime }}</div>
-                <div><strong>Working Hours:</strong> Mon-Fri, 08:00-17:00</div>
+                <div><strong>Working Hours:</strong> Mon-Fri, 08:00-16:30</div>
                 <div><strong>Borrowed During Working Hours:</strong>
                     {% if borrowed_during_working_hours %}
                     <span class="badge bg-success">YES</span>
@@ -38,10 +38,7 @@
                 <label class="form-label fw-semibold">Usage Area (required)</label>
                 <input id="usageArea" class="form-control" placeholder="Room/area within facility">
                 <div class="form-text">Example: Fabrication Lab A</div>
-
-                <label class="form-label fw-semibold mt-3">Expected Return Date</label>
-                <input id="expectedReturnDate" type="date" class="form-control" value="{{ default_return_date }}">
-                <div class="form-text">Default: 7 days from today.</div>
+                <div class="form-text mt-2">Return policy: same-day only (within working hours).</div>
 
                 <label class="form-label fw-semibold mt-3">Notes (optional)</label>
                 <textarea id="borrowNotes" class="form-control" rows="2" placeholder="Any transaction notes"></textarea>
@@ -110,7 +107,6 @@
     var equipmentResults = document.getElementById('equipmentSearchResults');
     var selectedItemsBody = document.getElementById('selectedItemsBody');
     var usageArea = document.getElementById('usageArea');
-    var expectedReturnDate = document.getElementById('expectedReturnDate');
     var borrowNotes = document.getElementById('borrowNotes');
     var validateBorrowBtn = document.getElementById('validateBorrowBtn');
     var submitBorrowBtn = document.getElementById('submitBorrowBtn');
@@ -341,7 +337,6 @@
 
         var payload = {
             member_code: selectedMember.member_code,
-            expected_return_date: (expectedReturnDate.value || '').trim(),
             usage_area: (usageArea.value || '').trim(),
             notes: (borrowNotes.value || '').trim(),
             items: itemPayload

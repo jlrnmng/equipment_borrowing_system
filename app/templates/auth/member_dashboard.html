@@ -79,7 +79,7 @@
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-2 mb-3">
         <div>
             <h5 class="fw-bold mb-1">Borrow Equipment</h5>
-            <p class="text-muted mb-0">Search equipment, pick items, set the return date, and submit the request from one screen.</p>
+            <p class="text-muted mb-0">Search equipment, pick items, and submit the request from one screen.</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
             <a href="#requests" class="btn btn-outline-primary btn-sm"><i class="bi bi-file-earmark me-1"></i> My Requests</a>
@@ -158,10 +158,6 @@
 
                     <div class="row g-2 mb-3">
                         <div class="col-12 col-md-6 col-lg-12">
-                            <label for="expectedReturnDate" class="form-label fw-semibold mb-1">Return Date</label>
-                            <input id="expectedReturnDate" type="date" class="form-control" value="{{ default_return_date or '' }}">
-                        </div>
-                        <div class="col-12 col-md-6 col-lg-12">
                             <label for="usageArea" class="form-label fw-semibold mb-1">Usage Area</label>
                             <input id="usageArea" type="text" class="form-control" placeholder="e.g., Fabrication Lab A" required>
                         </div>
@@ -220,7 +216,6 @@
                         <tr>
                             <th>Equipment</th>
                             <th>Borrowed</th>
-                            <th>Due Date</th>
                             <th>Status</th>
                             <th style="width: 100px;">Action</th>
                         </tr>
@@ -234,12 +229,6 @@
                                 <div class="small text-muted">Code: {{ item.equipment_code or '-' }}</div>
                             </td>
                             <td>{{ item.borrowed_date or '-' }}</td>
-                            <td>
-                                <span class="fw-semibold">{{ item.expected_return_date }}</span>
-                                {% if item.days_overdue %}
-                                <div class="small text-danger">Overdue by {{ item.days_overdue }} days</div>
-                                {% endif %}
-                            </td>
                             <td>
                                 {% if item.return_request_status == 'pending' %}
                                     <span class="badge bg-warning text-dark">Return Pending</span>
@@ -334,7 +323,6 @@
                             <th>Request Code</th>
                             <th>Submitted</th>
                             <th>Items</th>
-                            <th>Expected Return</th>
                             <th>Usage Area</th>
                             <th>Status</th>
                         </tr>
@@ -350,7 +338,6 @@
                                 <div class="small text-muted">Serial(s): {{ req.equipment_serials or '-' }}</div>
                                 <div class="small text-muted">Code(s): {{ req.equipment_codes or '-' }}</div>
                             </td>
-                            <td>{{ req.expected_return_date }}</td>
                             <td>{{ req.usage_area }}</td>
                             <td>
                                 <span class="badge {% if req.status == 'pending' %}bg-warning text-dark{% elif req.status == 'approved' %}bg-success{% elif req.status == 'rejected' %}bg-danger{% elif req.status == 'expired' %}bg-dark{% else %}bg-secondary{% endif %}">
@@ -438,7 +425,6 @@
     var equipmentQuery = document.getElementById('equipmentQuery');
     var equipmentResults = document.getElementById('equipmentSearchResults');
     var selectedItemsBody = document.getElementById('selectedItemsBody');
-    var expectedReturnDate = document.getElementById('expectedReturnDate');
     var usageArea = document.getElementById('usageArea');
     var borrowNotes = document.getElementById('borrowNotes');
     var submitRequestBtn = document.getElementById('submitRequestBtn');
@@ -481,12 +467,6 @@
         }
         qrScanStatus.className = cls;
         qrScanStatus.textContent = message;
-    }
-
-    function setDefaultDate() {
-        var date = new Date();
-        date.setDate(date.getDate() + 7);
-        expectedReturnDate.value = date.toISOString().slice(0, 10);
     }
 
     function isPrinterOrScanner(item) {
@@ -712,10 +692,6 @@
                 showAlert('Please select at least one equipment.', 'warning');
                 return;
             }
-            if (!expectedReturnDate.value) {
-                showAlert('Please choose an expected return date.', 'warning');
-                return;
-            }
             if (!usageArea.value.trim()) {
                 showAlert('Usage area is required for borrow requests.', 'warning');
                 usageArea.focus();
@@ -759,7 +735,6 @@
 
             var payload = {
                 items: items,
-                expected_return_date: expectedReturnDate.value,
                 usage_area: usageArea.value,
                 notes: borrowNotes.value,
                 paper_request: paperRequest
@@ -823,8 +798,6 @@
         });
     });
 
-    // Set default date on page load
-    setDefaultDate();
     loadAvailableEquipment();
 })();
 </script>

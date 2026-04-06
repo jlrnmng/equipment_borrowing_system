@@ -56,12 +56,11 @@
                                 <th>Transaction</th>
                                 <th>Equipment</th>
                                 <th>Borrowed Condition</th>
-                                <th>Due Date</th>
                                 <th style="width:90px;">Select</th>
                             </tr>
                         </thead>
                         <tbody id="activeItemsBody">
-                            <tr><td colspan="5" class="text-muted text-center py-3">Lookup a member to load active borrowed items.</td></tr>
+                            <tr><td colspan="4" class="text-muted text-center py-3">Lookup a member to load active borrowed items.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -121,21 +120,17 @@
 
     function renderItems(items) {
         if (!items || !items.length) {
-            activeItemsBody.innerHTML = '<tr><td colspan="5" class="text-muted text-center py-3">No active borrowed items for this member.</td></tr>';
+            activeItemsBody.innerHTML = '<tr><td colspan="4" class="text-muted text-center py-3">No active borrowed items for this member.</td></tr>';
             setSelectedItem(null);
             return;
         }
 
         var html = items.map(function (item) {
-            var due = new Date(item.expected_return_date + 'T00:00:00');
-            var now = new Date();
-            var overdue = due < new Date(now.getFullYear(), now.getMonth(), now.getDate());
             return (
                 '<tr>' +
                 '<td><div class="fw-semibold">' + escapeHtml(item.transaction_code) + '</div><div class="small text-muted">' + escapeHtml(item.borrow_status) + '</div></td>' +
                 '<td><div class="fw-semibold">' + escapeHtml(item.equipment_name) + '</div><div class="small text-muted">' + escapeHtml(item.equipment_code) + '</div></td>' +
                 '<td><span class="badge bg-secondary text-uppercase">' + escapeHtml(item.condition_borrowed) + '</span></td>' +
-                '<td>' + escapeHtml(item.expected_return_date) + (overdue ? ' <span class="badge bg-danger ms-1">Overdue</span>' : '') + '</td>' +
                 '<td><button class="btn btn-sm btn-outline-primary select-return-item" data-item="' + encodeURIComponent(JSON.stringify(item)) + '">Select</button></td>' +
                 '</tr>'
             );
@@ -162,14 +157,14 @@
             .then(function (data) {
                 if (!data.ok) {
                     renderMember(null);
-                    activeItemsBody.innerHTML = '<tr><td colspan="5" class="text-danger text-center py-3">' + escapeHtml(data.message || 'Lookup failed.') + '</td></tr>';
+                    activeItemsBody.innerHTML = '<tr><td colspan="4" class="text-danger text-center py-3">' + escapeHtml(data.message || 'Lookup failed.') + '</td></tr>';
                     return;
                 }
                 renderMember(data.member);
                 renderItems(data.items || []);
             })
             .catch(function () {
-                activeItemsBody.innerHTML = '<tr><td colspan="5" class="text-danger text-center py-3">Unable to lookup member right now.</td></tr>';
+                activeItemsBody.innerHTML = '<tr><td colspan="4" class="text-danger text-center py-3">Unable to lookup member right now.</td></tr>';
             });
     });
 
