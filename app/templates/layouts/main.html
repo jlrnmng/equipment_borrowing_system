@@ -11,19 +11,51 @@
         <small>Equipment Borrowing System</small>
     </div>
     <div class="pt-2">
+        <!-- MEMBER NAVIGATION -->
+        {% if current_user.role == 'member' %}
+        <span class="nav-section">Main</span>
+        <a href="{{ url_for('auth.member_dashboard') }}"
+           class="nav-link {% if request.endpoint == 'auth.member_dashboard' %}active{% endif %}">
+            <i class="bi bi-house-door"></i> Dashboard
+        </a>
+
+        <span class="nav-section">Borrowing</span>
+        <a href="{{ url_for('auth.member_dashboard') }}#search"
+           class="nav-link">
+            <i class="bi bi-search"></i> Browse Equipment
+        </a>
+        <a href="{{ url_for('borrow.notification_center') }}"
+           class="nav-link {% if request.endpoint == 'borrow.notification_center' %}active{% endif %}">
+            <i class="bi bi-bell"></i> Notifications
+            {% if unread_count %}<span class="badge bg-danger ms-2" style="font-size:.6rem">{{ unread_count }}</span>{% endif %}
+        </a>
+
+        <span class="nav-section">My Activity</span>
+        <a href="{{ url_for('auth.member_dashboard') }}#requests"
+           class="nav-link">
+            <i class="bi bi-file-earmark-text"></i> My Requests
+        </a>
+        <a href="{{ url_for('auth.member_dashboard') }}#history"
+           class="nav-link">
+            <i class="bi bi-clock-history"></i> Borrowing History
+        </a>
+
+        <!-- STAFF/ADMIN NAVIGATION -->
+        {% elif current_user.role in ['admin', 'staff'] %}
         <span class="nav-section">Main</span>
         <a href="{{ url_for('dashboard.index') }}"
            class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}">
             <i class="bi bi-speedometer2"></i> Dashboard
         </a>
-        <span class="nav-section">Borrowing</span>
+
+        <span class="nav-section">Operations</span>
         <a href="{{ url_for('borrow.new_borrow') }}"
            class="nav-link {% if request.endpoint == 'borrow.new_borrow' %}active{% endif %}">
-            <i class="bi bi-box-arrow-in-down"></i> Borrow Equipment
+            <i class="bi bi-box-arrow-in-down"></i> New Borrow
         </a>
         <a href="{{ url_for('members.scan_member') }}"
            class="nav-link {% if request.endpoint == 'members.scan_member' %}active{% endif %}">
-            <i class="bi bi-qr-code-scan"></i> Scan Member QR
+            <i class="bi bi-qr-code-scan"></i> Scan Member
         </a>
         <a href="{{ url_for('borrow.new_return') }}"
            class="nav-link {% if request.endpoint == 'borrow.new_return' %}active{% endif %}">
@@ -37,9 +69,9 @@
            class="nav-link {% if request.endpoint == 'borrow.notification_center' %}active{% endif %}">
             <i class="bi bi-envelope-check"></i> Notifications
         </a>
-        <a href="#" class="nav-link text-secondary"><i class="bi bi-clock-history"></i> Active Borrowings</a>
+
         <span class="nav-section">Management</span>
-        {% if current_user.role in ['admin', 'staff'] %}
+        {% if current_user.role == 'admin' %}
         <a href="{{ url_for('staff_admin.register_staff') }}"
            class="nav-link {% if request.endpoint == 'staff_admin.register_staff' %}active{% endif %}">
             <i class="bi bi-person-badge"></i> Staff Accounts
@@ -49,6 +81,7 @@
            class="nav-link {% if request.endpoint in ['equipment.list_equipment', 'equipment.add_equipment', 'equipment.equipment_detail', 'equipment.edit_equipment'] %}active{% endif %}">
             <i class="bi bi-box2"></i> Equipment
         </a>
+
         <span class="nav-section">Reports</span>
         <a href="{{ url_for('reports.reports_index') }}"
            class="nav-link {% if request.endpoint and request.endpoint.startswith('reports.') %}active{% endif %}">
@@ -58,6 +91,7 @@
            class="nav-link {% if request.endpoint == 'reports.violations_report' %}active{% endif %}">
             <i class="bi bi-shield-exclamation"></i> Violations
         </a>
+        {% endif %}
     </div>
     <div class="sidebar-bottom">
         <div class="d-flex align-items-center gap-2 mb-2">
@@ -85,7 +119,7 @@
             </button>
             <span class="page-title">{% block page_title %}Dashboard{% endblock %}</span>
         </div>
-        <div class="d-flex align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2 topbar-right">
             <div class="page-actions">
                 {% block page_actions %}{% endblock %}
             </div>

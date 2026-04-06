@@ -7,6 +7,7 @@ A Flask-based web application for managing equipment borrowing in a facility usi
 ## Table of Contents
 
 - [Features](#features)
+- [Recent UI Updates](#recent-ui-updates)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
 - [Prerequisites](#prerequisites)
@@ -33,6 +34,10 @@ A Flask-based web application for managing equipment borrowing in a facility usi
 - Borrow transactions with member eligibility checks and equipment assignment
 - Member self-service borrow request dashboard (search equipment, submit request, view request history)
 - Member dashboard camera scanner: scan equipment QR to add items instantly to a borrow request
+- Unified authenticated shell: role-aware sidebar/topbar for both member and staff sessions
+- Member dashboard redesign with quick-action cards, stats summary, and clearer section hierarchy
+- Member borrow flow moved to a guided modal (search, QR scan, select items, submit request)
+- Member active borrowing, return request, and request history sections are easier to scan and navigate
 - Admin dashboard queue for pending member requests with approve/reject actions
 - Approved member requests are converted into active borrow transactions automatically
 - Pending member borrow/return requests auto-expire after 30 minutes (kept in history for reporting/audit)
@@ -44,7 +49,7 @@ A Flask-based web application for managing equipment borrowing in a facility usi
 - Notification queue pipeline for borrow/return/reminder/overdue emails
 - Automated reminder scheduler (due-tomorrow reminders + overdue warnings)
 - Extended member profile requirements: phone, ID number, startup/agency, college department, program, year level
-- Shared UI polish stylesheet for consistent shell/auth/dashboard presentation
+- Shared UI polish stylesheet for consistent shell/auth/dashboard presentation, responsive quick actions, and improved table/readability states
 - CSRF protection on all forms
 - Session timeout after 30 minutes of inactivity
 - No back-button bypass after logout (cache headers)
@@ -61,6 +66,29 @@ A Flask-based web application for managing equipment borrowing in a facility usi
 **Planned (see `2-week_development_plan.txt`):**
 - Gmail API native integration (database ready; SMTP queue fallback implemented)
 - Google Calendar integration (database ready)
+
+---
+
+## Recent UI Updates
+
+The member-side experience was updated to improve navigation and reduce friction for common tasks.
+
+- Role-aware navigation now uses the shared authenticated layout, so members and staff get a consistent shell.
+- Member dashboard now includes:
+  - At-a-glance stats (member code, borrow count/limit, status, pending requests)
+  - Quick actions for search, requests, returns, notifications, and profile
+  - Cleaner history/return tables with clearer status badges
+- Borrow request flow is now guided inside a modal for faster completion:
+  - Search by equipment code/name/category
+  - Optional QR scan input
+  - Item selection with condition choice
+  - Expected return date + usage area + notes
+- Styling refresh focused on readability and responsiveness:
+  - Better spacing and visual hierarchy
+  - Improved empty states and table headers
+  - Mobile-friendly action buttons and layout behavior
+
+For a full breakdown, see `UI_IMPROVEMENTS.md`.
 
 ---
 

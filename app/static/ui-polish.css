@@ -70,6 +70,10 @@ a:hover {
     --bs-table-hover-bg: rgba(15, 92, 192, 0.06);
 }
 
+.table-responsive {
+    -webkit-overflow-scrolling: touch;
+}
+
 .table thead th {
     color: #31445c;
     font-weight: 600;
@@ -362,6 +366,16 @@ a:hover {
     .page-actions {
         justify-content: flex-end;
     }
+
+    .topbar-right {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        row-gap: 0.4rem;
+    }
+
+    .page-actions .btn {
+        min-height: 34px;
+    }
 }
 
 @media (max-width: 575.98px) {
@@ -378,6 +392,36 @@ a:hover {
 
     .page-content {
         padding: 0.74rem;
+    }
+
+    .topbar {
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+
+    .topbar > div {
+        width: 100%;
+    }
+
+    .topbar-right {
+        justify-content: space-between;
+        gap: 0.45rem;
+    }
+
+    .page-actions {
+        width: 100%;
+        gap: 0.38rem;
+    }
+
+    .page-actions .btn {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding-left: 0.55rem;
+        padding-right: 0.55rem;
+    }
+
+    .topbar-right > .btn-outline-danger {
+        flex: 0 0 auto;
     }
 
     .card .card-header,
@@ -403,6 +447,23 @@ a:hover {
         font-size: 0.92rem;
     }
 
+    .modal-dialog {
+        margin: 0.4rem;
+    }
+
+    .modal .modal-body {
+        padding: 0.85rem;
+    }
+
+    .modal .table td,
+    .modal .table th {
+        white-space: nowrap;
+    }
+
+    #qr-reader {
+        min-height: 90px !important;
+    }
+
     .auth-card {
         border-radius: 18px;
     }
@@ -419,5 +480,171 @@ a:hover {
 
     .sidebar-backdrop {
         display: none !important;
+    }
+}
+
+/* ===== Member Dashboard Enhancements ===== */
+
+/* Quick Action Buttons */
+.btn-sm > i {
+    display: block;
+    font-size: 1.4rem;
+    margin-bottom: 0.35rem;
+}
+
+.col-6.col-md-4.col-lg-2 > .btn,
+.col-6.col-md-4.col-lg-2 > a.btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 84px;
+    white-space: normal;
+    line-height: 1.3;
+    font-size: 0.82rem;
+    font-weight: 600;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.col-6.col-md-4.col-lg-2 > .btn:hover,
+.col-6.col-md-4.col-lg-2 > a.btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(15, 92, 192, 0.18);
+}
+
+/* Modal Improvements */
+.modal-content {
+    border: 1px solid rgba(172, 186, 204, 0.55);
+    box-shadow: var(--ui-shadow-md);
+}
+
+.modal-header {
+    background: linear-gradient(180deg, #fdfefe 0%, #f7f9fc 100%);
+}
+
+.modal-footer {
+    background: linear-gradient(180deg, #f7f9fc 0%, #f0f3f9 100%);
+}
+
+/* Card improvements */
+.card-sm {
+    border-radius: var(--ui-radius-sm);
+    border: 1px solid rgba(168, 183, 203, 0.4);
+    font-size: 0.92rem;
+}
+
+.card-sm .card-body {
+    padding: 0.75rem 1rem;
+}
+
+/* Empty state styling */
+.text-center.text-muted.py-5,
+.text-center.text-muted.py-4 {
+    color: #8595b3 !important;
+}
+
+/* Table enhancements */
+.table-sm thead th {
+    background-color: #f5f7fc;
+    color: #31445c;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    padding: 0.6rem 0.5rem;
+}
+
+.table-sm td {
+    padding: 0.6rem 0.5rem;
+    vertical-align: middle;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(15, 92, 192, 0.04) !important;
+}
+
+/* Form controls in modals */
+.modal .form-control,
+.modal .form-select {
+    font-size: 0.92rem;
+    border-color: #c3d0e2;
+}
+
+/* Badge with icon support */
+.badge i {
+    margin-right: 0.35rem;
+}
+
+/* Links in tables */
+.table a {
+    text-decoration: none;
+    color: var(--ui-primary);
+    font-weight: 500;
+}
+
+.table a:hover {
+    text-decoration: underline;
+    color: var(--ui-primary-strong);
+}
+
+/* Help text styling */
+.form-text {
+    color: #8595b3;
+    font-size: 0.78rem;
+    margin-top: 0.25rem;
+}
+
+/* Breadcrumb styling */
+.breadcrumb {
+    background-color: transparent;
+    padding: 0.5rem 0;
+    margin-bottom: 1rem;
+}
+
+.breadcrumb-item {
+    font-size: 0.92rem;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    content: "/";
+    color: #a8b8cc;
+    padding: 0 0.5rem;
+}
+
+/* Status badge colors */
+.badge.bg-warning.text-dark {
+    background-color: #ffc978 !important;
+    color: #3d2405 !important;
+}
+
+.badge.bg-success {
+    background-color: var(--ui-success) !important;
+}
+
+.badge.bg-danger {
+    background-color: var(--ui-danger) !important;
+}
+
+/* Icon box styling */
+.icon-box {
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+/* Responsive improvements */
+@media (max-width: 767.98px) {
+    .col-6.col-md-4.col-lg-2 > .btn,
+    .col-6.col-md-4.col-lg-2 > a.btn {
+        min-height: 72px;
+        font-size: 0.76rem;
+    }
+
+    .table-responsive {
+        font-size: 0.85rem;
+    }
+
+    .modal-dialog {
+        margin: 0.5rem;
     }
 }

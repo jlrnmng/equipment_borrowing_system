@@ -358,12 +358,22 @@ def member_dashboard():
     requests = MemberBorrowRequest.get_member_requests(member_row['member_id'], limit=25)
     active_return_items = MemberReturnRequest.get_member_active_items(member_row['member_id'])
     return_requests = MemberReturnRequest.get_member_return_requests(member_row['member_id'], limit=25)
+    
+    # Calculate pending requests count
+    pending_requests_count = sum(1 for req in requests if req.get('status') == 'pending')
+    
+    # Calculate default return date (7 days from today)
+    from datetime import datetime, timedelta
+    default_return_date = (datetime.today() + timedelta(days=7)).strftime('%Y-%m-%d')
+    
     return render_template(
         'auth/member_dashboard.html',
         member=member_row,
         requests=requests,
         active_return_items=active_return_items,
         return_requests=return_requests,
+        pending_requests_count=pending_requests_count,
+        default_return_date=default_return_date,
     )
 
 
