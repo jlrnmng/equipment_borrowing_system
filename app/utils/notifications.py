@@ -200,3 +200,43 @@ def build_return_confirmation_message(member_name, transaction_code, equipment_n
         f"{overdue_note}\n"
         "- DOST-CSPC ASOG TBI"
     )
+
+
+def build_borrow_request_review_message(member_name, request_code, status, review_notes=None):
+    status_text = (status or '').strip().lower()
+    if status_text == 'approved':
+        headline = 'Your borrow request has been approved.'
+    elif status_text == 'rejected':
+        headline = 'Your borrow request has been rejected.'
+    else:
+        headline = f"Your borrow request status is now: {status_text or 'updated'}."
+
+    note_block = f"\nReview notes: {review_notes}\n" if review_notes else ''
+    return (
+        f"Hello {member_name},\n\n"
+        f"{headline}\n"
+        f"Request: {request_code}\n"
+        f"Status: {status_text or '-'}\n"
+        f"{note_block}\n"
+        "- DOST-CSPC ASOG TBI"
+    )
+
+
+def build_return_request_review_message(member_name, return_request_code, status, review_notes=None):
+    status_text = (status or '').strip().lower()
+    if status_text == 'approved':
+        headline = 'Your return request has been approved and processed.'
+    elif status_text == 'rejected':
+        headline = 'Your return request has been rejected.'
+    else:
+        headline = f"Your return request status is now: {status_text or 'updated'}."
+
+    note_block = f"\nReview notes: {review_notes}\n" if review_notes else ''
+    return (
+        f"Hello {member_name},\n\n"
+        f"{headline}\n"
+        f"Return request: {return_request_code}\n"
+        f"Status: {status_text or '-'}\n"
+        f"{note_block}\n"
+        "- DOST-CSPC ASOG TBI"
+    )

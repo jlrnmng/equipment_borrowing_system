@@ -12,7 +12,9 @@ from app.utils.request_expiry import expire_stale_requests
 from app.utils.db import get_db
 from app.utils.notifications import (
     build_borrow_confirmation_message,
+    build_borrow_request_review_message,
     build_return_confirmation_message,
+    build_return_request_review_message,
     queue_and_send_notification,
 )
 from app.utils.reminders import run_reminder_cycle, process_pending_notifications as process_pending_notifications_service
@@ -548,7 +550,7 @@ def approve_member_request(request_id):
     if recipient_email:
         try:
             member_name = f"{request_row.get('first_name', '')} {request_row.get('last_name', '')}".strip() or request_row.get('member_code')
-            queue_and_send_notification(
+            notify_result = queue_and_send_notification(
                 member_id=member_row['member_id'],
                 borrow_id=borrow_id,
                 notification_type='borrow_confirmation',
@@ -562,6 +564,8 @@ def approve_member_request(request_id):
                     total_items=len(request_items),
                 ),
             )
+            if not notify_result.get('sent'):
+                flash('Borrow approval saved, but email was not delivered (queued or failed). Check Notification Queue.', 'warning')
         except Exception:
             current_app.logger.exception('Failed to queue/send approval notification for borrow request %s', request_id)
 
@@ -617,6 +621,29 @@ def reject_member_request(request_id):
         return redirect(url_for('dashboard.index'))
 
     flash(f"Request {request_row.get('request_code')} has been rejected.", 'info')
+
+    recipient_email = (request_row.get('email') or request_row.get('google_email') or '').strip()
+    if recipient_email:
+        try:
+            member_name = f"{request_row.get('first_name', '')} {request_row.get('last_name', '')}".strip() or request_row.get('member_code')
+            notify_result = queue_and_send_notification(
+                member_id=request_row.get('member_id'),
+                borrow_id=None,
+                notification_type='borrow_request_rejected',
+                recipient_email=recipient_email,
+                subject=f"Borrow Request Rejected - {request_row.get('request_code')}",
+                message=build_borrow_request_review_message(
+                    member_name=member_name,
+                    request_code=request_row.get('request_code') or '-',
+                    status='rejected',
+                    review_notes=review_notes,
+                ),
+            )
+            if not notify_result.get('sent'):
+                flash('Borrow rejection saved, but email was not delivered (queued or failed). Check Notification Queue.', 'warning')
+        except Exception:
+            current_app.logger.exception('Failed to queue/send rejection notification for borrow request %s', request_id)
+
     return redirect(url_for('dashboard.index'))
 
 
@@ -673,7 +700,7 @@ def approve_member_return_request(return_request_id):
     if recipient_email:
         try:
             member_name = f"{request_row.get('first_name', '')} {request_row.get('last_name', '')}".strip() or request_row.get('member_code')
-            queue_and_send_notification(
+            notify_result = queue_and_send_notification(
                 member_id=request_row['member_id'],
                 borrow_id=request_row['borrow_id'],
                 notification_type='return_confirmation',
@@ -687,6 +714,8 @@ def approve_member_return_request(return_request_id):
                     days_overdue=receipt_meta['days_overdue'],
                 ),
             )
+            if not notify_result.get('sent'):
+                flash('Return approval processed, but email was not delivered (queued or failed). Check Notification Queue.', 'warning')
         except Exception:
             current_app.logger.exception('Failed to queue/send approval notification for return request %s', return_request_id)
 
@@ -746,6 +775,29 @@ def reject_member_return_request(return_request_id):
         return redirect(url_for('dashboard.index'))
 
     flash(f"Return request {request_row.get('return_request_code')} has been rejected.", 'info')
+
+    recipient_email = (request_row.get('email') or request_row.get('google_email') or '').strip()
+    if recipient_email:
+        try:
+            member_name = f"{request_row.get('first_name', '')} {request_row.get('last_name', '')}".strip() or request_row.get('member_code')
+            notify_result = queue_and_send_notification(
+                member_id=request_row.get('member_id'),
+                borrow_id=request_row.get('borrow_id'),
+                notification_type='return_request_rejected',
+                recipient_email=recipient_email,
+                subject=f"Return Request Rejected - {request_row.get('return_request_code')}",
+                message=build_return_request_review_message(
+                    member_name=member_name,
+                    return_request_code=request_row.get('return_request_code') or '-',
+                    status='rejected',
+                    review_notes=review_notes,
+                ),
+            )
+            if not notify_result.get('sent'):
+                flash('Return rejection saved, but email was not delivered (queued or failed). Check Notification Queue.', 'warning')
+        except Exception:
+            current_app.logger.exception('Failed to queue/send rejection notification for return request %s', return_request_id)
+
     return redirect(url_for('dashboard.index'))
 
 
