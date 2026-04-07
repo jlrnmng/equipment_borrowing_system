@@ -591,6 +591,32 @@
         });
     }
 
+    function renderEquipmentResults(results) {
+        if (!results || !results.length) {
+            equipmentResults.innerHTML = '<div class="text-muted text-center py-4">No equipment found</div>';
+            return;
+        }
+
+        equipmentResults.innerHTML = results.map(function (eq) {
+            var serialDisplay = eq.serial_number || eq.inventory_number || '-';
+            return (
+                '<div class="card card-sm mb-2">' +
+                '<div class="card-body p-2">' +
+                '<div class="d-flex justify-content-between align-items-start gap-2">' +
+                '<div>' +
+                '<div class="fw-semibold">' + escapeHtml(eq.equipment_name) + '</div>' +
+                '<div class="small text-muted">Serial: ' + escapeHtml(serialDisplay) + ' • Code: ' + escapeHtml(eq.equipment_code || '-') + ' • ' + escapeHtml(eq.category || '-') + '</div>' +
+                '</div>' +
+                '<button type="button" class="btn btn-sm btn-outline-primary add-equipment-btn" data-equipment-id="' + eq.equipment_id + '" data-equipment-name="' + escapeHtml(eq.equipment_name) + '" data-equipment-code="' + escapeHtml(eq.equipment_code || '') + '" data-serial-number="' + escapeHtml(eq.serial_number || '') + '" data-inventory-number="' + escapeHtml(eq.inventory_number || '') + '" data-category="' + escapeHtml(eq.category || '-') + '">Add</button>' +
+                '</div>' +
+                '</div>' +
+                '</div>'
+            );
+        }).join('');
+
+        bindAddEquipmentButtons();
+    }
+
     function searchEquipment() {
         var query = equipmentQuery.value.trim();
         if (!query) {
@@ -602,29 +628,32 @@
         fetch('/api/member/equipment-search?query=' + encodeURIComponent(query))
             .then(function (res) { return res.json(); })
             .then(function (data) {
-                if (!data.ok || !data.results || !data.results.length) {
+                if (!data.ok) {
                     equipmentResults.innerHTML = '<div class="text-muted text-center py-4">No equipment found</div>';
                     return;
                 }
-                equipmentResults.innerHTML = data.results.map(function (eq) {
-                    var serialDisplay = eq.serial_number || eq.inventory_number || '-';
-                    return (
-                        '<div class="card card-sm mb-2">' +
-                        '<div class="card-body p-2">' +
-                        '<div class="d-flex justify-content-between align-items-start gap-2">' +
-                        '<div>' +
-                        '<div class="fw-semibold">' + escapeHtml(eq.equipment_name) + '</div>' +
-                        '<div class="small text-muted">Serial: ' + escapeHtml(serialDisplay) + ' • Code: ' + escapeHtml(eq.equipment_code || '-') + ' • ' + escapeHtml(eq.category || '-') + '</div>' +
-                        '</div>' +
-                        '<button type="button" class="btn btn-sm btn-outline-primary add-equipment-btn" data-equipment-id="' + eq.equipment_id + '" data-equipment-name="' + escapeHtml(eq.equipment_name) + '" data-equipment-code="' + escapeHtml(eq.equipment_code || '') + '" data-serial-number="' + escapeHtml(eq.serial_number || '') + '" data-inventory-number="' + escapeHtml(eq.inventory_number || '') + '" data-category="' + escapeHtml(eq.category || '-') + '">Add</button>' +
-                        '</div>' +
-                        '</div>' +
-                        '</div>'
-                    );
-                }).join('');
-                bindAddEquipmentButtons();
+                renderEquipmentResults(data.results || []);
             })
             .catch(function () { showAlert('Failed to search equipment.', 'danger'); });
+    }
+
+    function searchEquipmentFromQr(qrPayload) {
+        equipmentResults.innerHTML = '<div class="text-muted text-center">Scanning QR...</div>';
+        fetch('/api/member/equipment-from-qr?qr_data=' + encodeURIComponent(qrPayload))
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                if (!data.ok || !data.item) {
+                    // Fallback to text search to support non-standard QR payloads.
+                    searchEquipment();
+                    return;
+                }
+
+                renderEquipmentResults([data.item]);
+                setQrStatus('Equipment found from QR scan.', 'success');
+            })
+            .catch(function () {
+                searchEquipment();
+            });
     }
 
     // Initialize QR Scanner
@@ -646,7 +675,7 @@
                 qrLastValue = decodedText;
                 qrLastHandledAt = now;
                 equipmentQuery.value = decodedText;
-                searchEquipment();
+                searchEquipmentFromQr(decodedText);
             },
             function onScanError(error) { }
         ).then(function () {
