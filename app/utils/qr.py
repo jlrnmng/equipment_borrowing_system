@@ -36,9 +36,15 @@ def _sanitize_filename_part(value):
     return text.strip('._')
 
 
+def build_member_qr_filename(member_code):
+    """Build deterministic member QR filename based on unique member code."""
+    safe_code = _sanitize_filename_part(member_code) or 'member'
+    return f"{safe_code}.png"
+
+
 def generate_member_qr(member_code):
     """Generate a QR PNG for a member code and return static-relative path."""
-    filename = f"{member_code}.png"
+    filename = build_member_qr_filename(member_code)
     return _save_qr(os.path.join('qr', 'members'), filename, f"MEMBER:{member_code}")
 
 

@@ -21,44 +21,67 @@
                 </span>
             </div>
             <div class="card-body">
+                <div class="rounded-4 border p-3 p-md-4 mb-3"
+                     style="background: linear-gradient(135deg, #f4f9ff 0%, #fff8ef 100%);">
+                    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center"
+                                 style="width:56px;height:56px;">
+                                <i class="bi bi-person-vcard" style="font-size:1.35rem;"></i>
+                            </div>
+                            <div>
+                                <div class="text-muted text-uppercase small fw-semibold">Member Profile</div>
+                                <div class="h5 mb-1">{{ full_name }}</div>
+                                <div class="font-monospace small text-secondary">{{ member.member_code }}</div>
+                            </div>
+                        </div>
+                        <div class="text-md-end">
+                            <div class="small text-muted mb-1">Current Borrow Usage</div>
+                            <div class="h5 mb-0">{{ member.current_borrow_count }} / {{ member.max_borrow_limit }}</div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <label class="text-muted small fw-semibold d-block">Member Code</label>
-                        <span class="font-monospace h6">{{ member.member_code }}</span>
+                        <div class="border rounded-3 p-3 h-100 bg-light-subtle">
+                            <label class="text-muted small fw-semibold d-block mb-1">Email</label>
+                            <span class="h6 mb-0 d-block">{{ member.email or member.google_email or '-' }}</span>
+                        </div>
                     </div>
                     <div class="col-md-6">
-                        <label class="text-muted small fw-semibold d-block">Full Name</label>
-                        <span class="h6">{{ full_name }}</span>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="text-muted small fw-semibold d-block">Email</label>
-                        <span class="h6">{{ member.email or member.google_email or '-' }}</span>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="text-muted small fw-semibold d-block">Google Linked</label>
-                        <span class="h6">
+                        <div class="border rounded-3 p-3 h-100 bg-light-subtle">
+                            <label class="text-muted small fw-semibold d-block mb-1">Google Linked</label>
                             {% if member.google_sub %}
                                 <span class="badge bg-success-subtle text-success-emphasis">Linked</span>
                             {% else %}
                                 <span class="badge bg-secondary-subtle text-secondary-emphasis">Not Linked</span>
                             {% endif %}
-                        </span>
+                        </div>
                     </div>
                     <div class="col-md-6">
-                        <label class="text-muted small fw-semibold d-block">Phone</label>
-                        <span class="h6">{{ member.phone or '-' }}</span>
+                        <div class="border rounded-3 p-3 h-100 bg-light-subtle">
+                            <label class="text-muted small fw-semibold d-block mb-1">Phone</label>
+                            <span class="h6 mb-0 d-block">{{ member.phone or '-' }}</span>
+                        </div>
                     </div>
                     <div class="col-md-6">
-                        <label class="text-muted small fw-semibold d-block">ID Number</label>
-                        <span class="h6">{{ member.student_id or '-' }}</span>
+                        <div class="border rounded-3 p-3 h-100 bg-light-subtle">
+                            <label class="text-muted small fw-semibold d-block mb-1">ID Number</label>
+                            <span class="h6 mb-0 d-block">{{ member.student_id or '-' }}</span>
+                        </div>
                     </div>
                     <div class="col-md-6">
-                        <label class="text-muted small fw-semibold d-block">Startup/Agency</label>
-                        <span class="h6">{{ member.startup or '-' }}</span>
+                        <div class="border rounded-3 p-3 h-100 bg-light-subtle">
+                            <label class="text-muted small fw-semibold d-block mb-1">Startup/Agency</label>
+                            <span class="h6 mb-0 d-block">{{ member.startup or '-' }}</span>
+                        </div>
                     </div>
                     <div class="col-md-6">
-                        <label class="text-muted small fw-semibold d-block">Borrow Limit</label>
-                        <span class="h6">{{ member.current_borrow_count }} / {{ member.max_borrow_limit }}</span>
+                        <div class="border rounded-3 p-3 h-100 bg-light-subtle">
+                            <label class="text-muted small fw-semibold d-block mb-1">Borrow Limit</label>
+                            <span class="h6 mb-0 d-block">{{ member.current_borrow_count }} / {{ member.max_borrow_limit }}</span>
+                        </div>
                     </div>
                 </div>
             </div>

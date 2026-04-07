@@ -18,7 +18,9 @@
                 <img src="{{ url_for('static', filename='ASOG-TBI_full-colored_stacked.png') }}"
                      alt="ASOG TBI Logo"
                      class="img-fluid mb-3 auth-logo">
-                 <small class="d-block text-muted">Staff Portal – Sign In</small>
+                 <div class="small text-uppercase text-muted fw-semibold mb-1">
+                    Sign in with Google
+                </div>
             </div>
 
             {% if google_oauth_enabled %}
@@ -30,13 +32,15 @@
                     </button>
                 </form>
             </div>
-            <div class="text-center text-muted small mb-3">
-                Allowed domains:
-                <strong>
+            <div class="bg-light border rounded-3 px-3 py-2 mb-3">
+                <div class="small text-uppercase text-muted fw-semibold mb-1">
+                    Domain Access
+                </div>
+                <div class="d-flex flex-wrap gap-2 justify-content-center">
                     {% for domain in allowed_domains %}
-                        @{{ domain }}{% if not loop.last %}, {% endif %}
+                    <span class="badge rounded-pill text-bg-secondary fw-normal">@{{ domain }}</span>
                     {% endfor %}
-                </strong>
+                </div>
             </div>
             <div class="d-flex align-items-center my-3">
                 <hr class="flex-grow-1">

@@ -152,12 +152,12 @@
                         <i class="bi bi-download me-1"></i> Download QR
                     </a>
                     {% endif %}
-                    <form method="POST" action="{{ url_for('equipment.regenerate_equipment_qr', equipment_id=equipment.equipment_id) }}">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn btn-outline-warning w-100">
-                            <i class="bi bi-arrow-repeat me-1"></i> Regenerate QR
-                        </button>
-                    </form>
+                    <button type="button"
+                            class="btn btn-outline-warning w-100"
+                            data-bs-toggle="modal"
+                            data-bs-target="#confirmRegenerateQrModal">
+                        <i class="bi bi-arrow-repeat me-1"></i> Regenerate QR
+                    </button>
                 </div>
 
                 <small class="text-muted d-block mt-2">Use this equipment code during management and the inventory number for physical label matching.</small>
@@ -184,6 +184,33 @@
 
                 <hr/>
                 <p class="mb-0">Equipment must be used within the facility during regular working hours (Mon-Fri, 8am-5pm).</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="confirmRegenerateQrModal" tabindex="-1" aria-labelledby="confirmRegenerateQrLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-warning-subtle">
+                <h5 class="modal-title fw-semibold" id="confirmRegenerateQrLabel">
+                    <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>
+                    Confirm QR Regeneration
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">Are you sure you want to regenerate this equipment QR code?</p>
+                <small class="text-muted">This will replace the current QR image for <strong>{{ equipment.equipment_name }}</strong>.</small>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{{ url_for('equipment.regenerate_equipment_qr', equipment_id=equipment.equipment_id) }}" class="m-0">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-arrow-repeat me-1"></i> Yes, Regenerate QR
+                    </button>
+                </form>
             </div>
         </div>
     </div>

@@ -346,7 +346,8 @@ class Member:
                 SELECT member_id, member_code, email, google_email,
                        first_name, middle_name, last_name,
                        phone, student_id, startup, college_department,
-                       program, year_level, status
+                      program, year_level, status,
+                      current_borrow_count, max_borrow_limit, qr_code_path
                 FROM members
                 WHERE member_id = %s
                 LIMIT 1

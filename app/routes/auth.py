@@ -12,6 +12,7 @@ from app.models.member import Member
 from app.models.member_request import MemberBorrowRequest
 from app.models.member_return_request import MemberReturnRequest
 from app.models.staff import Staff
+from app.utils.db import get_db
 from app.utils.request_expiry import expire_stale_requests
 from app.utils.qr import extract_equipment_code
 from app.utils.notifications import build_welcome_message, queue_and_send_notification
@@ -341,6 +342,20 @@ def complete_profile():
     if not member_row:
         flash('Member account not found. Please sign in again.', 'danger')
         return redirect(url_for('auth.logout'))
+
+    if not member_row.get('qr_code_path'):
+        try:
+            qr_path = generate_member_qr(member_row['member_code'])
+            db = get_db()
+            with db.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE members SET qr_code_path = %s, updated_at = CURRENT_TIMESTAMP WHERE member_id = %s",
+                    (qr_path, member_row['member_id']),
+                )
+            db.commit()
+            member_row['qr_code_path'] = qr_path
+        except Exception:
+            current_app.logger.exception('Failed to auto-generate member QR for %s', member_row.get('member_code'))
 
     if request.method == 'POST':
         phone = (request.form.get('phone') or '').strip()

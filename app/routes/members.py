@@ -5,7 +5,7 @@ from flask_login import current_user, login_required
 from app.forms import MemberProfileForm
 from app.models.member import Member
 from app.utils.db import get_db
-from app.utils.qr import extract_member_code, generate_member_qr
+from app.utils.qr import build_member_qr_filename, extract_member_code, generate_member_qr
 
 members_bp = Blueprint('members', __name__)
 
@@ -105,7 +105,10 @@ def member_profile(member_code):
         flash('Member not found.', 'danger')
         return redirect(url_for('members.scan_member'))
 
-    if not profile.get('qr_code_path'):
+    expected_qr_path = f"qr/members/{build_member_qr_filename(profile['member_code'])}"
+    current_qr_path = profile.get('qr_code_path')
+
+    if not current_qr_path or current_qr_path != expected_qr_path:
         try:
             qr_path = generate_member_qr(profile['member_code'])
             db = get_db()

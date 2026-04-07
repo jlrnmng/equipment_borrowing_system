@@ -1,14 +1,77 @@
 {% extends 'base.html' %}
 {% block title %}Complete Your Profile – QR Equipment Borrowing System{% endblock %}
+{% block extra_head %}
+<style>
+@media (max-width: 575.98px) {
+    .member-profile-card .card-body {
+        padding: 1.1rem !important;
+    }
+
+    .member-profile-intro h4 {
+        font-size: 1.2rem;
+    }
+
+    .member-qr-panel {
+        padding: 0.9rem !important;
+    }
+
+    .member-qr-meta {
+        text-align: center;
+    }
+
+    .member-qr-image {
+        max-width: 120px !important;
+    }
+
+    .member-qr-download-btn {
+        width: 100%;
+    }
+
+    .member-profile-form .form-label {
+        font-size: 0.9rem;
+    }
+
+    .member-profile-form .form-control,
+    .member-profile-form .form-select {
+        font-size: 0.95rem;
+    }
+}
+</style>
+{% endblock %}
 {% block body %}
 <div class="auth-shell py-4">
-    <div class="card auth-card auth-card-md">
+    <div class="card auth-card auth-card-md member-profile-card">
         <div class="card-body p-4 p-sm-5">
-            <div class="text-center mb-4">
+            <div class="text-center mb-4 member-profile-intro">
                 <i class="bi bi-person-lines-fill fs-2 text-primary d-inline-block mb-2"></i>
                 <h4 class="fw-bold mb-1">Complete Your Profile</h4>
                 <p class="text-muted mb-0">Please provide your details first before accessing your member dashboard.</p>
             </div>
+
+            {% if member.qr_code_path %}
+            <div class="border rounded-4 p-3 p-md-4 mb-4 member-qr-panel" style="background: linear-gradient(135deg, #f5f9ff 0%, #fffaf2 100%);">
+                <div class="d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
+                    <div class="member-qr-meta">
+                        <div class="small text-uppercase text-muted fw-semibold">My Member QR</div>
+                        <div class="h6 mb-1 font-monospace">{{ member.member_code }}</div>
+                        <div class="small text-muted">Present this QR when borrowing equipment.</div>
+                    </div>
+                    <div class="text-center">
+                        <img src="{{ url_for('static', filename=member.qr_code_path) }}"
+                             alt="Member QR"
+                             class="img-fluid border rounded p-2 bg-white member-qr-image"
+                             style="max-width: 140px;">
+                        <div class="mt-2">
+                            <a href="{{ url_for('static', filename=member.qr_code_path) }}"
+                               class="btn btn-outline-primary btn-sm member-qr-download-btn"
+                               download="{{ member.member_code }}.png">
+                                <i class="bi bi-download me-1"></i> Download QR
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
 
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% for category, message in messages %}
@@ -19,7 +82,7 @@
                 {% endfor %}
             {% endwith %}
 
-            <form method="POST" action="{{ url_for('auth.complete_profile') }}" class="row g-3" novalidate>
+            <form method="POST" action="{{ url_for('auth.complete_profile') }}" class="row g-3 member-profile-form" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                 <div class="col-12 col-md-6">
