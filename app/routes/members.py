@@ -1,11 +1,18 @@
+import os
+
 import pymysql
-from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 
 from app.forms import MemberProfileForm
 from app.models.member import Member
 from app.utils.db import get_db
-from app.utils.qr import build_member_qr_filename, extract_member_code, generate_member_qr
+from app.utils.qr import (
+    build_member_qr_download_filename,
+    build_member_qr_filename,
+    extract_member_code,
+    generate_member_qr,
+)
 
 members_bp = Blueprint('members', __name__)
 
@@ -182,6 +189,58 @@ def member_profile(member_code):
         violations=violations,
         calendar_status=calendar_status,
     )
+
+
+@members_bp.route('/members/<member_code>/qr/download', methods=['GET'])
+@login_required
+def download_member_qr(member_code):
+    normalized_code = _extract_member_code(member_code)
+    if not normalized_code:
+        flash('Invalid member code format.', 'warning')
+        return redirect(url_for('members.scan_member'))
+
+    is_owner_member = getattr(current_user, 'role', None) == 'member' and getattr(current_user, 'member_code', None) == normalized_code
+    if not _is_authorized_scanner() and not is_owner_member:
+        flash('You are not authorized to download this member QR code.', 'danger')
+        if getattr(current_user, 'role', None) == 'member':
+            return redirect(url_for('auth.complete_profile'))
+        return redirect(url_for('dashboard.index'))
+
+    profile = Member.get_profile_by_member_code(normalized_code)
+    if not profile:
+        flash('Member not found.', 'danger')
+        return redirect(url_for('members.scan_member'))
+
+    qr_path = profile.get('qr_code_path')
+    if not qr_path:
+        qr_path = generate_member_qr(normalized_code)
+        db = get_db()
+        with db.cursor() as cursor:
+            cursor.execute(
+                "UPDATE members SET qr_code_path = %s, updated_at = CURRENT_TIMESTAMP WHERE member_id = %s",
+                (qr_path, profile['member_id']),
+            )
+        db.commit()
+
+    abs_qr_path = os.path.join(current_app.static_folder, qr_path)
+    if not os.path.exists(abs_qr_path):
+        qr_path = generate_member_qr(normalized_code)
+        db = get_db()
+        with db.cursor() as cursor:
+            cursor.execute(
+                "UPDATE members SET qr_code_path = %s, updated_at = CURRENT_TIMESTAMP WHERE member_id = %s",
+                (qr_path, profile['member_id']),
+            )
+        db.commit()
+        abs_qr_path = os.path.join(current_app.static_folder, qr_path)
+
+    download_name = build_member_qr_download_filename(
+        last_name=profile.get('last_name'),
+        student_id=profile.get('student_id'),
+        member_code=profile.get('member_code'),
+    )
+
+    return send_file(abs_qr_path, as_attachment=True, download_name=download_name, mimetype='image/png')
 
 
 @members_bp.route('/members/<member_code>/qr/regenerate', methods=['POST'])

@@ -42,6 +42,13 @@ def build_member_qr_filename(member_code):
     return f"{safe_code}.png"
 
 
+def build_member_qr_download_filename(last_name=None, student_id=None, member_code=None):
+    """Build member QR download name: lastname_IDnumber (with safe fallbacks)."""
+    safe_last_name = _sanitize_filename_part(last_name) or 'member'
+    safe_student_id = _sanitize_filename_part(student_id) or _sanitize_filename_part(member_code) or 'id'
+    return f"{safe_last_name}_{safe_student_id}.png"
+
+
 def generate_member_qr(member_code):
     """Generate a QR PNG for a member code and return static-relative path."""
     filename = build_member_qr_filename(member_code)

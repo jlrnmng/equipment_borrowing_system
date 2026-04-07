@@ -294,9 +294,8 @@
                      class="img-fluid border rounded p-2 bg-white"
                      style="max-width: 240px;">
                 <div class="d-grid gap-2 mt-3">
-                    <a href="{{ url_for('static', filename=member.qr_code_path) }}"
-                       class="btn btn-outline-primary"
-                       download="{{ member.member_code }}.png">
+                    <a href="{{ url_for('members.download_member_qr', member_code=member.member_code) }}"
+                       class="btn btn-outline-primary">
                         <i class="bi bi-download me-1"></i> Download QR
                     </a>
                     <form method="POST" action="{{ url_for('members.regenerate_member_qr', member_code=member.member_code) }}">

@@ -62,9 +62,8 @@
                              class="img-fluid border rounded p-2 bg-white member-qr-image"
                              style="max-width: 140px;">
                         <div class="mt-2">
-                            <a href="{{ url_for('static', filename=member.qr_code_path) }}"
-                               class="btn btn-outline-primary btn-sm member-qr-download-btn"
-                               download="{{ member.member_code }}.png">
+                            <a href="{{ url_for('members.download_member_qr', member_code=member.member_code) }}"
+                               class="btn btn-outline-primary btn-sm member-qr-download-btn">
                                 <i class="bi bi-download me-1"></i> Download QR
                             </a>
                         </div>
