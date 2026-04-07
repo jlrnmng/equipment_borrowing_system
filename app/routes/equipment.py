@@ -1,12 +1,14 @@
+import os
+
 import pymysql
 
-from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 
 from app.forms import EquipmentForm
 from app.models.equipment import Equipment
 from app.utils.db import get_db
-from app.utils.qr import generate_equipment_qr
+from app.utils.qr import build_equipment_qr_filename, generate_equipment_qr
 
 equipment_bp = Blueprint('equipment', __name__)
 
@@ -88,7 +90,12 @@ def add_equipment():
             )
 
             try:
-                qr_path = generate_equipment_qr(created_equipment['equipment_code'] or created_equipment['inventory_number'])
+                qr_path = generate_equipment_qr(
+                    created_equipment['equipment_code'] or created_equipment['inventory_number'],
+                    created_equipment['equipment_name'],
+                    created_equipment['serial_number'],
+                    created_equipment.get('property_stock_number')
+                )
                 Equipment.update_qr_path(created_equipment['equipment_id'], qr_path)
                 created_equipment['qr_code_path'] = qr_path
             except Exception:
@@ -156,13 +163,59 @@ def equipment_detail(equipment_id):
 
     if not equipment.get('qr_code_path'):
         try:
-            qr_path = generate_equipment_qr(equipment.get('equipment_code') or equipment.get('inventory_number'))
+            qr_path = generate_equipment_qr(
+                equipment.get('equipment_code') or equipment.get('inventory_number'),
+                equipment.get('equipment_name'),
+                equipment.get('serial_number'),
+                equipment.get('property_stock_number')
+            )
             Equipment.update_qr_path(equipment['equipment_id'], qr_path)
             equipment['qr_code_path'] = qr_path
         except Exception:
             current_app.logger.exception('Failed to auto-generate missing equipment QR id=%s', equipment.get('equipment_id'))
 
     return render_template('equipment/detail.html', equipment=equipment)
+
+
+@equipment_bp.route('/equipment/<int:equipment_id>/qr/download', methods=['GET'])
+@login_required
+def download_equipment_qr(equipment_id):
+    """Download equipment QR with normalized filename rules regardless of stored file path."""
+    equipment = Equipment.get_by_id(equipment_id)
+    if not equipment:
+        flash('Equipment not found.', 'danger')
+        return redirect(url_for('equipment.list_equipment'))
+
+    equipment_code = equipment.get('equipment_code') or equipment.get('inventory_number')
+    download_name = build_equipment_qr_filename(
+        equipment_code=equipment_code,
+        equipment_name=equipment.get('equipment_name'),
+        serial_number=equipment.get('serial_number'),
+        property_stock_number=equipment.get('property_stock_number'),
+    )
+
+    qr_path = equipment.get('qr_code_path')
+    if not qr_path:
+        qr_path = generate_equipment_qr(
+            equipment_code,
+            equipment.get('equipment_name'),
+            equipment.get('serial_number'),
+            equipment.get('property_stock_number'),
+        )
+        Equipment.update_qr_path(equipment_id, qr_path)
+
+    abs_qr_path = os.path.join(current_app.static_folder, qr_path)
+    if not os.path.exists(abs_qr_path):
+        qr_path = generate_equipment_qr(
+            equipment_code,
+            equipment.get('equipment_name'),
+            equipment.get('serial_number'),
+            equipment.get('property_stock_number'),
+        )
+        Equipment.update_qr_path(equipment_id, qr_path)
+        abs_qr_path = os.path.join(current_app.static_folder, qr_path)
+
+    return send_file(abs_qr_path, as_attachment=True, download_name=download_name, mimetype='image/png')
 
 
 @equipment_bp.route('/equipment/<int:equipment_id>/edit', methods=['GET', 'POST'])
@@ -199,7 +252,12 @@ def edit_equipment(equipment_id):
             )
 
             try:
-                qr_path = generate_equipment_qr(updated_equipment.get('equipment_code') or updated_equipment.get('inventory_number'))
+                qr_path = generate_equipment_qr(
+                    updated_equipment.get('equipment_code') or updated_equipment.get('inventory_number'),
+                    updated_equipment.get('equipment_name'),
+                    updated_equipment.get('serial_number'),
+                    updated_equipment.get('property_stock_number')
+                )
                 Equipment.update_qr_path(equipment_id, qr_path)
             except Exception:
                 current_app.logger.exception('Failed to refresh equipment QR id=%s', equipment_id)
@@ -249,7 +307,12 @@ def regenerate_equipment_qr(equipment_id):
         return redirect(url_for('equipment.list_equipment'))
 
     try:
-        qr_path = generate_equipment_qr(equipment.get('equipment_code') or equipment.get('inventory_number'))
+        qr_path = generate_equipment_qr(
+            equipment.get('equipment_code') or equipment.get('inventory_number'),
+            equipment.get('equipment_name'),
+            equipment.get('serial_number'),
+            equipment.get('property_stock_number')
+        )
         Equipment.update_qr_path(equipment_id, qr_path)
     except Exception:
         current_app.logger.exception('Failed to regenerate equipment QR id=%s', equipment_id)

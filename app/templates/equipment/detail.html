@@ -147,9 +147,8 @@
 
                 <div class="d-grid gap-2">
                     {% if equipment.qr_code_path %}
-                    <a href="{{ url_for('static', filename=equipment.qr_code_path) }}"
-                       class="btn btn-outline-primary"
-                       download="{{ equipment.equipment_code or equipment.inventory_number }}.png">
+                          <a href="{{ url_for('equipment.download_equipment_qr', equipment_id=equipment.equipment_id) }}"
+                              class="btn btn-outline-primary">
                         <i class="bi bi-download me-1"></i> Download QR
                     </a>
                     {% endif %}
