@@ -12,6 +12,7 @@ from app.models.member import Member
 from app.models.member_request import MemberBorrowRequest
 from app.models.member_return_request import MemberReturnRequest
 from app.models.staff import Staff
+from app.realtime import emit_app_data_changed
 from app.utils.db import get_db
 from app.utils.request_expiry import expire_stale_requests
 from app.utils.qr import extract_equipment_code
@@ -587,6 +588,13 @@ def submit_member_borrow_request():
         current_app.logger.exception('Failed to create member borrow request for member %s', member_row['member_code'])
         return jsonify({'ok': False, 'message': 'Unable to submit request right now.'}), 500
 
+    emit_app_data_changed(
+        reason='member_borrow_request_submitted',
+        member_id=member_row['member_id'],
+        include_staff=True,
+        include_members=True,
+    )
+
     return jsonify({'ok': True, 'request_code': created['request_code']})
 
 
@@ -618,6 +626,13 @@ def submit_member_return_request():
     )
     if not result.get('ok'):
         return jsonify({'ok': False, 'message': result.get('message') or 'Unable to submit return request.'}), 400
+
+    emit_app_data_changed(
+        reason='member_return_request_submitted',
+        member_id=member_row['member_id'],
+        include_staff=True,
+        include_members=True,
+    )
 
     return jsonify({'ok': True, 'return_request_code': result.get('return_request_code')})
 

@@ -63,4 +63,6 @@ uploads/
 # Local inventory workbook
 asoh_equipment_inventory.xlsx
 
+#QA testing
+tests/
 

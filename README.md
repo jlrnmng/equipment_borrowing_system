@@ -109,6 +109,7 @@ For a full breakdown, see `UI_IMPROVEMENTS.md`.
 | Forms | Flask-WTF · WTForms |
 | Database | MySQL (XAMPP) · PyMySQL |
 | Frontend | Jinja2 · Bootstrap 5 · Bootstrap Icons |
+| Realtime | Flask-SocketIO · Socket.IO client |
 | Scheduling | APScheduler |
 | Config | python-dotenv |
 
@@ -261,6 +262,11 @@ REMINDER_AUTOMATION_ENABLED=true
 REMINDER_JOB_INTERVAL_MINUTES=15
 REMINDER_PROCESS_PENDING_ON_RUN=true
 REQUEST_EXPIRY_MINUTES=30
+
+# Realtime (Socket.IO)
+SOCKETIO_CORS_ALLOWED_ORIGINS=*
+# Optional for multi-instance deployment (Redis URL)
+SOCKETIO_MESSAGE_QUEUE=
 ```
 
 > **Important:**
@@ -354,6 +360,8 @@ The script checks for duplicate emails and generates a unique `STAFF###` code au
 | `REMINDER_JOB_INTERVAL_MINUTES` | Scheduler run interval in minutes | `15` |
 | `REMINDER_PROCESS_PENDING_ON_RUN` | Process queued notifications every reminder cycle | `true` |
 | `REQUEST_EXPIRY_MINUTES` | Minutes before pending borrow/return requests auto-expire | `30` |
+| `SOCKETIO_CORS_ALLOWED_ORIGINS` | Allowed origins for Socket.IO clients | `*` |
+| `SOCKETIO_MESSAGE_QUEUE` | Optional Redis URL for multi-instance Socket.IO fanout | *(empty)* |
 
 ---
 

@@ -68,6 +68,57 @@
         });
     </script>
     {% if current_user.is_authenticated %}
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
+    <script>
+        (function () {
+            var endpoint = {{ (request.endpoint or '') | tojson }};
+            var role = {{ (current_user.role or '') | tojson }};
+            var userId = {{ current_user.id | tojson }};
+            var shouldReload = false;
+
+            var refreshableEndpoints = {
+                'dashboard.index': true,
+                'borrow.new_borrow': true,
+                'borrow.new_return': true,
+                'borrow.overdue_management': true,
+                'borrow.notification_center': true,
+                'equipment.list_equipment': true,
+                'auth.member_dashboard': true
+            };
+
+            if (!refreshableEndpoints[endpoint]) {
+                return;
+            }
+
+            var socket = io({
+                transports: ['websocket', 'polling']
+            });
+
+            socket.on('connect_error', function () {
+                // Keep app usable even when realtime transport is unavailable.
+            });
+
+            socket.on('app_data_changed', function (payload) {
+                payload = payload || {};
+                if (shouldReload) {
+                    return;
+                }
+
+                if (role === 'member') {
+                    var targetMemberId = payload.member_id;
+                    if (targetMemberId !== null && targetMemberId !== undefined && Number(targetMemberId) !== Number(userId)) {
+                        return;
+                    }
+                }
+
+                shouldReload = true;
+                window.showAppToast('New updates are available. Refreshing...', 'info', 1200);
+                setTimeout(function () {
+                    window.location.reload();
+                }, 900);
+            });
+        })();
+    </script>
     <script>
         (function () {
             var sidebar = document.getElementById('appSidebar');

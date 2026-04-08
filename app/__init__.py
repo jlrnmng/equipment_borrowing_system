@@ -9,6 +9,7 @@ from authlib.integrations.flask_client import OAuth
 from config.config import config
 from app.utils.db import close_db
 from app.utils.reminders import maybe_start_scheduler
+from app.realtime import init_realtime
 
 login_manager = LoginManager()
 csrf = CSRFProtect()
@@ -30,6 +31,7 @@ def create_app(config_name=None):
 
     csrf.init_app(app)
     oauth.init_app(app)
+    init_realtime(app)
 
     if app.config.get('GOOGLE_CLIENT_ID') and app.config.get('GOOGLE_CLIENT_SECRET'):
         oauth.register(

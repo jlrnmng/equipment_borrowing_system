@@ -8,6 +8,7 @@ from app.models.equipment import Equipment
 from app.models.member import Member
 from app.models.member_request import MemberBorrowRequest
 from app.models.member_return_request import MemberReturnRequest
+from app.realtime import emit_app_data_changed
 from app.utils.request_expiry import expire_stale_requests
 from app.utils.db import get_db
 from app.utils.notifications import (
@@ -570,6 +571,12 @@ def approve_member_request(request_id):
             current_app.logger.exception('Failed to queue/send approval notification for borrow request %s', request_id)
 
     flash(f"Request {request_row.get('request_code')} approved. Borrow transaction {transaction_code} created.", 'success')
+    emit_app_data_changed(
+        reason='member_borrow_request_approved',
+        member_id=member_row['member_id'],
+        include_staff=True,
+        include_members=True,
+    )
     return redirect(url_for('dashboard.index'))
 
 
@@ -621,6 +628,12 @@ def reject_member_request(request_id):
         return redirect(url_for('dashboard.index'))
 
     flash(f"Request {request_row.get('request_code')} has been rejected.", 'info')
+    emit_app_data_changed(
+        reason='member_borrow_request_rejected',
+        member_id=request_row.get('member_id'),
+        include_staff=True,
+        include_members=True,
+    )
 
     recipient_email = (request_row.get('email') or request_row.get('google_email') or '').strip()
     if recipient_email:
@@ -724,6 +737,12 @@ def approve_member_return_request(return_request_id):
         f"{request_row.get('equipment_code')}.",
         'success'
     )
+    emit_app_data_changed(
+        reason='member_return_request_approved',
+        member_id=request_row.get('member_id'),
+        include_staff=True,
+        include_members=True,
+    )
     return redirect(url_for('borrow.return_receipt', borrow_item_id=receipt_meta['borrow_item_id']))
 
 
@@ -775,6 +794,12 @@ def reject_member_return_request(return_request_id):
         return redirect(url_for('dashboard.index'))
 
     flash(f"Return request {request_row.get('return_request_code')} has been rejected.", 'info')
+    emit_app_data_changed(
+        reason='member_return_request_rejected',
+        member_id=request_row.get('member_id'),
+        include_staff=True,
+        include_members=True,
+    )
 
     recipient_email = (request_row.get('email') or request_row.get('google_email') or '').strip()
     if recipient_email:
@@ -932,6 +957,7 @@ def overdue_sync():
     try:
         sync_summary = _sync_overdue_borrowings(db)
         db.commit()
+        emit_app_data_changed(reason='overdue_sync_completed', include_staff=True, include_members=False)
         return jsonify({'ok': True, 'sync': sync_summary})
     except Exception:
         db.rollback()
@@ -1186,6 +1212,13 @@ def submit_borrow():
         except Exception:
             current_app.logger.exception('Failed to queue/send borrow confirmation for %s', transaction_code)
 
+    emit_app_data_changed(
+        reason='borrow_transaction_created',
+        member_id=member_row['member_id'],
+        include_staff=True,
+        include_members=True,
+    )
+
     return jsonify(
         {
             'ok': True,
@@ -1315,6 +1348,13 @@ def submit_return():
             )
         except Exception:
             current_app.logger.exception('Failed to queue/send return confirmation for item %s', borrow_item_id)
+
+    emit_app_data_changed(
+        reason='return_transaction_processed',
+        member_id=item_row['member_id'],
+        include_staff=True,
+        include_members=True,
+    )
 
     return jsonify(
         {
@@ -1462,6 +1502,7 @@ def process_pending_notifications():
 
     try:
         result = process_pending_notifications_service(limit=50)
+        emit_app_data_changed(reason='notification_queue_processed', include_staff=True, include_members=True)
         return jsonify({'ok': True, **result})
     except Exception:
         return jsonify({'ok': False, 'message': 'Failed to process pending notifications.'}), 500
@@ -1475,6 +1516,7 @@ def run_reminders_now():
 
     try:
         summary = run_reminder_cycle()
+        emit_app_data_changed(reason='reminder_cycle_completed', include_staff=True, include_members=True)
         return jsonify({'ok': True, 'summary': summary})
     except Exception:
         current_app.logger.exception('Manual reminder cycle failed.')

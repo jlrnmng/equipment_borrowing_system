@@ -7,6 +7,7 @@ from flask_login import current_user, login_required
 
 from app.forms import EquipmentForm
 from app.models.equipment import Equipment
+from app.realtime import emit_app_data_changed
 from app.utils.db import get_db
 from app.utils.qr import build_equipment_qr_filename, generate_equipment_qr
 
@@ -111,6 +112,7 @@ def add_equipment():
             return render_template('equipment/add.html', form=form)
 
         flash(f'Equipment "{form.equipment_name.data}" added successfully!', 'success')
+        emit_app_data_changed(reason='equipment_added', include_staff=True, include_members=True)
         fresh_form = EquipmentForm()
         fresh_form.inventory_number.data = Equipment.get_next_inventory_number()
         return render_template('equipment/add.html', form=fresh_form, created_equipment=created_equipment)
@@ -272,6 +274,7 @@ def edit_equipment(equipment_id):
             return render_template('equipment/edit.html', form=form, equipment=equipment)
 
         flash('Equipment updated successfully!', 'success')
+        emit_app_data_changed(reason='equipment_updated', include_staff=True, include_members=True)
         return redirect(url_for('equipment.equipment_detail', equipment_id=equipment_id))
 
     elif request.method == 'GET':
@@ -320,4 +323,5 @@ def regenerate_equipment_qr(equipment_id):
         return redirect(url_for('equipment.equipment_detail', equipment_id=equipment_id))
 
     flash('Equipment QR code regenerated successfully.', 'success')
+    emit_app_data_changed(reason='equipment_qr_regenerated', include_staff=True, include_members=False)
     return redirect(url_for('equipment.equipment_detail', equipment_id=equipment_id))

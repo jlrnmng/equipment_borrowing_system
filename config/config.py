@@ -42,6 +42,10 @@ class Config:
     REMINDER_PROCESS_PENDING_ON_RUN = _env_bool('REMINDER_PROCESS_PENDING_ON_RUN', True)
     REQUEST_EXPIRY_MINUTES = int(os.getenv('REQUEST_EXPIRY_MINUTES', 30))
 
+    # Realtime settings (optional Redis queue for multi-instance deployments)
+    SOCKETIO_MESSAGE_QUEUE = os.getenv('SOCKETIO_MESSAGE_QUEUE', '').strip() or None
+    SOCKETIO_CORS_ALLOWED_ORIGINS = os.getenv('SOCKETIO_CORS_ALLOWED_ORIGINS', '*')
+
     WTF_CSRF_ENABLED = True
     # Session expires after 30 minutes of inactivity
     PERMANENT_SESSION_LIFETIME = timedelta(minutes=30)
