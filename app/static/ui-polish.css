@@ -373,13 +373,20 @@ a:hover {
     }
 
     .topbar {
+        display: flex;
         position: sticky;
         top: 0;
         z-index: 1030;
         padding: 0.72rem 1rem;
         gap: 0.75rem;
         align-items: center;
+        justify-content: space-between;
         flex-wrap: nowrap;
+    }
+
+    .topbar > div {
+        display: flex;
+        align-items: center;
     }
 
     .topbar > .d-flex:first-child {
@@ -415,6 +422,8 @@ a:hover {
     }
 
     .page-actions {
+        display: flex;
+        align-items: center;
         justify-content: flex-end;
         width: auto;
         flex-wrap: nowrap;
@@ -422,6 +431,7 @@ a:hover {
     }
 
     .topbar-right {
+        display: flex;
         width: auto;
         flex-wrap: nowrap;
         justify-content: flex-end;
@@ -438,7 +448,30 @@ a:hover {
         display: none;
     }
 
+    .topbar .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 34px;
+        min-height: 34px;
+        width: 34px;
+        padding: 0;
+        line-height: 1;
+    }
+
+    .topbar .btn i {
+        font-size: 16px;
+        line-height: 1;
+    }
+
+    .topbar .btn.js-logout-trigger {
+        width: auto;
+        padding: 0 0.6rem;
+    }
+
     .page-actions .btn {
+        width: auto;
+        padding: 0 0.6rem;
         min-height: 34px;
     }
 }
@@ -477,6 +510,16 @@ a:hover {
         font-size: 0.76rem;
     }
 
+    .topbar .btn {
+        height: 32px;
+        min-height: 32px;
+    }
+
+    .topbar .btn.js-logout-trigger {
+        padding: 0 0.5rem;
+        font-size: 0.76rem;
+    }
+
     #history .card-body {
         padding: 0 !important;
     }
@@ -506,40 +549,6 @@ a:hover {
         line-height: 1.2;
     }
 
-    .topbar {
-        flex-wrap: wrap;
-        align-items: flex-start;
-    }
-
-    .topbar > div {
-        width: 100%;
-    }
-
-    .topbar-right {
-        justify-content: space-between;
-        gap: 0.45rem;
-    }
-
-    .page-actions {
-        width: 100%;
-        gap: 0.38rem;
-    }
-
-    .page-actions .btn {
-        flex: 0 0 auto;
-        width: 34px;
-        min-width: 34px;
-        height: 34px;
-        padding: 0;
-    }
-
-    .topbar-right > .btn-outline-danger {
-        flex: 0 0 auto;
-        width: 34px;
-        min-width: 34px;
-        height: 34px;
-        padding: 0;
-    }
 
     .topbar-right .btn {
         font-size: 0;
