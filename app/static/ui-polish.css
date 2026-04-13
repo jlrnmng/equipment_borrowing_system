@@ -395,7 +395,19 @@ a:hover {
     }
 
     .topbar .topbar-user {
-        display: none;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.8rem;
+        max-width: 120px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .topbar .topbar-user i {
+        font-size: 14px;
+        flex-shrink: 0;
     }
 
     .page-content {
@@ -467,6 +479,14 @@ a:hover {
     .topbar .btn.js-logout-trigger {
         width: auto;
         padding: 0 0.6rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .topbar .btn.js-logout-trigger i {
+        font-size: 16px;
+        line-height: 1;
     }
 
     .page-actions .btn {
@@ -479,6 +499,11 @@ a:hover {
 @media (max-width: 575.98px) {
     .topbar {
         padding: 0.56rem 0.74rem;
+    }
+
+    .topbar .topbar-user {
+        font-size: 0.72rem;
+        max-width: 100px;
     }
 
     .page-title {
