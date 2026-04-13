@@ -117,7 +117,7 @@
             var endpoint = {{ (request.endpoint or '') | tojson }};
             var role = {{ (current_user.role or '') | tojson }};
             var userId = {{ current_user.id | tojson }};
-            var shouldReload = false;
+            var updateInProgress = false;
 
             var refreshableEndpoints = {
                 'dashboard.index': true,
@@ -129,8 +129,79 @@
                 'auth.member_dashboard': true
             };
 
+            var autoRefreshEndpoints = {
+                'dashboard.index': true,
+                'borrow.overdue_management': true,
+                'borrow.notification_center': true,
+                'equipment.list_equipment': true
+            };
+
             if (!refreshableEndpoints[endpoint]) {
                 return;
+            }
+
+            function executeScriptsWithin(container) {
+                var scripts = container.querySelectorAll('script');
+                scripts.forEach(function (oldScript) {
+                    var newScript = document.createElement('script');
+                    Array.from(oldScript.attributes).forEach(function (attr) {
+                        newScript.setAttribute(attr.name, attr.value);
+                    });
+                    newScript.textContent = oldScript.textContent;
+                    oldScript.parentNode.replaceChild(newScript, oldScript);
+                });
+            }
+
+            async function refreshPageContentInPlace() {
+                if (updateInProgress) {
+                    return false;
+                }
+
+                var currentPageContent = document.querySelector('.page-content');
+                if (!currentPageContent) {
+                    return false;
+                }
+
+                updateInProgress = true;
+                try {
+                    var response = await fetch(window.location.href, {
+                        method: 'GET',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        credentials: 'same-origin',
+                        cache: 'no-store'
+                    });
+
+                    if (!response.ok) {
+                        return false;
+                    }
+
+                    var html = await response.text();
+                    var parser = new DOMParser();
+                    var doc = parser.parseFromString(html, 'text/html');
+                    var nextPageContent = doc.querySelector('.page-content');
+                    if (!nextPageContent) {
+                        return false;
+                    }
+
+                    var bellBtn = document.querySelector('.topbar-right a[title="Notifications"]');
+                    var nextBellBtn = doc.querySelector('.topbar-right a[title="Notifications"]');
+                    if (bellBtn && nextBellBtn) {
+                        bellBtn.outerHTML = nextBellBtn.outerHTML;
+                    }
+
+                    var scrollX = window.scrollX;
+                    var scrollY = window.scrollY;
+                    currentPageContent.innerHTML = nextPageContent.innerHTML;
+                    executeScriptsWithin(currentPageContent);
+                    window.scrollTo(scrollX, scrollY);
+                    return true;
+                } catch (err) {
+                    return false;
+                } finally {
+                    updateInProgress = false;
+                }
             }
 
             var socket = io({
@@ -143,7 +214,7 @@
 
             socket.on('app_data_changed', function (payload) {
                 payload = payload || {};
-                if (shouldReload) {
+                if (updateInProgress) {
                     return;
                 }
 
@@ -154,11 +225,22 @@
                     }
                 }
 
-                shouldReload = true;
-                window.showAppToast('New updates are available. Refreshing...', 'info', 1200);
-                setTimeout(function () {
-                    window.location.reload();
-                }, 900);
+                window.dispatchEvent(new CustomEvent('app:data-changed', {
+                    detail: payload
+                }));
+
+                if (!autoRefreshEndpoints[endpoint]) {
+                    window.showAppToast('New updates are available.', 'info', 2000);
+                    return;
+                }
+
+                refreshPageContentInPlace().then(function (updated) {
+                    if (updated) {
+                        window.showAppToast('Page updated with latest changes.', 'success', 1600);
+                        return;
+                    }
+                    window.showAppToast('New updates are available.', 'info', 2000);
+                });
             });
         })();
     </script>
