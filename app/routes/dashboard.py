@@ -1,3 +1,5 @@
+import re
+
 from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
@@ -76,12 +78,52 @@ def index():
             # 5 most recent activity log entries
             cursor.execute(
                 "SELECT al.action, al.description, al.created_at, "
-                "       s.full_name AS staff_name "
+                "       s.full_name AS staff_name, "
+                "       CONCAT(COALESCE(m.first_name, ''), "
+                "              CASE WHEN m.last_name IS NOT NULL AND m.last_name <> '' THEN CONCAT(' ', m.last_name) ELSE '' END) AS member_name "
                 "FROM activity_log al "
                 "LEFT JOIN staff s ON s.staff_id = al.staff_id "
+                "LEFT JOIN members m ON m.member_id = al.member_id "
                 "ORDER BY al.created_at DESC LIMIT 5"
             )
             recent_activity = cursor.fetchall()
+
+            if recent_activity:
+                tx_pattern = re.compile(r"BRW-\d{8}-\d{4}")
+                transaction_codes = []
+                for entry in recent_activity:
+                    description = entry.get('description') or ''
+                    match = tx_pattern.search(description)
+                    tx_code = match.group(0) if match else None
+                    entry['transaction_code'] = tx_code
+                    entry['equipment_names'] = None
+                    if tx_code:
+                        transaction_codes.append(tx_code)
+
+                if transaction_codes:
+                    unique_codes = list(dict.fromkeys(transaction_codes))
+                    placeholders = ','.join(['%s'] * len(unique_codes))
+                    cursor.execute(
+                        f"""
+                        SELECT br.transaction_code,
+                               GROUP_CONCAT(DISTINCT e.equipment_name ORDER BY e.equipment_name SEPARATOR ', ') AS equipment_names
+                        FROM borrow_records br
+                        INNER JOIN borrow_items bi ON bi.borrow_id = br.borrow_id
+                        INNER JOIN equipment e ON e.equipment_id = bi.equipment_id
+                        WHERE br.transaction_code IN ({placeholders})
+                        GROUP BY br.transaction_code
+                        """,
+                        tuple(unique_codes),
+                    )
+                    equipment_map = {
+                        row['transaction_code']: row.get('equipment_names')
+                        for row in cursor.fetchall()
+                    }
+
+                    for entry in recent_activity:
+                        tx_code = entry.get('transaction_code')
+                        if tx_code:
+                            entry['equipment_names'] = equipment_map.get(tx_code)
 
             pending_requests = MemberBorrowRequest.get_pending_requests(limit=12)
             pending_return_requests = MemberReturnRequest.get_pending_requests(limit=12)

@@ -389,6 +389,15 @@
                         {% if entry.staff_name %}
                             <small class="text-muted"><i class="bi bi-person me-1"></i>{{ entry.staff_name }}</small>
                         {% endif %}
+                        {% if entry.member_name %}
+                            <small class="text-muted d-block">
+                                <i class="bi bi-person-vcard me-1"></i>
+                                {% if entry.action == 'RETURN_PROCESSED' %}Returner{% else %}Borrower{% endif %}: {{ entry.member_name }}
+                            </small>
+                        {% endif %}
+                        {% if entry.equipment_names %}
+                            <small class="text-muted d-block"><i class="bi bi-box-seam me-1"></i>Equipment: {{ entry.equipment_names }}</small>
+                        {% endif %}
                     </li>
                     {% endfor %}
                 </ul>
