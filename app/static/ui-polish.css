@@ -254,6 +254,18 @@ a:hover {
     white-space: nowrap;
 }
 
+.topbar .topbar-user {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+    max-width: 220px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+}
+
 .page-title {
     font-weight: 700;
     color: #132847;
