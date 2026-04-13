@@ -24,11 +24,6 @@
            class="nav-link">
             <i class="bi bi-search"></i> Browse Equipment
         </a>
-        <a href="{{ url_for('borrow.notification_center') }}"
-           class="nav-link {% if request.endpoint == 'borrow.notification_center' %}active{% endif %}">
-            <i class="bi bi-bell"></i> Notifications
-            {% if unread_count %}<span class="badge bg-danger ms-2" style="font-size:.6rem">{{ unread_count }}</span>{% endif %}
-        </a>
 
         <span class="nav-section">My Activity</span>
         <a href="{{ url_for('auth.member_dashboard') }}#requests"
@@ -64,10 +59,6 @@
         <a href="{{ url_for('borrow.overdue_management') }}"
            class="nav-link {% if request.endpoint == 'borrow.overdue_management' %}active{% endif %}">
             <i class="bi bi-exclamation-triangle"></i> Overdue Management
-        </a>
-        <a href="{{ url_for('borrow.notification_center') }}"
-           class="nav-link {% if request.endpoint == 'borrow.notification_center' %}active{% endif %}">
-            <i class="bi bi-envelope-check"></i> Notifications
         </a>
 
         <span class="nav-section">Management</span>
@@ -124,6 +115,10 @@
                 {% block page_actions %}{% endblock %}
             </div>
             <small class="text-muted topbar-user mb-0"><i class="bi bi-person-circle me-1"></i>{{ current_user.full_name }}</small>
+            <a href="{{ url_for('borrow.notification_center') }}" class="btn btn-sm btn-outline-secondary position-relative" title="Notifications">
+                <i class="bi bi-bell"></i>
+                {% if unread_count > 0 %}<span class="position-absolute rounded-circle bg-danger" style="width:8px;height:8px;top:6px;right:6px;"></span>{% endif %}
+            </a>
             <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline-danger">
                 <i class="bi bi-box-arrow-right me-1"></i> Log Out
             </a>

@@ -1,7 +1,81 @@
 {% extends 'layouts/main.html' %}
-{% block title %}Notification Queue{% endblock %}
-{% block page_title %}Notification Queue{% endblock %}
+{% block title %}Notifications{% endblock %}
+{% block page_title %}Notifications{% endblock %}
 {% block content %}
+
+{% if current_user.role == 'member' %}
+<div class="card stat-card">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <div class="fw-semibold">
+            <i class="bi bi-bell me-1 text-primary"></i> My Notifications
+        </div>
+        {% if notifications %}
+        <button id="deleteAllBtn" type="button" class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-trash me-1"></i> Delete All
+        </button>
+        {% endif %}
+    </div>
+    <div class="card-body p-0">
+        {% if notifications %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Type</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Sent</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in notifications %}
+                    <tr class="{% if item.status != 'sent' %}notification-unread{% endif %}" data-notification-id="{{ item.notification_id }}">
+                        <td class="ps-3">
+                            <div class="fw-semibold text-capitalize">{{ (item.notification_type or '').replace('_', ' ') }}</div>
+                            {% if item.subject %}
+                            <small class="text-muted d-block">{{ item.subject }}</small>
+                            {% endif %}
+                            {% if item.transaction_code %}
+                            <small class="text-muted">{{ item.transaction_code }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.status == 'sent' %}
+                            <span class="badge bg-success">Sent</span>
+                            {% elif item.status == 'failed' %}
+                            <span class="badge bg-danger">Failed</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="time-relative" data-created-at="{{ item.created_at.isoformat() if item.created_at else '' }}">just now</span></td>
+                        <td>
+                            {% if item.sent_at %}
+                            {{ item.sent_at.strftime('%b %d, %Y %I:%M %p') }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-link text-danger p-0 delete-notification-btn" data-notification-id="{{ item.notification_id }}">
+                                <i class="bi bi-trash"></i> Delete
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+            No notifications yet.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% else %}
 <div class="row g-3 mb-3">
     <div class="col-sm-6 col-lg-3">
         <div class="card stat-card">
@@ -40,7 +114,7 @@
 <div class="card stat-card">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <div class="fw-semibold">
-            <i class="bi bi-envelope-check me-1 text-primary"></i> Recent Notifications
+            <i class="bi bi-envelope-check me-1 text-primary"></i> Notification Queue
         </div>
         {% if can_manage_notifications %}
         <div class="d-flex gap-2">
@@ -60,8 +134,6 @@
                 <thead class="table-light">
                     <tr>
                         <th class="ps-3">Type</th>
-                        <th>Member</th>
-                        <th>Recipient</th>
                         <th>Status</th>
                         <th>Created</th>
                         <th>Sent</th>
@@ -78,11 +150,6 @@
                             {% endif %}
                         </td>
                         <td>
-                            <div>{{ ((item.first_name or '') ~ ' ' ~ (item.last_name or '')).strip() or 'N/A' }}</div>
-                            <small class="text-muted">{{ item.member_code or 'No member code' }}</small>
-                        </td>
-                        <td>{{ item.recipient_email }}</td>
-                        <td>
                             {% if item.status == 'sent' %}
                             <span class="badge bg-success">Sent</span>
                             {% elif item.status == 'failed' %}
@@ -98,11 +165,7 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% if item.created_at %}
-                            {{ item.created_at.strftime('%b %d, %Y %I:%M %p') }}
-                            {% else %}
-                            -
-                            {% endif %}
+                            <span class="time-relative" data-created-at="{{ item.created_at.isoformat() if item.created_at else '' }}">just now</span>
                         </td>
                         <td>
                             {% if item.sent_at %}
@@ -131,46 +194,140 @@
         {% endif %}
     </div>
 </div>
+{% endif %}
+
+<style>
+.notification-unread {
+    background-color: #eef2f7 !important;
+}
+</style>
 
 <script>
-(() => {
-    const canManageNotifications = {{ 'true' if can_manage_notifications else 'false' }};
-    const btn = document.getElementById('processPendingBtn');
-    const runBtn = document.getElementById('runRemindersBtn');
-    const csrfToken = '{{ csrf_token() }}';
+(function () {
+    var csrfToken = '{{ csrf_token() }}';
+
+    function formatTimeAgo(isoDate) {
+        if (!isoDate) {
+            return '-';
+        }
+
+        var date = new Date(isoDate);
+        if (isNaN(date.getTime())) {
+            return '-';
+        }
+
+        var seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+        if (seconds < 60) {
+            return Math.max(seconds, 1) + ' sec ago';
+        }
+
+        var minutes = Math.floor(seconds / 60);
+        if (minutes < 60) {
+            return minutes + ' min ago';
+        }
+
+        var hours = Math.floor(minutes / 60);
+        if (hours < 24) {
+            return hours + ' hr ago';
+        }
+
+        var days = Math.floor(hours / 24);
+        return days + ' day' + (days === 1 ? '' : 's') + ' ago';
+    }
+
+    function refreshRelativeTimes() {
+        document.querySelectorAll('.time-relative').forEach(function (el) {
+            el.textContent = formatTimeAgo(el.getAttribute('data-created-at'));
+        });
+    }
+
+    refreshRelativeTimes();
+    setInterval(refreshRelativeTimes, 60000);
+
+    var deleteAllBtn = document.getElementById('deleteAllBtn');
+    if (deleteAllBtn) {
+        deleteAllBtn.addEventListener('click', async function () {
+            if (!window.confirm('Delete all notifications?')) {
+                return;
+            }
+
+            try {
+                var response = await fetch('/api/notifications/delete-all', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+                var result = await response.json();
+                if (!response.ok || !result.ok) {
+                    throw new Error(result.message || 'Failed to delete notifications.');
+                }
+
+                window.showAppToast('All notifications deleted.', 'success');
+                window.location.reload();
+            } catch (err) {
+                window.showAppToast(err.message || 'Failed to delete notifications.', 'danger');
+            }
+        });
+    }
+
+    document.querySelectorAll('.delete-notification-btn').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+            var notificationId = btn.getAttribute('data-notification-id');
+            if (!window.confirm('Delete this notification?')) {
+                return;
+            }
+
+            try {
+                var response = await fetch('/api/notifications/' + notificationId + '/delete', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+                var result = await response.json();
+                if (!response.ok || !result.ok) {
+                    throw new Error(result.message || 'Failed to delete notification.');
+                }
+
+                var card = document.querySelector('[data-notification-id="' + notificationId + '"]');
+                if (card) {
+                    card.remove();
+                }
+                window.showAppToast('Notification deleted.', 'success');
+            } catch (err) {
+                window.showAppToast(err.message || 'Failed to delete notification.', 'danger');
+            }
+        });
+    });
+
+    var canManageNotifications = !!document.getElementById('processPendingBtn') || !!document.getElementById('runRemindersBtn');
+    var processBtn = document.getElementById('processPendingBtn');
+    var runBtn = document.getElementById('runRemindersBtn');
 
     if (!canManageNotifications) {
         return;
     }
 
     if (runBtn) {
-        runBtn.addEventListener('click', async () => {
-            const original = runBtn.innerHTML;
+        runBtn.addEventListener('click', async function () {
+            var original = runBtn.innerHTML;
             runBtn.disabled = true;
             runBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Running...';
 
             try {
-                const response = await fetch('{{ url_for("borrow.run_reminders_now") }}', {
+                var response = await fetch('{{ url_for("borrow.run_reminders_now") }}', {
                     method: 'POST',
                     headers: {
                         'X-CSRFToken': csrfToken
                     }
                 });
-                const result = await response.json();
+                var result = await response.json();
                 if (!response.ok || !result.ok) {
                     throw new Error(result.message || 'Failed to run reminder cycle.');
                 }
 
-                const sync = result.summary?.sync || {};
-                const queued = result.summary?.queued || {};
-                const delivery = result.summary?.delivery || {};
-                window.showAppToast(
-                    `Sync: +${sync.updated_to_overdue || 0} overdue, ${sync.total_overdue || 0} total overdue\n` +
-                    `Queued: ${queued.queued_due_reminders || 0} due reminders, ${queued.queued_overdue_warnings || 0} overdue warnings\n` +
-                    `Delivery: processed ${delivery.processed || 0}, sent ${delivery.sent || 0}, failed ${delivery.failed || 0}`,
-                    'success',
-                    7000
-                );
+                window.showAppToast('Reminder cycle completed.', 'success');
                 window.location.reload();
             } catch (err) {
                 window.showAppToast(err.message || 'An unexpected error occurred.', 'danger');
@@ -180,31 +337,33 @@
         });
     }
 
-    if (!btn) return;
+    if (!processBtn) {
+        return;
+    }
 
-    btn.addEventListener('click', async () => {
-        const original = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Processing...';
+    processBtn.addEventListener('click', async function () {
+        var original = processBtn.innerHTML;
+        processBtn.disabled = true;
+        processBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Processing...';
 
         try {
-            const response = await fetch('{{ url_for("borrow.process_pending_notifications") }}', {
+            var response = await fetch('{{ url_for("borrow.process_pending_notifications") }}', {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': csrfToken
                 }
             });
-            const result = await response.json();
+            var result = await response.json();
             if (!response.ok || !result.ok) {
                 throw new Error(result.message || 'Failed to process pending notifications.');
             }
 
-            window.showAppToast(`Processed: ${result.processed} | Sent: ${result.sent} | Failed: ${result.failed}`, 'success');
+            window.showAppToast('Processed: ' + result.processed + ' | Sent: ' + result.sent + ' | Failed: ' + result.failed, 'success');
             window.location.reload();
         } catch (err) {
             window.showAppToast(err.message || 'An unexpected error occurred.', 'danger');
-            btn.disabled = false;
-            btn.innerHTML = original;
+            processBtn.disabled = false;
+            processBtn.innerHTML = original;
         }
     });
 })();

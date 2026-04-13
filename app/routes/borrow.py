@@ -36,6 +36,21 @@ def _is_within_working_hours(now=None):
     return 8 * 60 <= current_minutes <= (16 * 60 + 30)
 
 
+def _compute_overdue_with_grace(expected_return_date, now=None):
+    """Determine overdue status with a 30-minute grace period after 4:30 PM cutoff."""
+    if not expected_return_date:
+        return False, 0
+
+    now = now or datetime.now()
+    overdue_cutoff = datetime.combine(expected_return_date, datetime.min.time()).replace(hour=17, minute=0, second=0, microsecond=0)
+
+    if now <= overdue_cutoff:
+        return False, 0
+
+    days_overdue = max(1, (now.date() - expected_return_date).days)
+    return True, days_overdue
+
+
 def _get_member_from_query():
     member_code = (request.args.get('member_code') or '').strip().upper()
     query = (request.args.get('query') or '').strip()
@@ -61,7 +76,11 @@ def _member_overdue_count(member_id):
             FROM borrow_records
             WHERE member_id = %s
               AND status IN ('active', 'overdue')
-              AND (status = 'overdue' OR expected_return_date < CURDATE())
+                            AND (
+                                        status = 'overdue'
+                                 OR expected_return_date < CURDATE()
+                                 OR (expected_return_date = CURDATE() AND CURTIME() > '17:00:00')
+                            )
             """,
             (member_id,),
         )
@@ -285,9 +304,7 @@ def _fetch_return_receipt_data(return_record):
 
 def _finalize_return_item(db, item_row, condition_returned, notes, source_return_request_id=None, source_review_notes=None):
     expected_return_date = item_row.get('expected_return_date')
-    today = datetime.now().date()
-    days_overdue = max(0, (today - expected_return_date).days) if expected_return_date else 0
-    is_overdue = days_overdue > 0
+    is_overdue, days_overdue = _compute_overdue_with_grace(expected_return_date, now=datetime.now())
     is_damaged = _is_condition_worse(item_row.get('condition_borrowed'), condition_returned)
 
     with db.cursor() as cursor:
@@ -835,7 +852,10 @@ def _sync_overdue_borrowings(db):
             SET br.status = 'overdue',
                 br.updated_at = CURRENT_TIMESTAMP
             WHERE br.status = 'active'
-              AND br.expected_return_date < CURDATE()
+                            AND (
+                                        br.expected_return_date < CURDATE()
+                                 OR (br.expected_return_date = CURDATE() AND CURTIME() > '17:00:00')
+                            )
               AND EXISTS (
                   SELECT 1
                   FROM borrow_items bi
@@ -852,7 +872,10 @@ def _sync_overdue_borrowings(db):
             SET br.status = 'active',
                 br.updated_at = CURRENT_TIMESTAMP
             WHERE br.status = 'overdue'
-              AND br.expected_return_date >= CURDATE()
+                            AND (
+                                        br.expected_return_date > CURDATE()
+                                 OR (br.expected_return_date = CURDATE() AND CURTIME() <= '17:00:00')
+                            )
               AND EXISTS (
                   SELECT 1
                   FROM borrow_items bi
@@ -899,7 +922,10 @@ def _fetch_overdue_records(limit=200):
             INNER JOIN members m ON m.member_id = br.member_id
             INNER JOIN borrow_items bi ON bi.borrow_id = br.borrow_id
             WHERE br.status IN ('active', 'overdue')
-              AND br.expected_return_date < CURDATE()
+                            AND (
+                                        br.expected_return_date < CURDATE()
+                                 OR (br.expected_return_date = CURDATE() AND CURTIME() > '17:00:00')
+                            )
               AND bi.returned_at IS NULL
             GROUP BY br.borrow_id, br.transaction_code, br.borrow_date, br.expected_return_date,
                      m.member_id, m.member_code, m.first_name, m.last_name
@@ -1521,3 +1547,40 @@ def run_reminders_now():
     except Exception:
         current_app.logger.exception('Manual reminder cycle failed.')
         return jsonify({'ok': False, 'message': 'Failed to run reminder cycle.'}), 500
+
+
+@borrow_bp.route('/api/notifications/<int:notification_id>/delete', methods=['POST'])
+@login_required
+def delete_notification(notification_id):
+    if getattr(current_user, 'role', None) != 'member':
+        return jsonify({'ok': False, 'message': 'Forbidden'}), 403
+    
+    db = get_db()
+    with db.cursor() as cursor:
+        # Verify the notification belongs to the current member
+        cursor.execute(
+            "SELECT notification_id FROM notifications WHERE notification_id = %s AND member_id = %s",
+            (notification_id, current_user.id)
+        )
+        if not cursor.fetchone():
+            return jsonify({'ok': False, 'message': 'Notification not found'}), 404
+        
+        # Delete the notification
+        cursor.execute("DELETE FROM notifications WHERE notification_id = %s", (notification_id,))
+        db.commit()
+    
+    return jsonify({'ok': True, 'message': 'Notification deleted'})
+
+
+@borrow_bp.route('/api/notifications/delete-all', methods=['POST'])
+@login_required
+def delete_all_notifications():
+    if getattr(current_user, 'role', None) != 'member':
+        return jsonify({'ok': False, 'message': 'Forbidden'}), 403
+    
+    db = get_db()
+    with db.cursor() as cursor:
+        cursor.execute("DELETE FROM notifications WHERE member_id = %s", (current_user.id,))
+        db.commit()
+    
+    return jsonify({'ok': True, 'message': 'All notifications deleted'})

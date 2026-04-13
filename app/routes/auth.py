@@ -1,6 +1,6 @@
 from urllib.parse import urlsplit
 import secrets
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 
 from flask import Blueprint, current_app, flash, jsonify, make_response, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required, login_user, logout_user
@@ -402,6 +402,51 @@ def member_dashboard():
     requests = MemberBorrowRequest.get_member_requests(member_row['member_id'], limit=25)
     active_return_items = MemberReturnRequest.get_member_active_items(member_row['member_id'])
     return_requests = MemberReturnRequest.get_member_return_requests(member_row['member_id'], limit=25)
+
+    history_items = []
+    for req in requests:
+        history_items.append(
+            {
+                'entry_type': 'borrow',
+                'code': req.get('request_code'),
+                'created_at': req.get('created_at'),
+                'status': req.get('status'),
+                'usage_area': req.get('usage_area'),
+                'summary': req.get('equipment_names') or '-',
+                'meta': f"{req.get('total_items') or 0} item(s)",
+                'review_notes': req.get('review_notes'),
+            }
+        )
+
+    for req in return_requests:
+        history_items.append(
+            {
+                'entry_type': 'return',
+                'code': req.get('return_request_code'),
+                'created_at': req.get('created_at'),
+                'status': req.get('status'),
+                'usage_area': '-',
+                'summary': req.get('equipment_name') or '-',
+                'meta': f"Condition: {(req.get('requested_condition') or '-').upper()}",
+                'review_notes': req.get('review_notes'),
+            }
+        )
+
+    history_items.sort(
+        key=lambda row: row.get('created_at') or datetime.min,
+        reverse=True,
+    )
+
+    now_dt = datetime.now()
+    grace_cutoff_time = time(17, 0)  # 4:30 PM + 30-minute grace period
+    reminder_time = (datetime.combine(now_dt.date(), grace_cutoff_time) - timedelta(hours=1)).time()
+    show_overdue_soon_popup = False
+
+    for item in active_return_items:
+        due_date = item.get('expected_return_date')
+        if due_date == now_dt.date() and reminder_time <= now_dt.time() < grace_cutoff_time:
+            show_overdue_soon_popup = True
+            break
     
     # Calculate pending requests count
     pending_requests_count = sum(1 for req in requests if req.get('status') == 'pending')
@@ -412,7 +457,9 @@ def member_dashboard():
         requests=requests,
         active_return_items=active_return_items,
         return_requests=return_requests,
+        history_items=history_items,
         pending_requests_count=pending_requests_count,
+        show_overdue_soon_popup=show_overdue_soon_popup,
     )
 
 
@@ -554,26 +601,30 @@ def submit_member_borrow_request():
         if not isinstance(paper_request, dict):
             return jsonify({'ok': False, 'message': 'Paper details are required for printer/scanner requests.'}), 400
 
-        source = (paper_request.get('source') or '').strip().lower()
-        paper_type = (paper_request.get('type') or '').strip()
-        quantity = paper_request.get('quantity')
+        source = (paper_request.get('source') or 'own').strip().lower()
 
         if source not in ('bondpaper', 'own'):
-            return jsonify({'ok': False, 'message': 'Select paper source: bond paper or own paper.'}), 400
+            return jsonify({'ok': False, 'message': 'Select a valid paper source.'}), 400
 
-        if paper_type not in ('Long', 'Short', 'A4', 'Special'):
-            return jsonify({'ok': False, 'message': 'Select a valid paper type (Long, Short, A4, or Special).'}), 400
+        if source == 'bondpaper':
+            paper_type = (paper_request.get('type') or '').strip()
+            quantity = paper_request.get('quantity')
 
-        try:
-            quantity_int = int(quantity)
-        except Exception:
-            return jsonify({'ok': False, 'message': 'Paper quantity must be a whole number.'}), 400
+            if paper_type not in ('Long', 'Short', 'A4', 'Special'):
+                return jsonify({'ok': False, 'message': 'Select a valid paper type (Long, Short, A4, or Special).'}), 400
 
-        if quantity_int < 1:
-            return jsonify({'ok': False, 'message': 'Paper quantity must be at least 1 sheet.'}), 400
+            try:
+                quantity_int = int(quantity)
+            except Exception:
+                return jsonify({'ok': False, 'message': 'Paper quantity must be a whole number.'}), 400
 
-        source_label = 'Need bond paper' if source == 'bondpaper' else 'Will provide own paper'
-        paper_details_line = f"[Paper Request] {source_label}; Type: {paper_type}; Quantity: {quantity_int} sheet(s)"
+            if quantity_int < 1:
+                return jsonify({'ok': False, 'message': 'Paper quantity must be at least 1 sheet.'}), 400
+
+            paper_details_line = f"[Paper Request] Use facility paper; Type: {paper_type}; Quantity: {quantity_int} sheet(s)"
+        else:
+            paper_details_line = '[Paper Request] Will provide own paper'
+
         notes = f"{notes}\n{paper_details_line}" if notes else paper_details_line
 
     try:

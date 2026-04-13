@@ -21,7 +21,10 @@ def sync_overdue_status(db):
             SET br.status = 'overdue',
                 br.updated_at = CURRENT_TIMESTAMP
             WHERE br.status = 'active'
-              AND br.expected_return_date < CURDATE()
+                            AND (
+                                        br.expected_return_date < CURDATE()
+                                 OR (br.expected_return_date = CURDATE() AND CURTIME() > '17:00:00')
+                            )
               AND EXISTS (
                   SELECT 1
                   FROM borrow_items bi
@@ -38,7 +41,10 @@ def sync_overdue_status(db):
             SET br.status = 'active',
                 br.updated_at = CURRENT_TIMESTAMP
             WHERE br.status = 'overdue'
-              AND br.expected_return_date >= CURDATE()
+                            AND (
+                                        br.expected_return_date > CURDATE()
+                                 OR (br.expected_return_date = CURDATE() AND CURTIME() <= '17:00:00')
+                            )
               AND EXISTS (
                   SELECT 1
                   FROM borrow_items bi
@@ -187,7 +193,7 @@ def queue_due_and_overdue_notifications(db):
         cursor.execute(
             """
             SELECT br.borrow_id, br.transaction_code, br.expected_return_date,
-                   DATEDIFF(CURDATE(), br.expected_return_date) AS days_overdue,
+                                     GREATEST(1, DATEDIFF(CURDATE(), br.expected_return_date)) AS days_overdue,
                    m.member_id, m.first_name, m.last_name,
                    COALESCE(NULLIF(TRIM(m.email), ''), NULLIF(TRIM(m.google_email), '')) AS recipient_email,
                    COUNT(CASE WHEN bi.returned_at IS NULL THEN 1 END) AS unreturned_items
@@ -195,7 +201,10 @@ def queue_due_and_overdue_notifications(db):
             INNER JOIN members m ON m.member_id = br.member_id
             INNER JOIN borrow_items bi ON bi.borrow_id = br.borrow_id
             WHERE br.status = 'overdue'
-              AND br.expected_return_date < CURDATE()
+                            AND (
+                                        br.expected_return_date < CURDATE()
+                                 OR (br.expected_return_date = CURDATE() AND CURTIME() > '17:00:00')
+                            )
               AND bi.returned_at IS NULL
               AND COALESCE(NULLIF(TRIM(m.email), ''), NULLIF(TRIM(m.google_email), '')) IS NOT NULL
             GROUP BY br.borrow_id, br.transaction_code, br.expected_return_date,

@@ -62,6 +62,7 @@ class MemberReturnRequest:
             cursor.execute(
                 """
                 SELECT bi.borrow_item_id, bi.borrow_id, bi.condition_borrowed,
+                      bi.borrowed_at,
                        br.transaction_code, br.expected_return_date, br.status AS borrow_status,
                       e.equipment_id, e.equipment_code, e.equipment_name, e.category,
                       e.serial_number, e.inventory_number,

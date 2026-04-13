@@ -83,7 +83,6 @@
         </div>
         <div class="d-flex flex-wrap gap-2">
             <a href="#requests" class="btn btn-outline-primary btn-sm"><i class="bi bi-file-earmark me-1"></i> My Requests</a>
-            <a href="#returns" class="btn btn-outline-primary btn-sm"><i class="bi bi-arrow-left-circle me-1"></i> Return Items</a>
             <a href="{{ url_for('borrow.notification_center') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-bell me-1"></i> Notifications</a>
             <a href="{{ url_for('auth.complete_profile') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-person-gear me-1"></i> My Profile</a>
         </div>
@@ -158,23 +157,26 @@
 
                     <div class="row g-2 mb-3">
                         <div class="col-12 col-md-6 col-lg-12">
-                            <label for="usageArea" class="form-label fw-semibold mb-1">Usage Area</label>
-                            <input id="usageArea" type="text" class="form-control" placeholder="e.g., Innovator's suite" required>
+                            <label for="usageArea" class="form-label fw-semibold mb-1">Usage Area <span class="text-danger">*</span></label>
+                            <select id="usageArea" class="form-select" required>
+                                <option value="">Select usage area</option>
+                                <option value="Innovator's Suite">Innovator's Suite</option>
+                                <option value="The CO-LAB">The CO-LAB</option>
+                            </select>
                         </div>
                     </div>
 
                     <div id="paperRequirementSection" class="border rounded p-3 mb-3 bg-light-subtle d-none">
                         <div class="fw-semibold mb-2">Paper Requirement (Printer/Scanner)</div>
-                        <div class="small text-muted mb-3">Tell us if you will use bond paper from the lab or bring your own.</div>
+                        <div class="small text-muted mb-3">Specify if you will use facility paper or provide your own.</div>
                         <div class="mb-2">
                             <label for="paperSource" class="form-label fw-semibold mb-1">Paper Source</label>
                             <select id="paperSource" class="form-select">
-                                <option value="">Select source</option>
-                                <option value="bondpaper">Need bond paper</option>
-                                <option value="own">Will provide my own paper</option>
+                                <option value="own" selected>Will provide my own paper</option>
+                                <option value="bondpaper">Use paper from facility</option>
                             </select>
                         </div>
-                        <div class="row g-2">
+                        <div class="row g-2 d-none" id="facilityPaperFields">
                             <div class="col-12 col-md-6">
                                 <label for="paperType" class="form-label fw-semibold mb-1">Paper Type</label>
                                 <select id="paperType" class="form-select">
@@ -228,7 +230,9 @@
                                 <div class="small text-muted">Serial: {{ item.serial_number or item.inventory_number or '-' }}</div>
                                 <div class="small text-muted">Code: {{ item.equipment_code or '-' }}</div>
                             </td>
-                            <td>{{ item.borrowed_date or '-' }}</td>
+                            <td>
+                                <span class="time-relative" data-created-at="{{ item.borrowed_at.isoformat() if item.borrowed_at else '' }}">-</span>
+                            </td>
                             <td>
                                 {% if item.return_request_status == 'pending' %}
                                     <span class="badge bg-warning text-dark">Return Pending</span>
@@ -240,7 +244,7 @@
                             </td>
                             <td>
                                 {% if item.return_request_status != 'approved' %}
-                                <button class="btn btn-sm btn-outline-primary">Return</button>
+                                    <button class="btn btn-sm btn-outline-primary return-item-btn" data-bs-toggle="modal" data-bs-target="#returnModal" data-borrow-item-id="{{ item.borrow_item_id }}" data-equipment-name="{{ item.equipment_name }}" data-serial="{{ item.serial_number or item.inventory_number or '-' }}" data-code="{{ item.equipment_code or '-' }}" data-status="{{ item.return_request_status }}">Return</button>
                                 {% endif %}
                             </td>
                         </tr>
@@ -260,83 +264,42 @@
 
 <!-- Return Items Section -->
 {% if active_return_items %}
-<div class="mb-4" id="returns">
-    <h5 class="fw-bold mb-3">Return Items</h5>
-    <div class="card stat-card">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-sm align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Equipment</th>
-                            <th style="width: 120px;">Condition</th>
-                            <th>Notes</th>
-                            <th style="width: 100px;">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in active_return_items if item.return_request_status != 'approved' %}
-                        <tr>
-                            <td>
-                                <div class="fw-semibold">{{ item.equipment_name }}</div>
-                                <div class="small text-muted">Serial: {{ item.serial_number or item.inventory_number or '-' }}</div>
-                                <div class="small text-muted">Code: {{ item.equipment_code or '-' }}</div>
-                            </td>
-                            <td>
-                                <select class="form-select form-select-sm return-request-condition" data-borrow-item-id="{{ item.borrow_item_id }}" {% if item.return_request_status == 'pending' %}disabled{% endif %}>
-                                    <option value="excellent">Excellent</option>
-                                    <option value="good" selected>Good</option>
-                                    <option value="fair">Fair</option>
-                                    <option value="poor">Poor</option>
-                                </select>
-                            </td>
-                            <td>
-                                <textarea class="form-control form-control-sm return-request-feedback" data-borrow-item-id="{{ item.borrow_item_id }}" rows="1" placeholder="Issues or remarks" {% if item.return_request_status == 'pending' %}disabled{% endif %}></textarea>
-                            </td>
-                            <td>
-                                {% if item.return_request_status == 'pending' %}
-                                    <span class="badge bg-warning text-dark">Pending</span>
-                                {% else %}
-                                    <button type="button" class="btn btn-sm btn-outline-success submit-return-request" data-borrow-item-id="{{ item.borrow_item_id }}">Submit</button>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Return modal will be shown via modal instead -->
 {% endif %}
 
 <!-- Request History -->
 <div class="mb-4" id="history">
-    <h5 class="fw-bold mb-3">Borrow Request History</h5>
+    <h5 class="fw-bold mb-3">History</h5>
     <div class="card stat-card">
         <div class="card-body p-0">
-            {% if requests %}
+            {% if history_items %}
             <div class="table-responsive">
                 <table class="table table-hover mb-0 small">
                     <thead class="table-light">
                         <tr>
-                            <th>Request Code</th>
+                            <th>Type</th>
+                            <th>Code</th>
                             <th>Submitted</th>
-                            <th>Items</th>
+                            <th>Details</th>
                             <th>Usage Area</th>
                             <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for req in requests %}
+                        {% for req in history_items %}
                         <tr>
-                            <td class="fw-semibold">{{ req.request_code }}</td>
+                            <td>
+                                {% if req.entry_type == 'borrow' %}
+                                <span class="badge bg-primary">Borrow</span>
+                                {% else %}
+                                <span class="badge bg-info text-dark">Return</span>
+                                {% endif %}
+                            </td>
+                            <td class="fw-semibold">{{ req.code }}</td>
                             <td>{{ req.created_at.strftime('%Y-%m-%d %H:%M') if req.created_at else '-' }}</td>
                             <td>
-                                <div class="fw-semibold">{{ req.total_items }} item(s)</div>
-                                <div class="small text-muted">{{ req.equipment_names or '-' }}</div>
-                                <div class="small text-muted">Serial(s): {{ req.equipment_serials or '-' }}</div>
-                                <div class="small text-muted">Code(s): {{ req.equipment_codes or '-' }}</div>
+                                <div class="fw-semibold">{{ req.summary }}</div>
+                                <div class="small text-muted">{{ req.meta }}</div>
                             </td>
                             <td>{{ req.usage_area }}</td>
                             <td>
@@ -355,7 +318,7 @@
             {% else %}
             <div class="text-center text-muted py-5">
                 <i class="bi bi-inbox" style="font-size: 2rem;"></i>
-                <p class="mt-2 mb-0">No borrow requests submitted yet</p>
+                <p class="mt-2 mb-0">No history records yet</p>
             </div>
             {% endif %}
         </div>
@@ -363,50 +326,67 @@
 </div>
 
 <!-- Return Request History -->
-{% if return_requests %}
-<div class="mb-4">
-    <h5 class="fw-bold mb-3">Return Request History</h5>
-    <div class="card stat-card">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0 small">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Return Request</th>
-                            <th>Equipment</th>
-                            <th>Requested Condition</th>
-                            <th>Status</th>
-                            <th>Review Notes</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for req in return_requests %}
-                        <tr>
-                            <td>
-                                <div class="fw-semibold">{{ req.return_request_code }}</div>
-                                <div class="small text-muted">{{ req.created_at.strftime('%Y-%m-%d %H:%M') if req.created_at else '-' }}</div>
-                            </td>
-                            <td>
-                                <div class="fw-semibold">{{ req.equipment_name }}</div>
-                                <div class="small text-muted">Serial: {{ req.serial_number or req.inventory_number or '-' }}</div>
-                                <div class="small text-muted">Code: {{ req.equipment_code or '-' }}</div>
-                            </td>
-                            <td><span class="badge bg-info text-uppercase">{{ req.requested_condition }}</span></td>
-                            <td>
-                                <span class="badge {% if req.status == 'pending' %}bg-warning text-dark{% elif req.status == 'approved' %}bg-success{% elif req.status == 'rejected' %}bg-danger{% elif req.status == 'expired' %}bg-dark{% else %}bg-secondary{% endif %}">
-                                    {{ req.status|title }}
-                                </span>
-                            </td>
-                            <td>{{ req.review_notes or '-' }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+{% if active_return_items %}
+<!-- Return Modal -->
+<div class="modal fade" id="returnModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Return Equipment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Equipment</label>
+                    <div id="modalEquipmentName" class="form-control-plaintext fw-semibold"></div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-muted small mb-1">Serial / Code</label>
+                    <div id="modalEquipmentSerial" class="form-control-plaintext small"></div>
+                </div>
+                <div class="mb-3">
+                    <label for="returnCondition" class="form-label fw-semibold mb-1">Return Condition</label>
+                    <select id="returnCondition" class="form-select">
+                        <option value="excellent">Excellent</option>
+                        <option value="good" selected>Good</option>
+                        <option value="fair">Fair</option>
+                        <option value="poor">Poor</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="returnFeedback" class="form-label fw-semibold mb-1">Notes (optional)</label>
+                    <textarea id="returnFeedback" class="form-control" rows="3" placeholder="Any issues or remarks about the equipment..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="submitReturnBtn">Submit Return</button>
             </div>
         </div>
     </div>
 </div>
 {% endif %}
+
+{% if show_overdue_soon_popup %}
+<div class="modal fade" id="overdueSoonModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-alarm me-1 text-warning"></i> Reminder</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Your active borrowed item(s) will become overdue in about 1 hour.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Got it</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+
 
 {% endblock %}
 
@@ -433,6 +413,7 @@
     var paperSource = document.getElementById('paperSource');
     var paperType = document.getElementById('paperType');
     var paperQuantity = document.getElementById('paperQuantity');
+    var facilityPaperFields = document.getElementById('facilityPaperFields');
     var qrScanStatus = document.getElementById('qrScanStatus');
     var startQrScanBtn = document.getElementById('startQrScanBtn');
     var stopQrScanBtn = document.getElementById('stopQrScanBtn');
@@ -452,6 +433,41 @@
             message +
             '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
             '</div>';
+    }
+
+    function formatTimeAgo(isoDate) {
+        if (!isoDate) {
+            return '-';
+        }
+
+        var date = new Date(isoDate);
+        if (isNaN(date.getTime())) {
+            return '-';
+        }
+
+        var seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+        if (seconds < 60) {
+            return Math.max(seconds, 1) + ' sec ago';
+        }
+
+        var minutes = Math.floor(seconds / 60);
+        if (minutes < 60) {
+            return minutes + ' min ago';
+        }
+
+        var hours = Math.floor(minutes / 60);
+        if (hours < 24) {
+            return hours + ' hr ago';
+        }
+
+        var days = Math.floor(hours / 24);
+        return days + ' day' + (days === 1 ? '' : 's') + ' ago';
+    }
+
+    function refreshRelativeTimes() {
+        document.querySelectorAll('.time-relative').forEach(function (el) {
+            el.textContent = formatTimeAgo(el.getAttribute('data-created-at'));
+        });
     }
 
     function setQrStatus(message, type) {
@@ -478,9 +494,22 @@
         var needsPaperDetails = Array.from(selectedItems.values()).some(isPrinterOrScanner);
         if (needsPaperDetails) {
             paperRequirementSection.classList.remove('d-none');
+            updatePaperSourceFields();
         } else {
             paperRequirementSection.classList.add('d-none');
-            paperSource.value = '';
+            paperSource.value = 'own';
+            paperType.value = '';
+            paperQuantity.value = '';
+            facilityPaperFields.classList.add('d-none');
+        }
+    }
+
+    function updatePaperSourceFields() {
+        var usingFacilityPaper = paperSource && paperSource.value === 'bondpaper';
+        if (usingFacilityPaper) {
+            facilityPaperFields.classList.remove('d-none');
+        } else {
+            facilityPaperFields.classList.add('d-none');
             paperType.value = '';
             paperQuantity.value = '';
         }
@@ -730,29 +759,32 @@
             var needsPaperDetails = Array.from(selectedItems.values()).some(isPrinterOrScanner);
             var paperRequest = null;
             if (needsPaperDetails) {
-                if (!paperSource.value) {
-                    showAlert('Please select whether you need bond paper or will provide your own.', 'warning');
-                    paperSource.focus();
-                    return;
-                }
-                if (!paperType.value) {
-                    showAlert('Please select the paper type (Long, Short, A4, or Special).', 'warning');
-                    paperType.focus();
-                    return;
-                }
+                var sourceValue = (paperSource && paperSource.value) ? paperSource.value : 'own';
 
-                var quantityValue = Number(paperQuantity.value);
-                if (!Number.isInteger(quantityValue) || quantityValue < 1) {
-                    showAlert('Please enter a valid paper quantity.', 'warning');
-                    paperQuantity.focus();
-                    return;
-                }
+                if (sourceValue === 'bondpaper') {
+                    if (!paperType.value) {
+                        showAlert('Please select the paper type (Long, Short, A4, or Special).', 'warning');
+                        paperType.focus();
+                        return;
+                    }
 
-                paperRequest = {
-                    source: paperSource.value,
-                    type: paperType.value,
-                    quantity: quantityValue
-                };
+                    var quantityValue = Number(paperQuantity.value);
+                    if (!Number.isInteger(quantityValue) || quantityValue < 1) {
+                        showAlert('Please enter a valid paper quantity.', 'warning');
+                        paperQuantity.focus();
+                        return;
+                    }
+
+                    paperRequest = {
+                        source: 'bondpaper',
+                        type: paperType.value,
+                        quantity: quantityValue
+                    };
+                } else {
+                    paperRequest = {
+                        source: 'own'
+                    };
+                }
             }
 
             var items = Array.from(selectedItems.values()).map(function (item) {
@@ -795,11 +827,38 @@
     }
 
     // Return request handlers
-    document.querySelectorAll('.submit-return-request').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            var itemId = Number(btn.getAttribute('data-borrow-item-id'));
-            var condition = document.querySelector('[data-borrow-item-id="' + itemId + '"].return-request-condition').value;
-            var feedback = document.querySelector('[data-borrow-item-id="' + itemId + '"].return-request-feedback').value;
+        // Handle return modal
+        var currentReturnItemId = null;
+        var returnModal = document.getElementById('returnModal');
+    
+        if (returnModal) {
+            returnModal.addEventListener('show.bs.modal', function (e) {
+                var btn = e.relatedTarget;
+                currentReturnItemId = Number(btn.getAttribute('data-borrow-item-id'));
+                var equipmentName = btn.getAttribute('data-equipment-name');
+                var serial = btn.getAttribute('data-serial');
+                var code = btn.getAttribute('data-code');
+                var status = btn.getAttribute('data-status');
+            
+                document.getElementById('modalEquipmentName').textContent = equipmentName;
+                document.getElementById('modalEquipmentSerial').textContent = serial + ' • ' + code;
+                document.getElementById('returnCondition').value = 'good';
+                document.getElementById('returnFeedback').value = '';
+            
+                if (status === 'pending') {
+                    document.getElementById('submitReturnBtn').disabled = true;
+                } else {
+                    document.getElementById('submitReturnBtn').disabled = false;
+                }
+            });
+        }
+    
+        var submitReturnBtn = document.getElementById('submitReturnBtn');
+        if (submitReturnBtn) {
+            submitReturnBtn.addEventListener('click', function () {
+                var itemId = currentReturnItemId;
+                var condition = document.getElementById('returnCondition').value;
+                var feedback = document.getElementById('returnFeedback').value;
 
             fetch('/api/member/return-request', {
                 method: 'POST',
@@ -818,14 +877,31 @@
             .then(function (data) {
                 if (data.ok) {
                     showAlert('Return request submitted successfully!', 'success');
+                        if (returnModal && window.bootstrap) {
+                            var modalInstance = bootstrap.Modal.getOrCreateInstance(returnModal);
+                            modalInstance.hide();
+                        }
                     setTimeout(function () { window.location.reload(); }, 1500);
                 } else {
                     showAlert(data.message || 'Failed to submit return request.', 'danger');
                 }
             })
             .catch(function () { showAlert('An error occurred.', 'danger'); });
-        });
-    });
+            });
+        }
+
+        if (paperSource) {
+            paperSource.addEventListener('change', updatePaperSourceFields);
+        }
+
+    refreshRelativeTimes();
+    setInterval(refreshRelativeTimes, 60000);
+
+    var overdueSoonModalEl = document.getElementById('overdueSoonModal');
+    if (overdueSoonModalEl && window.bootstrap) {
+        var overdueSoonModal = new bootstrap.Modal(overdueSoonModalEl);
+        overdueSoonModal.show();
+    }
 
     loadAvailableEquipment();
 })();

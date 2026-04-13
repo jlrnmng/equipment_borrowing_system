@@ -7,7 +7,7 @@ from flask_wtf.csrf import CSRFProtect
 from authlib.integrations.flask_client import OAuth
 
 from config.config import config
-from app.utils.db import close_db
+from app.utils.db import close_db, get_db
 from app.utils.reminders import maybe_start_scheduler
 from app.realtime import init_realtime
 
@@ -72,6 +72,38 @@ def create_app(config_name=None):
                 flash('Your session expired. Please log in again.', 'warning')
                 return redirect(url_for('auth.login'))
             session['_last_active'] = datetime.utcnow().isoformat()
+
+    @app.context_processor
+    def inject_notification_counts():
+        if not current_user.is_authenticated:
+            return {'unread_count': 0}
+
+        role = getattr(current_user, 'role', None)
+        db = get_db()
+
+        with db.cursor() as cursor:
+            if role == 'member':
+                cursor.execute(
+                    """
+                    SELECT COUNT(*) AS cnt
+                    FROM notifications
+                    WHERE member_id = %s
+                      AND created_at >= (NOW() - INTERVAL 1 DAY)
+                    """,
+                    (current_user.id,),
+                )
+            else:
+                cursor.execute(
+                    """
+                    SELECT COUNT(*) AS cnt
+                    FROM notifications
+                    WHERE status = 'pending'
+                    """
+                )
+
+            row = cursor.fetchone() or {}
+
+        return {'unread_count': int(row.get('cnt') or 0)}
 
     # Blueprints
     from app.routes.auth import auth_bp
