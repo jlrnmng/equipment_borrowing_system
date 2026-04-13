@@ -99,7 +99,7 @@
                 <span class="badge bg-secondary" style="font-size:.65rem;text-transform:capitalize">{{ current_user.role }}</span>
             </div>
         </div>
-        <a href="{{ url_for('auth.logout') }}" class="nav-link ps-0">
+        <a href="{{ url_for('auth.logout') }}" class="nav-link ps-0 js-logout-trigger" data-logout-url="{{ url_for('auth.logout') }}">
             <i class="bi bi-box-arrow-right"></i> Log Out
         </a>
     </div>
@@ -123,7 +123,7 @@
                 <i class="bi bi-bell"></i>
                 {% if unread_count > 0 %}<span class="position-absolute rounded-circle bg-danger" style="width:8px;height:8px;top:6px;right:6px;"></span>{% endif %}
             </a>
-            <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline-danger">
+            <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline-danger js-logout-trigger" data-logout-url="{{ url_for('auth.logout') }}">
                 <i class="bi bi-box-arrow-right me-1"></i> Log Out
             </a>
         </div>
@@ -142,4 +142,49 @@
         {% block content %}{% endblock %}
     </div>
 </div>
+
+<div class="modal fade" id="logoutConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-box-arrow-right me-1 text-danger"></i> Confirm Logout</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to log out?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmLogoutBtn">Log Out</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var modalEl = document.getElementById('logoutConfirmModal');
+    var confirmBtn = document.getElementById('confirmLogoutBtn');
+    if (!modalEl || !confirmBtn || !window.bootstrap) {
+        return;
+    }
+
+    var logoutUrl = null;
+    var modal = new bootstrap.Modal(modalEl);
+
+    document.querySelectorAll('.js-logout-trigger').forEach(function (link) {
+        link.addEventListener('click', function (event) {
+            event.preventDefault();
+            logoutUrl = link.getAttribute('data-logout-url') || link.getAttribute('href');
+            modal.show();
+        });
+    });
+
+    confirmBtn.addEventListener('click', function () {
+        if (logoutUrl) {
+            window.location.href = logoutUrl;
+        }
+    });
+})();
+</script>
 {% endblock %}

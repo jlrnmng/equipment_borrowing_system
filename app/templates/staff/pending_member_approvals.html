@@ -6,7 +6,7 @@
 {% block content %}
 <div class="row g-3">
     <div class="col-12">
-        <div class="card stat-card">
+        <div class="card stat-card" id="pendingRegistrationCard">
             <div class="card-header bg-white border-bottom fw-semibold">
                 <i class="bi bi-hourglass-split me-1"></i> Pending Registrations
                 <span class="badge bg-warning ms-2">{{ pending_members | length }}</span>
@@ -55,9 +55,7 @@
                     </table>
                 </div>
                 {% else %}
-                <div class="alert alert-info mb-0 m-3">
-                    <i class="bi bi-check-circle me-2"></i> No pending member registrations at this time.
-                </div>
+                <div class="table-responsive d-none"></div>
                 {% endif %}
             </div>
         </div>
@@ -69,8 +67,8 @@ document.querySelectorAll('.approve-btn').forEach(btn => {
     btn.addEventListener('click', async function() {
         const memberId = this.dataset.memberId;
         const memberCode = this.dataset.memberCode;
-        
-        if (!confirm(`Approve member ${memberCode}?`)) {
+
+        if (!window.confirm(`Approve member ${memberCode}?`)) {
             return;
         }
         
@@ -92,20 +90,16 @@ document.querySelectorAll('.approve-btn').forEach(btn => {
                 // Check if there are any rows left in the tbody
                 const tbody = document.querySelector('tbody');
                 if (tbody && tbody.querySelectorAll('tr').length === 0) {
-                    // No more rows, show empty state message as popup
-                    const emptyAlertDiv = document.createElement('div');
-                    emptyAlertDiv.className = 'alert alert-info alert-dismissible fade show';
-                    emptyAlertDiv.innerHTML = `
-                        <i class="bi bi-check-circle me-2"></i> No pending member registrations at this time.
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    `;
-                    document.querySelector('.px-3').insertBefore(emptyAlertDiv, document.querySelector('.row'));
-                    
-                    // Auto-dismiss after 2 seconds
-                    setTimeout(() => {
-                        emptyAlertDiv.remove();
-                    }, 2000);
-                    
+                    // No more rows, show empty-state popup above the card for 2 seconds
+                    if (window.showInlinePopup) {
+                        window.showInlinePopup({
+                            message: 'No pending member registrations at this time.',
+                            variant: 'info',
+                            delay: 2000,
+                            anchorSelector: '#pendingRegistrationCard'
+                        });
+                    }
+
                     // Clear the table content and hide it
                     const tableContainer = document.querySelector('.table-responsive');
                     if (tableContainer) {
@@ -122,34 +116,51 @@ document.querySelectorAll('.approve-btn').forEach(btn => {
                     countBadge.textContent = count;
                 }
                 
-                // Show success message
-                const alertDiv = document.createElement('div');
-                alertDiv.className = 'alert alert-success alert-dismissible fade show';
-                alertDiv.innerHTML = `
-                    <i class="bi bi-check-circle me-2"></i> Member ${memberCode} approved successfully. Approval email has been sent.
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                `;
-                document.querySelector('.px-3').appendChild(alertDiv);
+                if (window.showInlinePopup) {
+                    window.showInlinePopup({
+                        message: `Member ${memberCode} approved successfully. Approval email has been sent.`,
+                        variant: 'success',
+                        delay: 2200,
+                        anchorSelector: '#pendingRegistrationCard'
+                    });
+                }
             } else {
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'alert alert-danger alert-dismissible fade show';
-                errorDiv.innerHTML = `
-                    <i class="bi bi-exclamation-circle me-2"></i> Error: ${data.message || 'Failed to approve member'}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                `;
-                document.querySelector('.px-3').appendChild(errorDiv);
+                if (window.showInlinePopup) {
+                    window.showInlinePopup({
+                        message: `Error: ${data.message || 'Failed to approve member'}`,
+                        variant: 'danger',
+                        delay: 2600,
+                        anchorSelector: '#pendingRegistrationCard'
+                    });
+                }
             }
         } catch (error) {
             console.error('Error:', error);
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'alert alert-danger alert-dismissible fade show';
-            errorDiv.innerHTML = `
-                <i class="bi bi-exclamation-circle me-2"></i> An error occurred while approving the member
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
-            document.querySelector('.px-3').appendChild(errorDiv);
+            if (window.showInlinePopup) {
+                window.showInlinePopup({
+                    message: 'An error occurred while approving the member',
+                    variant: 'danger',
+                    delay: 2600,
+                    anchorSelector: '#pendingRegistrationCard'
+                });
+            }
         }
     });
 });
+
+(function showEmptyStateOnPageLoad() {
+    const hasRows = document.querySelectorAll('tbody tr').length > 0;
+    if (hasRows) {
+        return;
+    }
+    if (window.showInlinePopup) {
+        window.showInlinePopup({
+            message: 'No pending member registrations at this time.',
+            variant: 'info',
+            delay: 2000,
+            anchorSelector: '#pendingRegistrationCard'
+        });
+    }
+})();
 </script>
 {% endblock %}

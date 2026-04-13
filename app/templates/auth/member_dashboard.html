@@ -72,9 +72,6 @@
     </div>
 </div>
 
-<!-- Alerts Section -->
-<div id="requestAlert"></div>
-
 <div class="mb-4" id="search">
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-2 mb-3">
         <div>
@@ -130,7 +127,8 @@
         </div>
 
         <div class="col-lg-5">
-            <div class="card stat-card h-100">
+            <div id="requestAlert"></div>
+            <div class="card stat-card h-100" id="prepareRequestCard">
                 <div class="card-header bg-white border-bottom fw-semibold">
                     <i class="bi bi-clipboard-check me-1 text-primary"></i> Prepare Request
                 </div>
@@ -428,6 +426,16 @@
     }
 
     function showAlert(message, type) {
+        if (window.showInlinePopup) {
+            window.showInlinePopup({
+                message: message,
+                variant: type || 'info',
+                delay: 2200,
+                anchorSelector: '#prepareRequestCard'
+            });
+            return;
+        }
+
         requestAlert.innerHTML =
             '<div class="alert alert-' + type + ' alert-dismissible fade show" role="alert">' +
             message +

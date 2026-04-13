@@ -240,9 +240,18 @@ a:hover {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 0.75rem;
     background: rgba(255, 255, 255, 0.78);
     backdrop-filter: blur(7px);
     border-bottom: 1px solid rgba(146, 164, 188, 0.34);
+}
+
+.topbar-right {
+    min-width: 0;
+}
+
+.topbar-right .btn {
+    white-space: nowrap;
 }
 
 .page-title {
@@ -369,6 +378,7 @@ a:hover {
         z-index: 1030;
         padding: 0.72rem 1rem;
         gap: 0.75rem;
+        align-items: flex-start;
     }
 
     .topbar .topbar-user {
@@ -400,11 +410,14 @@ a:hover {
 
     .page-actions {
         justify-content: flex-end;
+        width: 100%;
     }
 
     .topbar-right {
+        width: 100%;
         flex-wrap: wrap;
         justify-content: flex-end;
+        align-items: center;
         row-gap: 0.4rem;
     }
 
@@ -427,6 +440,27 @@ a:hover {
 
     .page-content {
         padding: 0.74rem;
+    }
+
+    .topbar {
+        align-items: center;
+    }
+
+    .topbar-right {
+        justify-content: flex-end;
+        gap: 0.35rem !important;
+    }
+
+    .page-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .page-actions .btn,
+    .topbar-right > .btn {
+        min-height: 32px;
+        padding: 0.28rem 0.5rem;
+        font-size: 0.76rem;
     }
 
     .topbar {

@@ -54,6 +54,49 @@
             toast.show();
         };
 
+        window.showInlinePopup = function (options) {
+            options = options || {};
+            var message = String(options.message || 'Done');
+            var variant = String(options.variant || 'info');
+            var delay = Number(options.delay || 2000);
+            var anchorSelector = options.anchorSelector || null;
+            var containerSelector = options.containerSelector || null;
+
+            var container = containerSelector
+                ? document.querySelector(containerSelector)
+                : null;
+            if (!container) {
+                container = document.querySelector('.page-content') || document.body;
+            }
+
+            var alertEl = document.createElement('div');
+            alertEl.className = 'alert alert-' + variant + ' alert-dismissible fade show mb-3';
+            alertEl.setAttribute('role', 'alert');
+            alertEl.innerHTML =
+                '<i class="bi bi-info-circle me-2"></i>' +
+                message +
+                '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>';
+
+            var anchorEl = anchorSelector ? document.querySelector(anchorSelector) : null;
+            if (anchorEl && anchorEl.parentNode === container) {
+                container.insertBefore(alertEl, anchorEl);
+            } else if (anchorEl && anchorEl.parentNode) {
+                anchorEl.parentNode.insertBefore(alertEl, anchorEl);
+            } else {
+                container.prepend(alertEl);
+            }
+
+            window.setTimeout(function () {
+                alertEl.classList.remove('show');
+                alertEl.classList.add('hide');
+                window.setTimeout(function () {
+                    if (alertEl.parentNode) {
+                        alertEl.remove();
+                    }
+                }, 200);
+            }, delay);
+        };
+
         // Force a network re-check when returning via back/forward navigation.
         // This prevents stale pages from being restored from browser history cache.
         window.addEventListener('pageshow', function (event) {
