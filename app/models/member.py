@@ -295,7 +295,7 @@ class Member:
                     registration_method,
                     notification_preferences,
                     created_by
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'active', %s, %s, %s, 'manual', %s, %s)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'pending', %s, %s, %s, 'manual', %s, %s)
                 """,
                 (
                     member_code,
@@ -412,6 +412,40 @@ class Member:
                 (phone, student_id, startup, college_department, program, year_level, member_id),
             )
         db.commit()
+
+    @staticmethod
+    def get_pending_members():
+        """Retrieve all pending member registrations awaiting admin approval."""
+        db = get_db()
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT member_id, member_code, first_name, middle_name, last_name,
+                       email, google_email, phone, student_id, startup,
+                       status, created_at, updated_at
+                FROM members
+                WHERE status = 'pending'
+                ORDER BY created_at DESC
+                """
+            )
+            return cursor.fetchall()
+
+    @staticmethod
+    def approve_member(member_id):
+        """Approve a pending member registration, changing status to active."""
+        db = get_db()
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE members
+                SET status = 'active',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE member_id = %s AND status = 'pending'
+                """,
+                (member_id,),
+            )
+        db.commit()
+        return cursor.rowcount > 0
 
 
 class MemberUser(UserMixin):

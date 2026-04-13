@@ -261,6 +261,10 @@ def google_callback():
 
     member_row = Member.get_by_email_or_google_email(email)
     if member_row:
+        if member_row['status'] == 'pending':
+            flash('Your registration is pending admin approval. We will send you an email notification once approved.', 'info')
+            return redirect(url_for('auth.login'))
+        
         if member_row['status'] != 'active':
             flash('Your member account is not active. Contact staff.', 'danger')
             return redirect(url_for('auth.login'))
@@ -296,24 +300,32 @@ def google_callback():
         )
         Member.link_google_identity(created_member['member_id'], email, google_sub)
 
-        # Queue welcome notification and attempt immediate delivery when mail config is available.
+        # Queue registration pending approval notification
         try:
             queue_and_send_notification(
                 member_id=created_member['member_id'],
                 borrow_id=None,
-                notification_type='welcome',
+                notification_type='registration_pending',
                 recipient_email=email,
-                subject='Welcome to QR Equipment Borrowing System',
-                message=build_welcome_message(
-                    member_name=f"{first_name} {last_name}".strip(),
-                    member_code=member_code,
-                ),
+                subject='Registration Pending – QR Equipment Borrowing System',
+                message=f"""Dear {first_name},
+
+Thank you for registering with our QR Equipment Borrowing System. Your registration is currently pending admin approval.
+
+Your account details:
+- Member Code: {member_code}
+- Email: {email}
+
+We will send you an email notification once your registration has been approved by our administrators.
+
+Best regards,
+Equipment Borrowing System Admin""",
             )
         except Exception:
-            current_app.logger.exception('Failed to queue/send welcome notification for member %s', member_code)
+            current_app.logger.exception('Failed to queue/send registration pending notification for member %s', member_code)
 
-        flash('Google signup successful. Your member account has been created.', 'success')
-        return _member_redirect_after_login(Member.get_auth_by_member_id(created_member['member_id']))
+        flash('Registration successful! Your account is pending admin approval. Check your email for updates.', 'success')
+        return redirect(url_for('auth.login'))
 
     return redirect(url_for('auth.request_access', email=email))
 

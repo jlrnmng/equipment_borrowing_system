@@ -56,22 +56,20 @@
            class="nav-link {% if request.endpoint == 'borrow.overdue_management' %}active{% endif %}">
             <i class="bi bi-exclamation-triangle"></i> Overdue Management
         </a>
-
-        <span class="nav-section">Manage Member</span>
-        <a href="{{ url_for('members.register_member') }}"
-           class="nav-link {% if request.endpoint == 'members.register_member' %}active{% endif %}">
-            <i class="bi bi-person-plus"></i> Register Member
+        <a href="{{ url_for('staff_admin.pending_member_approvals') }}"
+           class="nav-link {% if request.endpoint == 'staff_admin.pending_member_approvals' %}active{% endif %}">
+            <i class="bi bi-hourglass-split"></i> Pending Approvals
         </a>
+
+        <span class="nav-section">Manage User</span>
         <a href="{{ url_for('members.scan_member') }}"
            class="nav-link {% if request.endpoint == 'members.scan_member' %}active{% endif %}">
             <i class="bi bi-qr-code-scan"></i> Scan Member
         </a>
-        {% if current_user.role == 'admin' %}
         <a href="{{ url_for('staff_admin.register_staff') }}"
            class="nav-link {% if request.endpoint == 'staff_admin.register_staff' %}active{% endif %}">
-            <i class="bi bi-person-badge"></i> Add Admin
+            <i class="bi bi-person-badge"></i> Add Staff
         </a>
-        {% endif %}
 
         <span class="nav-section">Management</span>
         <a href="{{ url_for('equipment.list_equipment') }}"
