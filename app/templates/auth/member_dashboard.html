@@ -296,8 +296,8 @@
                             <td class="fw-semibold">{{ req.code }}</td>
                             <td>{{ req.created_at.strftime('%Y-%m-%d %H:%M') if req.created_at else '-' }}</td>
                             <td>
-                                <div class="fw-semibold">{{ req.summary }}</div>
-                                <div class="small text-muted">{{ req.meta }}</div>
+                                <div class="fw-semibold history-summary">{{ req.summary }}</div>
+                                <div class="small text-muted history-meta">{{ req.meta }}</div>
                             </td>
                             <td>{{ req.usage_area }}</td>
                             <td>
