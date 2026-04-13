@@ -161,31 +161,3 @@
     </div>
 </div>
 {% endblock %}
-{% block extra_scripts %}
-<script>
-(function () {
-    var modalEl = document.getElementById('logoutConfirmModal');
-    var confirmBtn = document.getElementById('confirmLogoutBtn');
-    if (!modalEl || !confirmBtn || !window.bootstrap) {
-        return;
-    }
-
-    var logoutUrl = null;
-    var modal = new bootstrap.Modal(modalEl);
-
-    document.querySelectorAll('.js-logout-trigger').forEach(function (link) {
-        link.addEventListener('click', function (event) {
-            event.preventDefault();
-            logoutUrl = link.getAttribute('data-logout-url') || link.getAttribute('href');
-            modal.show();
-        });
-    });
-
-    confirmBtn.addEventListener('click', function () {
-        if (logoutUrl) {
-            window.location.href = logoutUrl;
-        }
-    });
-})();
-</script>
-{% endblock %}

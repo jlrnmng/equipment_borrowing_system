@@ -246,6 +246,35 @@
     </script>
     <script>
         (function () {
+            var modalEl = document.getElementById('logoutConfirmModal');
+            var confirmBtn = document.getElementById('confirmLogoutBtn');
+            if (!modalEl || !confirmBtn || !window.bootstrap) {
+                return;
+            }
+
+            var logoutUrl = null;
+            var modal = new bootstrap.Modal(modalEl);
+
+            document.addEventListener('click', function (event) {
+                var trigger = event.target.closest('.js-logout-trigger');
+                if (!trigger) {
+                    return;
+                }
+
+                event.preventDefault();
+                logoutUrl = trigger.getAttribute('data-logout-url') || trigger.getAttribute('href');
+                modal.show();
+            });
+
+            confirmBtn.addEventListener('click', function () {
+                if (logoutUrl) {
+                    window.location.href = logoutUrl;
+                }
+            });
+        })();
+    </script>
+    <script>
+        (function () {
             var sidebar = document.getElementById('appSidebar');
             var backdrop = document.getElementById('sidebarBackdrop');
 
