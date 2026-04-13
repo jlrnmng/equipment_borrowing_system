@@ -247,9 +247,9 @@ def edit_equipment(equipment_id):
                 property_stock_number=form.property_stock_number.data.strip() if form.property_stock_number.data else None,
                 status=form.status.data,
                 condition_status=form.condition_status.data,
-                location=form.location.data.strip() if form.location.data else None,
-                requires_supervision=form.requires_supervision.data,
-                restricted_areas=form.restricted_areas.data.strip() if form.restricted_areas.data else None,
+                location=equipment.get('location'),
+                requires_supervision=bool(equipment.get('requires_supervision')),
+                restricted_areas=equipment.get('restricted_areas'),
                 notes=form.notes.data.strip() if form.notes.data else None,
             )
 

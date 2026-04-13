@@ -48,10 +48,6 @@
            class="nav-link {% if request.endpoint == 'borrow.new_borrow' %}active{% endif %}">
             <i class="bi bi-box-arrow-in-down"></i> New Borrow
         </a>
-        <a href="{{ url_for('members.scan_member') }}"
-           class="nav-link {% if request.endpoint == 'members.scan_member' %}active{% endif %}">
-            <i class="bi bi-qr-code-scan"></i> Scan Member
-        </a>
         <a href="{{ url_for('borrow.new_return') }}"
            class="nav-link {% if request.endpoint == 'borrow.new_return' %}active{% endif %}">
             <i class="bi bi-box-arrow-up"></i> Return Equipment
@@ -61,13 +57,23 @@
             <i class="bi bi-exclamation-triangle"></i> Overdue Management
         </a>
 
-        <span class="nav-section">Management</span>
+        <span class="nav-section">Manage Member</span>
+        <a href="{{ url_for('members.register_member') }}"
+           class="nav-link {% if request.endpoint == 'members.register_member' %}active{% endif %}">
+            <i class="bi bi-person-plus"></i> Register Member
+        </a>
+        <a href="{{ url_for('members.scan_member') }}"
+           class="nav-link {% if request.endpoint == 'members.scan_member' %}active{% endif %}">
+            <i class="bi bi-qr-code-scan"></i> Scan Member
+        </a>
         {% if current_user.role == 'admin' %}
         <a href="{{ url_for('staff_admin.register_staff') }}"
            class="nav-link {% if request.endpoint == 'staff_admin.register_staff' %}active{% endif %}">
-            <i class="bi bi-person-badge"></i> Staff Accounts
+            <i class="bi bi-person-badge"></i> Add Admin
         </a>
         {% endif %}
+
+        <span class="nav-section">Management</span>
         <a href="{{ url_for('equipment.list_equipment') }}"
            class="nav-link {% if request.endpoint in ['equipment.list_equipment', 'equipment.add_equipment', 'equipment.equipment_detail', 'equipment.edit_equipment'] %}active{% endif %}">
             <i class="bi bi-box2"></i> Equipment

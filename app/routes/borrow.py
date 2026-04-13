@@ -1552,20 +1552,26 @@ def run_reminders_now():
 @borrow_bp.route('/api/notifications/<int:notification_id>/delete', methods=['POST'])
 @login_required
 def delete_notification(notification_id):
-    if getattr(current_user, 'role', None) != 'member':
+    role = getattr(current_user, 'role', None)
+    if role not in ('member', 'admin', 'staff'):
         return jsonify({'ok': False, 'message': 'Forbidden'}), 403
     
     db = get_db()
     with db.cursor() as cursor:
-        # Verify the notification belongs to the current member
-        cursor.execute(
-            "SELECT notification_id FROM notifications WHERE notification_id = %s AND member_id = %s",
-            (notification_id, current_user.id)
-        )
+        if role == 'member':
+            cursor.execute(
+                "SELECT notification_id FROM notifications WHERE notification_id = %s AND member_id = %s",
+                (notification_id, current_user.id)
+            )
+        else:
+            cursor.execute(
+                "SELECT notification_id FROM notifications WHERE notification_id = %s",
+                (notification_id,)
+            )
+
         if not cursor.fetchone():
             return jsonify({'ok': False, 'message': 'Notification not found'}), 404
         
-        # Delete the notification
         cursor.execute("DELETE FROM notifications WHERE notification_id = %s", (notification_id,))
         db.commit()
     
@@ -1575,12 +1581,16 @@ def delete_notification(notification_id):
 @borrow_bp.route('/api/notifications/delete-all', methods=['POST'])
 @login_required
 def delete_all_notifications():
-    if getattr(current_user, 'role', None) != 'member':
+    role = getattr(current_user, 'role', None)
+    if role not in ('member', 'admin', 'staff'):
         return jsonify({'ok': False, 'message': 'Forbidden'}), 403
     
     db = get_db()
     with db.cursor() as cursor:
-        cursor.execute("DELETE FROM notifications WHERE member_id = %s", (current_user.id,))
+        if role == 'member':
+            cursor.execute("DELETE FROM notifications WHERE member_id = %s", (current_user.id,))
+        else:
+            cursor.execute("DELETE FROM notifications")
         db.commit()
     
     return jsonify({'ok': True, 'message': 'All notifications deleted'})

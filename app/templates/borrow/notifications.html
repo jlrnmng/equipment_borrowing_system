@@ -22,6 +22,7 @@
                 <thead class="table-light">
                     <tr>
                         <th class="ps-3">Type</th>
+                        <th>Flow</th>
                         <th>Status</th>
                         <th>Created</th>
                         <th>Sent</th>
@@ -38,6 +39,16 @@
                             {% endif %}
                             {% if item.transaction_code %}
                             <small class="text-muted">{{ item.transaction_code }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% set notif_type = (item.notification_type or '')|lower %}
+                            {% if 'return' in notif_type %}
+                            <span class="badge bg-info text-dark">Return</span>
+                            {% elif 'borrow' in notif_type %}
+                            <span class="badge bg-primary">Borrow</span>
+                            {% else %}
+                            <span class="badge bg-secondary">General</span>
                             {% endif %}
                         </td>
                         <td>
@@ -116,6 +127,12 @@
         <div class="fw-semibold">
             <i class="bi bi-envelope-check me-1 text-primary"></i> Notification Queue
         </div>
+        <div class="d-flex gap-2">
+        {% if notifications %}
+            <button id="deleteAllBtn" type="button" class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-trash me-1"></i> Delete All
+            </button>
+        {% endif %}
         {% if can_manage_notifications %}
         <div class="d-flex gap-2">
             <button id="runRemindersBtn" type="button" class="btn btn-sm btn-outline-primary">
@@ -126,6 +143,7 @@
             </button>
         </div>
         {% endif %}
+        </div>
     </div>
     <div class="card-body p-0">
         {% if notifications %}
@@ -134,10 +152,12 @@
                 <thead class="table-light">
                     <tr>
                         <th class="ps-3">Type</th>
+                        <th>Flow</th>
                         <th>Status</th>
                         <th>Created</th>
                         <th>Sent</th>
                         <th>Error</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -147,6 +167,16 @@
                             <div class="fw-semibold text-capitalize">{{ (item.notification_type or '').replace('_', ' ') }}</div>
                             {% if item.transaction_code %}
                             <small class="text-muted">{{ item.transaction_code }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% set notif_type = (item.notification_type or '')|lower %}
+                            {% if 'return' in notif_type %}
+                            <span class="badge bg-info text-dark">Return</span>
+                            {% elif 'borrow' in notif_type %}
+                            <span class="badge bg-primary">Borrow</span>
+                            {% else %}
+                            <span class="badge bg-secondary">General</span>
                             {% endif %}
                         </td>
                         <td>
@@ -180,6 +210,11 @@
                             {% else %}
                             <span class="text-muted">-</span>
                             {% endif %}
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-link text-danger p-0 delete-notification-btn" data-notification-id="{{ item.notification_id }}">
+                                <i class="bi bi-trash"></i> Delete
+                            </button>
                         </td>
                     </tr>
                     {% endfor %}

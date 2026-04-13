@@ -1,14 +1,7 @@
 {% extends 'layouts/main.html' %}
 {% block title %}Dashboard – QR Equipment Borrowing System{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
-{% block page_actions %}
-<a href="{{ url_for('auth.signup') }}" class="btn btn-sm btn-outline-primary">
-    <i class="bi bi-person-plus me-1"></i> Register Member
-</a>
-<a href="{{ url_for('equipment.add_equipment') }}" class="btn btn-sm btn-primary">
-    <i class="bi bi-plus-circle me-1"></i> Add Equipment
-</a>
-{% endblock %}
+{% block page_actions %}{% endblock %}
 {% block content %}
 <div class="card stat-card mb-4">
     <div class="card-body d-flex flex-column flex-md-row align-items-center gap-3">
@@ -374,23 +367,7 @@
 </div>
 
 <div class="row g-3">
-    <div class="col-md-5 col-lg-4">
-        <div class="card stat-card h-100">
-            <div class="card-header bg-white border-bottom fw-semibold">
-                <i class="bi bi-lightning-charge me-1 text-warning"></i> Quick Actions
-            </div>
-            <div class="card-body d-grid gap-2">
-                <a href="{{ url_for('borrow.new_borrow') }}" class="btn btn-primary"><i class="bi bi-box-arrow-in-down me-1"></i> Process Borrow</a>
-                <a href="{{ url_for('borrow.new_return') }}" class="btn btn-success"><i class="bi bi-box-arrow-up me-1"></i> Process Return</a>
-                <a href="{{ url_for('borrow.overdue_management') }}" class="btn btn-outline-danger"><i class="bi bi-exclamation-triangle me-1"></i> Overdue Management</a>
-                <a href="{{ url_for('members.scan_member') }}" class="btn btn-outline-secondary"><i class="bi bi-qr-code-scan me-1"></i> Scan Member QR</a>
-                <a href="{{ url_for('borrow.notification_center') }}" class="btn btn-outline-secondary"><i class="bi bi-envelope-check me-1"></i> Notifications</a>
-                <a href="{{ url_for('auth.signup') }}" class="btn btn-outline-secondary"><i class="bi bi-person-plus me-1"></i> Register Member</a>
-                <a href="{{ url_for('equipment.add_equipment') }}" class="btn btn-outline-secondary"><i class="bi bi-plus-circle me-1"></i> Add Equipment</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-7 col-lg-8">
+    <div class="col-12">
         <div class="card stat-card h-100">
             <div class="card-header bg-white border-bottom fw-semibold">
                 <i class="bi bi-clock-history me-1 text-primary"></i> Recent Activity
@@ -402,7 +379,7 @@
                     <li class="list-group-item px-3 py-2">
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
-                                <span class="badge bg-secondary me-1">{{ entry.action }}</span>
+                                <span class="badge {% if entry.action == 'RETURN_PROCESSED' %}bg-info{% elif entry.action == 'BORROW_REQUEST_APPROVED' %}bg-success{% else %}bg-secondary{% endif %} me-1">{{ entry.action }}</span>
                                 <small>{{ entry.description or '' }}</small>
                             </div>
                             <small class="text-muted text-nowrap ms-2">
