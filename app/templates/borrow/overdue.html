@@ -6,9 +6,9 @@
     <div class="col-md-8">
         <div class="card stat-card h-100">
             <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="d-flex justify-content-between align-items-center mb-2 overdue-toolbar">
                     <h6 class="mb-0"><i class="bi bi-exclamation-triangle me-1 text-danger"></i> Overdue Detection Summary</h6>
-                    <button id="syncOverdueBtn" type="button" class="btn btn-sm btn-primary">
+                    <button id="syncOverdueBtn" type="button" class="btn btn-sm btn-primary overdue-sync-btn">
                         <i class="bi bi-arrow-repeat me-1"></i> Refresh Detection
                     </button>
                 </div>
@@ -124,4 +124,20 @@
     });
 })();
 </script>
+
+<style>
+@media (max-width: 576px) {
+    .overdue-toolbar {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 0.5rem;
+    }
+
+    .overdue-sync-btn {
+        width: 100%;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+}
+</style>
 {% endblock %}

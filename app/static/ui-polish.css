@@ -80,6 +80,20 @@ a:hover {
     border-bottom-width: 1px;
 }
 
+.reports-table th,
+.reports-table td {
+    padding: 0.45rem 0.55rem;
+    font-size: 0.86rem;
+    vertical-align: middle;
+}
+
+@media (min-width: 992px) {
+    .reports-table th,
+    .reports-table td {
+        white-space: nowrap;
+    }
+}
+
 .badge {
     border-radius: 999px;
     font-weight: 600;

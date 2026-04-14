@@ -6,7 +6,7 @@ Supports filtering, date ranges, and CSV export.
 
 from flask import Blueprint, render_template, request, jsonify, send_file
 from flask_login import login_required, current_user
-from io import StringIO
+from io import BytesIO, StringIO
 import csv
 from datetime import datetime, timedelta
 from app.utils.db import get_db
@@ -43,23 +43,30 @@ def get_active_borrowings(member_code=None, equipment_code=None, usage_area=None
     cursor = db.cursor()
     
     query = """
-        SELECT 
-            br.id,
+        SELECT
+            br.borrow_id AS id,
             br.borrow_date,
             br.expected_return_date,
             br.status,
             br.usage_area,
             m.member_code,
-            m.name as member_name,
-            m.email,
-            GROUP_CONCAT(e.code) as equipment_codes,
-            GROUP_CONCAT(e.name) as equipment_names,
-            COUNT(bi.id) as item_count
+            TRIM(CONCAT(
+                COALESCE(m.first_name, ''),
+                ' ',
+                COALESCE(m.middle_name, ''),
+                ' ',
+                COALESCE(m.last_name, '')
+            )) AS member_name,
+            COALESCE(NULLIF(m.google_email, ''), m.email) AS email,
+            GROUP_CONCAT(COALESCE(e.equipment_code, e.inventory_number) ORDER BY e.equipment_id SEPARATOR ', ') AS equipment_codes,
+            GROUP_CONCAT(e.equipment_name ORDER BY e.equipment_id SEPARATOR ', ') AS equipment_names,
+            COUNT(bi.borrow_item_id) AS item_count
         FROM borrow_records br
-        JOIN members m ON br.member_id = m.id
-        JOIN borrow_items bi ON br.id = bi.borrow_record_id
-        JOIN equipment e ON bi.equipment_id = e.id
-        WHERE br.status = 'active'
+        JOIN members m ON br.member_id = m.member_id
+        JOIN borrow_items bi ON br.borrow_id = bi.borrow_id
+        JOIN equipment e ON bi.equipment_id = e.equipment_id
+        WHERE br.status IN ('active', 'overdue')
+          AND bi.returned_at IS NULL
     """
     
     params = []
@@ -69,14 +76,28 @@ def get_active_borrowings(member_code=None, equipment_code=None, usage_area=None
         params.append(f"%{member_code}%")
     
     if equipment_code:
-        query += " AND e.code LIKE %s"
-        params.append(f"%{equipment_code}%")
+        query += " AND (e.inventory_number LIKE %s OR e.serial_number LIKE %s)"
+        equipment_like = f"%{equipment_code}%"
+        params.extend([equipment_like, equipment_like])
     
     if usage_area:
         query += " AND br.usage_area = %s"
         params.append(usage_area)
     
-    query += " GROUP BY br.id ORDER BY br.borrow_date DESC"
+    query += """
+        GROUP BY br.borrow_id,
+                 br.borrow_date,
+                 br.expected_return_date,
+                 br.status,
+                 br.usage_area,
+                 m.member_code,
+                 m.first_name,
+                 m.middle_name,
+                 m.last_name,
+                 m.google_email,
+                 m.email
+        ORDER BY br.borrow_date DESC
+    """
     
     cursor.execute(query, params)
     results = cursor.fetchall()
@@ -100,37 +121,57 @@ def get_overdue_items(days_overdue=None, member_code=None):
     cursor = db.cursor()
     
     query = """
-        SELECT 
-            br.id,
+        SELECT
+            br.borrow_id AS id,
             br.borrow_date,
             br.expected_return_date,
-            DATEDIFF(NOW(), br.expected_return_date) as days_overdue,
+            GREATEST(DATEDIFF(CURDATE(), br.expected_return_date), 1) AS days_overdue,
             br.status,
             br.usage_area,
             m.member_code,
-            m.name as member_name,
-            m.email,
-            GROUP_CONCAT(e.code) as equipment_codes,
-            GROUP_CONCAT(e.name) as equipment_names,
-            COUNT(bi.id) as item_count
+            TRIM(CONCAT(
+                COALESCE(m.first_name, ''),
+                ' ',
+                COALESCE(m.middle_name, ''),
+                ' ',
+                COALESCE(m.last_name, '')
+            )) AS member_name,
+            COALESCE(NULLIF(m.google_email, ''), m.email) AS email,
+            GROUP_CONCAT(COALESCE(e.equipment_code, e.inventory_number) ORDER BY e.equipment_id SEPARATOR ', ') AS equipment_codes,
+            GROUP_CONCAT(e.equipment_name ORDER BY e.equipment_id SEPARATOR ', ') AS equipment_names,
+            COUNT(bi.borrow_item_id) AS item_count
         FROM borrow_records br
-        JOIN members m ON br.member_id = m.id
-        JOIN borrow_items bi ON br.id = bi.borrow_record_id
-        JOIN equipment e ON bi.equipment_id = e.id
-        WHERE br.status = 'active' AND br.expected_return_date < NOW()
+        JOIN members m ON br.member_id = m.member_id
+        JOIN borrow_items bi ON br.borrow_id = bi.borrow_id
+        JOIN equipment e ON bi.equipment_id = e.equipment_id
+        WHERE (br.status = 'overdue' OR (br.status = 'active' AND br.expected_return_date < CURDATE()))
+          AND bi.returned_at IS NULL
     """
     
     params = []
     
     if days_overdue:
-        query += " AND DATEDIFF(NOW(), br.expected_return_date) >= %s"
+        query += " AND GREATEST(DATEDIFF(CURDATE(), br.expected_return_date), 1) >= %s"
         params.append(days_overdue)
     
     if member_code:
         query += " AND m.member_code LIKE %s"
         params.append(f"%{member_code}%")
     
-    query += " GROUP BY br.id ORDER BY br.expected_return_date ASC"
+    query += """
+        GROUP BY br.borrow_id,
+                 br.borrow_date,
+                 br.expected_return_date,
+                 br.status,
+                 br.usage_area,
+                 m.member_code,
+                 m.first_name,
+                 m.middle_name,
+                 m.last_name,
+                 m.google_email,
+                 m.email
+        ORDER BY br.expected_return_date ASC
+    """
     
     cursor.execute(query, params)
     results = cursor.fetchall()
@@ -155,23 +196,29 @@ def get_member_borrowing_history(member_code=None, start_date=None, end_date=Non
     cursor = db.cursor()
     
     query = """
-        SELECT 
-            br.id,
+        SELECT
+            br.borrow_id AS id,
             br.borrow_date,
             br.expected_return_date,
-            br.return_date,
+            br.actual_return_date AS return_date,
             br.status,
             br.usage_area,
             m.member_code,
-            m.name as member_name,
-            m.email,
-            GROUP_CONCAT(e.code) as equipment_codes,
-            GROUP_CONCAT(e.name) as equipment_names,
-            COUNT(bi.id) as item_count
+            TRIM(CONCAT(
+                COALESCE(m.first_name, ''),
+                ' ',
+                COALESCE(m.middle_name, ''),
+                ' ',
+                COALESCE(m.last_name, '')
+            )) AS member_name,
+            COALESCE(NULLIF(m.google_email, ''), m.email) AS email,
+            GROUP_CONCAT(COALESCE(e.equipment_code, e.inventory_number) ORDER BY e.equipment_id SEPARATOR ', ') AS equipment_codes,
+            GROUP_CONCAT(e.equipment_name ORDER BY e.equipment_id SEPARATOR ', ') AS equipment_names,
+            COUNT(bi.borrow_item_id) AS item_count
         FROM borrow_records br
-        JOIN members m ON br.member_id = m.id
-        JOIN borrow_items bi ON br.id = bi.borrow_record_id
-        JOIN equipment e ON bi.equipment_id = e.id
+        JOIN members m ON br.member_id = m.member_id
+        LEFT JOIN borrow_items bi ON br.borrow_id = bi.borrow_id
+        LEFT JOIN equipment e ON bi.equipment_id = e.equipment_id
         WHERE 1=1
     """
     
@@ -193,7 +240,21 @@ def get_member_borrowing_history(member_code=None, start_date=None, end_date=Non
         query += " AND br.borrow_date <= %s"
         params.append(end_date)
     
-    query += " GROUP BY br.id ORDER BY br.borrow_date DESC"
+    query += """
+        GROUP BY br.borrow_id,
+                 br.borrow_date,
+                 br.expected_return_date,
+                 br.actual_return_date,
+                 br.status,
+                 br.usage_area,
+                 m.member_code,
+                 m.first_name,
+                 m.middle_name,
+                 m.last_name,
+                 m.google_email,
+                 m.email
+        ORDER BY br.borrow_date DESC
+    """
     
     cursor.execute(query, params)
     results = cursor.fetchall()
@@ -224,21 +285,24 @@ def get_equipment_usage_report(equipment_code=None, start_date=None, end_date=No
         end_date = datetime.now().strftime('%Y-%m-%d')
     
     query = """
-        SELECT 
-            e.id,
-            e.code,
-            e.name,
+        SELECT
+            e.equipment_id AS id,
+            COALESCE(e.equipment_code, e.inventory_number) AS code,
+            e.equipment_name AS name,
             e.category,
             e.status,
-            COUNT(DISTINCT bi.id) as total_times_borrowed,
-            COUNT(DISTINCT br.member_id) as unique_members,
-            SUM(CASE WHEN br.status = 'active' THEN 1 ELSE 0 END) as currently_borrowed,
-            MAX(br.borrow_date) as last_borrowed_date,
-            AVG(DATEDIFF(br.return_date, br.borrow_date)) as avg_borrow_duration_days
+            COUNT(DISTINCT br.borrow_id) AS total_times_borrowed,
+            COUNT(DISTINCT br.member_id) AS unique_members,
+            SUM(CASE WHEN br.status IN ('active', 'overdue') AND bi.returned_at IS NULL THEN 1 ELSE 0 END) AS currently_borrowed,
+            MAX(br.borrow_date) AS last_borrowed_date,
+            AVG(CASE
+                WHEN br.actual_return_date IS NOT NULL THEN DATEDIFF(br.actual_return_date, br.borrow_date)
+                ELSE NULL
+            END) AS avg_borrow_duration_days
         FROM equipment e
-        LEFT JOIN borrow_items bi ON e.id = bi.equipment_id
-        LEFT JOIN borrow_records br ON bi.borrow_record_id = br.id 
-            AND br.borrow_date >= %s 
+        LEFT JOIN borrow_items bi ON e.equipment_id = bi.equipment_id
+        LEFT JOIN borrow_records br ON bi.borrow_id = br.borrow_id
+            AND br.borrow_date >= %s
             AND br.borrow_date <= %s
         WHERE 1=1
     """
@@ -246,10 +310,11 @@ def get_equipment_usage_report(equipment_code=None, start_date=None, end_date=No
     params = [start_date, end_date]
     
     if equipment_code:
-        query += " AND e.code LIKE %s"
-        params.append(f"%{equipment_code}%")
+        query += " AND (e.inventory_number LIKE %s OR e.serial_number LIKE %s OR e.equipment_name LIKE %s)"
+        equipment_like = f"%{equipment_code}%"
+        params.extend([equipment_like, equipment_like, equipment_like])
     
-    query += " GROUP BY e.id ORDER BY total_times_borrowed DESC"
+    query += " GROUP BY e.equipment_id ORDER BY total_times_borrowed DESC"
     
     cursor.execute(query, params)
     results = cursor.fetchall()
@@ -361,9 +426,23 @@ def active_borrowings_report():
     # Get unique usage areas for filter dropdown
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("SELECT DISTINCT usage_area FROM borrow_records WHERE usage_area IS NOT NULL ORDER BY usage_area")
-    usage_areas = cursor.fetchall()
+    cursor.execute("SELECT usage_area FROM borrow_records WHERE usage_area IS NOT NULL")
+    usage_area_rows = cursor.fetchall()
     cursor.close()
+
+    usage_areas = []
+    seen_usage_areas = set()
+    for row in usage_area_rows:
+        raw_area = (row.get('usage_area') or '').strip()
+        if not raw_area:
+            continue
+        key = raw_area.lower()
+        if key in seen_usage_areas:
+            continue
+        seen_usage_areas.add(key)
+        usage_areas.append({'usage_area': raw_area})
+
+    usage_areas.sort(key=lambda item: item['usage_area'].lower())
     
     # Get report data
     report_data = get_active_borrowings(member_code, equipment_code, usage_area or None)
@@ -472,9 +551,9 @@ def equipment_usage_report():
     if export_csv:
         return generate_csv_report(
             'equipment_usage',
-            ['Equipment Code', 'Equipment Name', 'Category', 'Status', 'Times Borrowed', 'Unique Members', 'Currently Borrowed', 'Last Borrowed', 'Avg Duration (days)'],
+            ['Equipment Code', 'Equipment Name', 'Status', 'Times Borrowed', 'Unique Members', 'Currently Borrowed', 'Last Borrowed', 'Avg Duration (days)'],
             report_data,
-            ['code', 'name', 'category', 'status', 'total_times_borrowed', 'unique_members', 'currently_borrowed', 'last_borrowed_date', 'avg_borrow_duration_days']
+            ['code', 'name', 'status', 'total_times_borrowed', 'unique_members', 'currently_borrowed', 'last_borrowed_date', 'avg_borrow_duration_days']
         )
     
     return render_template(
@@ -558,9 +637,9 @@ def generate_csv_report(filename_base, headers, data, field_keys):
             csv_row.append(value if value is not None else '')
         writer.writerow(csv_row)
     
-    # Create file-like object
-    output.seek(0)
-    file_bytes = StringIO(output.getvalue())
+    # send_file requires binary mode stream
+    file_bytes = BytesIO(output.getvalue().encode('utf-8-sig'))
+    file_bytes.seek(0)
     
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     filename = f"{filename_base}_{timestamp}.csv"

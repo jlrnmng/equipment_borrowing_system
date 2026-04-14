@@ -1,21 +1,22 @@
 {% extends "layouts/main.html" %}
+{% block page_title %}Member History{% endblock %}
 
 {% block content %}
 <div class="container-fluid mt-4">
     <div class="row mb-4">
         <div class="col-md-12">
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
                     <h2 class="mb-2">
                         <i class="bi bi-person"></i> Member Borrowing History
                     </h2>
                     <p class="text-muted">Complete borrowing transaction history for members</p>
                 </div>
-                <div>
-                    <a href="/reports" class="btn btn-outline-secondary me-2">
+                <div class="d-flex gap-2 w-100 w-sm-auto">
+                    <a href="/reports" class="btn btn-outline-secondary flex-fill flex-sm-grow-0">
                         <i class="bi bi-arrow-left"></i> Back
                     </a>
-                    <a href="/reports/member-history?export=true{% if filters.member_code %}&member_code={{ filters.member_code }}{% endif %}{% if filters.start_date %}&start_date={{ filters.start_date }}{% endif %}{% if filters.end_date %}&end_date={{ filters.end_date }}{% endif %}" class="btn btn-success">
+                    <a href="/reports/member-history?export=true{% if filters.member_code %}&member_code={{ filters.member_code }}{% endif %}{% if filters.start_date %}&start_date={{ filters.start_date }}{% endif %}{% if filters.end_date %}&end_date={{ filters.end_date }}{% endif %}" class="btn btn-success flex-fill flex-sm-grow-0">
                         <i class="bi bi-download"></i> Export CSV
                     </a>
                 </div>
@@ -44,11 +45,11 @@
                     <input type="date" class="form-control" id="end_date" name="end_date" 
                            value="{{ filters.end_date }}">
                 </div>
-                <div class="col-md-5 d-flex align-items-end gap-2">
-                    <button type="submit" class="btn btn-primary">
+                <div class="col-md-5 d-flex align-items-end gap-2 flex-wrap">
+                    <button type="submit" class="btn btn-primary flex-grow-1 flex-md-grow-0">
                         <i class="bi bi-search"></i> Filter
                     </button>
-                    <a href="/reports/member-history" class="btn btn-outline-secondary">
+                    <a href="/reports/member-history" class="btn btn-outline-secondary flex-grow-1 flex-md-grow-0">
                         <i class="bi bi-arrow-clockwise"></i> Reset
                     </a>
                 </div>
@@ -62,7 +63,7 @@
             <span class="badge bg-primary">{{ report_data|length }} Transactions</span>
         </div>
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover table-sm reports-table mb-0">
                 <thead class="table-light">
                     <tr>
                         <th>Member Code</th>
@@ -92,10 +93,10 @@
                                     <span class="badge bg-info">{{ record.item_count }}</span>
                                 </td>
                                 <td>
-                                    {% if record.status == 'active' %}
-                                        <span class="badge bg-warning text-dark">Active</span>
-                                    {% elif record.status == 'completed' %}
-                                        <span class="badge bg-success">Returned</span>
+                                    {% if record.status in ['active', 'overdue'] %}
+                                        <span class="badge bg-warning text-dark">Borrowed</span>
+                                    {% elif record.status in ['returned', 'completed'] %}
+                                        <span class="badge bg-success">Return</span>
                                     {% else %}
                                         <span class="badge bg-secondary">{{ record.status }}</span>
                                     {% endif %}

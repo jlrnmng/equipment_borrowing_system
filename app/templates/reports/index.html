@@ -1,4 +1,5 @@
 {% extends "layouts/main.html" %}
+{% block page_title %}Reports{% endblock %}
 
 {% block content %}
 <div class="container-fluid mt-4">
@@ -13,7 +14,7 @@
 
     <div class="row">
         <!-- Active Borrowings Report -->
-        <div class="col-md-6 mb-3">
+        <div class="col-12 col-md-6 mb-3">
             <div class="card h-100 shadow-sm">
                 <div class="card-body">
                     <h5 class="card-title">
@@ -29,8 +30,8 @@
                         <li>Export to CSV</li>
                     </ul>
                 </div>
-                <div class="card-footer bg-light">
-                    <a href="/reports/active-borrowings" class="btn btn-sm btn-primary">
+                <div class="card-footer bg-light d-grid d-sm-block">
+                    <a href="/reports/active-borrowings" class="btn btn-sm btn-primary w-100 w-sm-auto">
                         <i class="bi bi-arrow-right"></i> View Report
                     </a>
                 </div>
@@ -38,7 +39,7 @@
         </div>
 
         <!-- Overdue Items Report -->
-        <div class="col-md-6 mb-3">
+        <div class="col-12 col-md-6 mb-3">
             <div class="card h-100 shadow-sm">
                 <div class="card-body">
                     <h5 class="card-title">
@@ -54,8 +55,8 @@
                         <li>Export to CSV</li>
                     </ul>
                 </div>
-                <div class="card-footer bg-light">
-                    <a href="/reports/overdue-items" class="btn btn-sm btn-danger">
+                <div class="card-footer bg-light d-grid d-sm-block">
+                    <a href="/reports/overdue-items" class="btn btn-sm btn-danger w-100 w-sm-auto">
                         <i class="bi bi-arrow-right"></i> View Report
                     </a>
                 </div>
@@ -63,7 +64,7 @@
         </div>
 
         <!-- Member History Report -->
-        <div class="col-md-6 mb-3">
+        <div class="col-12 col-md-6 mb-3">
             <div class="card h-100 shadow-sm">
                 <div class="card-body">
                     <h5 class="card-title">
@@ -79,8 +80,8 @@
                         <li>Export to CSV</li>
                     </ul>
                 </div>
-                <div class="card-footer bg-light">
-                    <a href="/reports/member-history" class="btn btn-sm btn-info">
+                <div class="card-footer bg-light d-grid d-sm-block">
+                    <a href="/reports/member-history" class="btn btn-sm btn-info w-100 w-sm-auto">
                         <i class="bi bi-arrow-right"></i> View Report
                     </a>
                 </div>
@@ -88,7 +89,7 @@
         </div>
 
         <!-- Equipment Usage Report -->
-        <div class="col-md-6 mb-3">
+        <div class="col-12 col-md-6 mb-3">
             <div class="card h-100 shadow-sm">
                 <div class="card-body">
                     <h5 class="card-title">
@@ -104,8 +105,8 @@
                         <li>Export to CSV</li>
                     </ul>
                 </div>
-                <div class="card-footer bg-light">
-                    <a href="/reports/equipment-usage" class="btn btn-sm btn-success">
+                <div class="card-footer bg-light d-grid d-sm-block">
+                    <a href="/reports/equipment-usage" class="btn btn-sm btn-success w-100 w-sm-auto">
                         <i class="bi bi-arrow-right"></i> View Report
                     </a>
                 </div>
@@ -113,7 +114,7 @@
         </div>
 
         <!-- Violations Report -->
-        <div class="col-md-6 mb-3">
+        <div class="col-12 col-md-6 mb-3">
             <div class="card h-100 shadow-sm">
                 <div class="card-body">
                     <h5 class="card-title">
@@ -129,8 +130,8 @@
                         <li>Export to CSV</li>
                     </ul>
                 </div>
-                <div class="card-footer bg-light">
-                    <a href="/reports/violations" class="btn btn-sm btn-warning">
+                <div class="card-footer bg-light d-grid d-sm-block">
+                    <a href="/reports/violations" class="btn btn-sm btn-warning w-100 w-sm-auto">
                         <i class="bi bi-arrow-right"></i> View Report
                     </a>
                 </div>

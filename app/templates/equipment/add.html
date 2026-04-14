@@ -5,25 +5,25 @@
 <a href="{{ url_for('equipment.list_equipment') }}" class="btn btn-sm btn-outline-secondary">
     <i class="bi bi-list-ul me-1"></i> Equipment List
 </a>
-<a href="{{ url_for('dashboard.index') }}" class="btn btn-sm btn-outline-primary">
-    <i class="bi bi-house-door me-1"></i> Dashboard
-</a>
 {% endblock %}
 
 {% block content %}
 <div class="row g-3">
-    <div class="col-lg-7">
+    <div class="col-lg-8">
         <div class="card stat-card">
             <div class="card-header bg-white border-bottom fw-semibold">
                 <i class="bi bi-plus-circle me-1"></i> Add New Equipment
             </div>
             <div class="card-body">
+                <div class="alert alert-light border mb-3 small">
+                    Fill in the core item details used in inventory and reports.
+                </div>
                 <form method="POST" novalidate>
                     {{ form.hidden_tag() }}
                     <div class="row g-3">
                         <div class="col-md-12">
                             {{ form.equipment_name.label(class='form-label fw-semibold') }}
-                            {{ form.equipment_name(class='form-control' + (' is-invalid' if form.equipment_name.errors else ''), placeholder='e.g., Laptop, Projector, Camera') }}
+                            {{ form.equipment_name(class='form-control' + (' is-invalid' if form.equipment_name.errors else ''), placeholder='Enter equipment type + model (e.g., Laptop Dell Latitude 5420, Epson Projector X51)') }}
                             {% for error in form.equipment_name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
                         </div>
 
@@ -70,28 +70,6 @@
                         </div>
 
                         <div class="col-md-12">
-                            {{ form.location.label(class='form-label fw-semibold') }}
-                            {{ form.location(class='form-control' + (' is-invalid' if form.location.errors else ''), placeholder='e.g., Storage Room A, Building B Shelf 3') }}
-                            {% for error in form.location.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-                        </div>
-
-                        <div class="col-md-12">
-                            <div class="form-check">
-                                {{ form.requires_supervision(class='form-check-input' + (' is-invalid' if form.requires_supervision.errors else '')) }}
-                                {{ form.requires_supervision.label(class='form-check-label') }}
-                            </div>
-                            <small class="text-muted d-block mt-1">Check if equipment requires staff supervision during use</small>
-                            {% for error in form.requires_supervision.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-                        </div>
-
-                        <div class="col-md-12">
-                            {{ form.restricted_areas.label(class='form-label fw-semibold') }}
-                            {{ form.restricted_areas(class='form-control' + (' is-invalid' if form.restricted_areas.errors else ''), placeholder='e.g., Outside facility, Outdoor areas, High-risk zones', rows='2') }}
-                            <small class="text-muted d-block mt-1">{{ form.restricted_areas.description }}</small>
-                            {% for error in form.restricted_areas.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-                        </div>
-
-                        <div class="col-md-12">
                             {{ form.notes.label(class='form-label fw-semibold') }}
                             {{ form.notes(class='form-control' + (' is-invalid' if form.notes.errors else ''), placeholder='Additional notes about this equipment...', rows='3') }}
                             {% for error in form.notes.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
@@ -105,21 +83,7 @@
         </div>
     </div>
 
-    <div class="col-lg-5">
-        <div class="card stat-card h-100">
-            <div class="card-header bg-white border-bottom fw-semibold">
-                <i class="bi bi-info-circle me-1"></i> Equipment Label Fields
-            </div>
-            <div class="card-body small text-muted">
-                <p><strong>Naming Convention:</strong> Use descriptive names that clearly identify the equipment type and model.</p>
-                <p><strong>Equipment Code:</strong> Auto-generated from the inventory number and used for internal equipment tracking.</p>
-                <p><strong>Inventory Number:</strong> Auto-generated in format EQP001, EQP002, etc. This is the unique identifier for each item.</p>
-                <p><strong>Usage Restrictions:</strong> Specify if equipment should only be used in-facility or has restricted areas.</p>
-                <p><strong>Condition Tracking:</strong> Mark initial condition (Excellent/Good/Fair/Poor) for comparison when returning.</p>
-                <p><strong>Supervision:</strong> Check if staff supervision is required during use (e.g., specialized equipment, high-value items).</p>
-            </div>
-        </div>
-
+    <div class="col-lg-4">
         {% if created_equipment %}
         <div class="card stat-card border-success mt-3">
             <div class="card-header bg-success-subtle border-bottom fw-semibold text-success-emphasis">
