@@ -75,65 +75,69 @@ def create_app(config_name=None):
 
     @app.context_processor
     def inject_notification_counts():
-        if not current_user.is_authenticated:
+        try:
+            if not current_user.is_authenticated:
+                return {'unread_count': 0}
+
+            role = getattr(current_user, 'role', None)
+            session_key = f'notifications_last_seen_{role or "user"}'
+            last_seen_raw = session.get(session_key)
+            last_seen_at = None
+            if last_seen_raw:
+                try:
+                    last_seen_at = datetime.fromisoformat(last_seen_raw)
+                except ValueError:
+                    last_seen_at = None
+
+            db = get_db()
+
+            with db.cursor() as cursor:
+                if role == 'member':
+                    if last_seen_at:
+                        cursor.execute(
+                            """
+                            SELECT COUNT(*) AS cnt
+                            FROM notifications
+                            WHERE member_id = %s
+                              AND created_at > %s
+                            """,
+                            (current_user.id, last_seen_at),
+                        )
+                    else:
+                        cursor.execute(
+                            """
+                            SELECT COUNT(*) AS cnt
+                            FROM notifications
+                            WHERE member_id = %s
+                              AND created_at >= (NOW() - INTERVAL 1 DAY)
+                            """,
+                            (current_user.id,),
+                        )
+                else:
+                    if last_seen_at:
+                        cursor.execute(
+                            """
+                            SELECT COUNT(*) AS cnt
+                            FROM notifications
+                            WHERE created_at > %s
+                            """,
+                            (last_seen_at,),
+                        )
+                    else:
+                        cursor.execute(
+                            """
+                            SELECT COUNT(*) AS cnt
+                            FROM notifications
+                            WHERE status = 'pending'
+                            """
+                        )
+
+                row = cursor.fetchone() or {}
+
+            return {'unread_count': int(row.get('cnt') or 0)}
+        except Exception:
+            app.logger.exception('Failed to inject notification counts; using fallback unread_count=0')
             return {'unread_count': 0}
-
-        role = getattr(current_user, 'role', None)
-        session_key = f'notifications_last_seen_{role or "user"}'
-        last_seen_raw = session.get(session_key)
-        last_seen_at = None
-        if last_seen_raw:
-            try:
-                last_seen_at = datetime.fromisoformat(last_seen_raw)
-            except ValueError:
-                last_seen_at = None
-
-        db = get_db()
-
-        with db.cursor() as cursor:
-            if role == 'member':
-                if last_seen_at:
-                    cursor.execute(
-                        """
-                        SELECT COUNT(*) AS cnt
-                        FROM notifications
-                        WHERE member_id = %s
-                          AND created_at > %s
-                        """,
-                        (current_user.id, last_seen_at),
-                    )
-                else:
-                    cursor.execute(
-                        """
-                        SELECT COUNT(*) AS cnt
-                        FROM notifications
-                        WHERE member_id = %s
-                          AND created_at >= (NOW() - INTERVAL 1 DAY)
-                        """,
-                        (current_user.id,),
-                    )
-            else:
-                if last_seen_at:
-                    cursor.execute(
-                        """
-                        SELECT COUNT(*) AS cnt
-                        FROM notifications
-                        WHERE created_at > %s
-                        """,
-                        (last_seen_at,),
-                    )
-                else:
-                    cursor.execute(
-                        """
-                        SELECT COUNT(*) AS cnt
-                        FROM notifications
-                        WHERE status = 'pending'
-                        """
-                    )
-
-            row = cursor.fetchone() or {}
-
-        return {'unread_count': int(row.get('cnt') or 0)}
 
     # Blueprints
     from app.routes.auth import auth_bp
