@@ -250,22 +250,59 @@ a:hover {
 }
 
 .topbar {
-    padding: 0.85rem 1.5rem;
     display: flex;
     align-items: center;
+    padding: 0.85rem 1.5rem;
     justify-content: space-between;
-    gap: 0.75rem;
+    gap: 0.5rem;
     background: rgba(255, 255, 255, 0.78);
     backdrop-filter: blur(7px);
     border-bottom: 1px solid rgba(146, 164, 188, 0.34);
 }
 
-.topbar-right {
+.topbar > .d-flex:first-child {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     min-width: 0;
+    flex: 1 1 auto;
+}
+
+.topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    flex-shrink: 0;
 }
 
 .topbar-right .btn {
     white-space: nowrap;
+}
+
+.topbar-right > .btn,
+.page-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 0.35rem 0.65rem;
+}
+
+.topbar-notification-btn {
+    position: relative;
+}
+
+.topbar-notification-dot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background: #dc3545;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px rgba(16, 32, 55, 0.1);
 }
 
 .topbar .topbar-user {
@@ -273,17 +310,31 @@ a:hover {
     align-items: center;
     gap: 0.35rem;
     min-width: 0;
-    max-width: 220px;
+    max-width: clamp(120px, 24vw, 260px);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    flex-shrink: 0;
+    flex-shrink: 1;
+}
+
+.topbar .topbar-user .topbar-user-name {
+    display: inline-block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .page-title {
     font-weight: 700;
     color: #132847;
     letter-spacing: 0.01em;
+    display: block;
+    min-width: 0;
+    max-width: clamp(120px, 30vw, 360px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .page-actions {
@@ -425,7 +476,7 @@ a:hover {
         align-items: center;
         gap: 0.35rem;
         font-size: 0.8rem;
-        max-width: 120px;
+        max-width: 160px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -529,11 +580,16 @@ a:hover {
 
     .topbar .topbar-user {
         font-size: 0.72rem;
-        max-width: 100px;
+        max-width: 52vw;
+    }
+
+    .topbar .topbar-user .topbar-user-name {
+        display: none;
     }
 
     .page-title {
-        max-width: calc(100vw - 128px);
+        font-size: 0.85rem;
+        max-width: calc(100vw - 148px);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;

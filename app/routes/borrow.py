@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from flask import Blueprint, current_app, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session, url_for
 from flask import flash
 from flask_login import current_user, login_required
 
@@ -1442,6 +1442,15 @@ def notification_center():
     if role not in ('admin', 'staff', 'member'):
         return redirect(url_for('dashboard.index'))
 
+    session_key = f'notifications_last_seen_{role or "user"}'
+    last_seen_raw = session.get(session_key)
+    last_seen_at = None
+    if last_seen_raw:
+        try:
+            last_seen_at = datetime.fromisoformat(last_seen_raw)
+        except ValueError:
+            last_seen_at = None
+
     mail_configured = bool(
         current_app.config.get('MAIL_NOTIFICATIONS_ENABLED', True)
         and current_app.config.get('MAIL_SERVER')
@@ -1510,6 +1519,13 @@ def notification_center():
                 """
             )
             notifications = cursor.fetchall()
+
+    for item in notifications:
+        created_at = item.get('created_at')
+        item['is_unread'] = bool(created_at and (last_seen_at is None or created_at > last_seen_at))
+
+    # Mark list as seen once the user loads notification center.
+    session[session_key] = datetime.utcnow().isoformat()
 
     return render_template(
         'borrow/notifications.html',

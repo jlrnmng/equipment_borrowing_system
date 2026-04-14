@@ -94,7 +94,7 @@
                                 </td>
                                 <td>
                                     {% if record.status in ['active', 'overdue'] %}
-                                        <span class="badge bg-warning text-dark">Borrowed</span>
+                                        <span class="badge bg-primary">Borrowed</span>
                                     {% elif record.status in ['returned', 'completed'] %}
                                         <span class="badge bg-success">Return</span>
                                     {% else %}

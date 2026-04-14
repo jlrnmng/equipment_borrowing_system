@@ -31,9 +31,12 @@
                 </thead>
                 <tbody>
                     {% for item in notifications %}
-                    <tr class="{% if item.status != 'sent' %}notification-unread{% endif %}" data-notification-id="{{ item.notification_id }}">
+                    <tr class="{% if item.is_unread %}notification-unread{% else %}notification-read{% endif %}" data-notification-id="{{ item.notification_id }}">
                         <td class="ps-3">
                             <div class="fw-semibold text-capitalize">{{ (item.notification_type or '').replace('_', ' ') }}</div>
+                            <small class="d-block mt-1 {% if item.is_unread %}text-primary{% else %}text-muted{% endif %}">
+                                {% if item.is_unread %}Unread{% else %}Read{% endif %}
+                            </small>
                             {% if item.subject %}
                             <small class="text-muted d-block">{{ item.subject }}</small>
                             {% endif %}
@@ -162,9 +165,12 @@
                 </thead>
                 <tbody>
                     {% for item in notifications %}
-                    <tr>
+                    <tr class="{% if item.is_unread %}notification-unread{% else %}notification-read{% endif %}">
                         <td class="ps-3">
                             <div class="fw-semibold text-capitalize">{{ (item.notification_type or '').replace('_', ' ') }}</div>
+                            <small class="d-block mt-1 {% if item.is_unread %}text-primary{% else %}text-muted{% endif %}">
+                                {% if item.is_unread %}Unread{% else %}Read{% endif %}
+                            </small>
                             {% if item.transaction_code %}
                             <small class="text-muted">{{ item.transaction_code }}</small>
                             {% endif %}
@@ -233,7 +239,12 @@
 
 <style>
 .notification-unread {
-    background-color: #eef2f7 !important;
+    background-color: #eaf3ff !important;
+    box-shadow: inset 3px 0 0 #0d6efd;
+}
+
+.notification-read {
+    background-color: #ffffff;
 }
 </style>
 

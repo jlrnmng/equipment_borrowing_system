@@ -87,7 +87,7 @@
                                     {% if record.status == 'available' %}
                                         <span class="badge bg-success">Available</span>
                                     {% elif record.status == 'borrowed' %}
-                                        <span class="badge bg-warning text-dark">Borrowed</span>
+                                        <span class="badge bg-primary">Borrowed</span>
                                     {% else %}
                                         <span class="badge bg-secondary">{{ record.status }}</span>
                                     {% endif %}
@@ -100,7 +100,7 @@
                                 </td>
                                 <td>
                                     {% if record.currently_borrowed %}
-                                        <span class="badge bg-warning text-dark">{{ record.currently_borrowed }}</span>
+                                        <span class="badge bg-primary">{{ record.currently_borrowed }}</span>
                                     {% else %}
                                         <span class="text-muted">-</span>
                                     {% endif %}
