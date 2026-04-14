@@ -265,7 +265,7 @@ class Equipment:
                     search_term,
                 ])
 
-            query += " ORDER BY equipment_id DESC"
+            query += " ORDER BY equipment_name ASC, equipment_id DESC"
             cursor.execute(query, params)
             rows = cursor.fetchall()
         return Equipment._normalize_status_rows(rows)
@@ -278,7 +278,7 @@ class Equipment:
             normalized_status = Equipment._normalize_status_value(status)
             status_expr = Equipment._normalized_status_expression('status')
             cursor.execute(
-                f"SELECT * FROM equipment WHERE {status_expr} = %s ORDER BY equipment_id DESC",
+                f"SELECT * FROM equipment WHERE {status_expr} = %s ORDER BY equipment_name ASC, equipment_id DESC",
                 (normalized_status,),
             )
             rows = cursor.fetchall()

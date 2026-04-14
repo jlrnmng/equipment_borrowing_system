@@ -6,7 +6,7 @@
 {% block content %}
 <!-- Statistics Section -->
 <div class="row g-3 mb-4">
-    <div class="col-sm-6 col-lg-3">
+    <div class="col-6 col-lg-3">
         <div class="card stat-card">
             <div class="card-body">
                 <div class="d-flex align-items-center">
@@ -21,7 +21,7 @@
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-lg-3">
+    <div class="col-6 col-lg-3">
         <div class="card stat-card">
             <div class="card-body">
                 <div class="d-flex align-items-center">
@@ -36,7 +36,7 @@
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-lg-3">
+    <div class="col-6 col-lg-3">
         <div class="card stat-card">
             <div class="card-body">
                 <div class="d-flex align-items-center">
@@ -51,7 +51,7 @@
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-lg-3">
+    <div class="col-6 col-lg-3">
         <div class="card stat-card">
             <div class="card-body">
                 <div class="d-flex align-items-center">
@@ -115,24 +115,23 @@
             <table class="table table-hover mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th class="fw-semibold">Serial / Code</th>
                         <th class="fw-semibold">Equipment Name</th>
                         <th class="fw-semibold">Brand</th>
+                        <th class="fw-semibold">Serial / Code</th>
                         <th class="fw-semibold">Condition</th>
                         <th class="fw-semibold">Status</th>
-                        <th class="fw-semibold">Location</th>
                         <th class="fw-semibold text-center">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in equipment %}
                     <tr>
+                        <td>{{ item.equipment_name }}</td>
+                        <td>{{ item.brand or '-' }}</td>
                         <td>
                             <div class="font-monospace fw-semibold">{{ item.serial_number or item.inventory_number }}</div>
                             <div class="small text-muted">{{ item.equipment_code or '-' }}</div>
                         </td>
-                        <td>{{ item.equipment_name }}</td>
-                        <td>{{ item.brand or '-' }}</td>
                         <td>
                             <span class="badge
                                 {% if item.condition_status == 'excellent' %}bg-success
@@ -153,7 +152,6 @@
                                 {{ item.status | title }}
                             </span>
                         </td>
-                        <td>{{ item.location or '-' }}</td>
                         <td class="text-center">
                             <a href="{{ url_for('equipment.equipment_detail', equipment_id=item.equipment_id) }}" 
                                class="btn btn-sm btn-outline-primary" title="View Details">
