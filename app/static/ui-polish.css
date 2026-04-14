@@ -244,6 +244,16 @@ a:hover {
     padding: 1rem 1.3rem;
 }
 
+.sidebar-profile-link {
+    border-radius: 0.6rem;
+    padding: 0.35rem 0.45rem;
+    transition: background-color 0.2s ease;
+}
+
+.sidebar-profile-link:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
 .main-content {
     margin-left: 256px;
     min-height: 100vh;

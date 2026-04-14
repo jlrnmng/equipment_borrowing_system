@@ -475,6 +475,126 @@ def member_dashboard():
     )
 
 
+@auth_bp.route('/profile', methods=['GET'])
+@login_required
+def view_profile():
+    role = getattr(current_user, 'role', None)
+
+    if role == 'member':
+        member_row = Member.get_auth_by_member_id(current_user.id)
+        if not member_row:
+            flash('Member account not found. Please sign in again.', 'danger')
+            return redirect(url_for('auth.logout'))
+        return render_template('auth/view_profile.html', profile=member_row, role='member')
+
+    staff_row = Staff.get_by_id(current_user.id)
+    if not staff_row:
+        flash('Staff account not found. Please sign in again.', 'danger')
+        return redirect(url_for('auth.logout'))
+    return render_template('auth/view_profile.html', profile=staff_row, role='staff')
+
+
+@auth_bp.route('/profile/edit', methods=['GET', 'POST'])
+@login_required
+def edit_profile():
+    role = getattr(current_user, 'role', None)
+
+    if role == 'member':
+        member_row = Member.get_auth_by_member_id(current_user.id)
+        if not member_row:
+            flash('Member account not found. Please sign in again.', 'danger')
+            return redirect(url_for('auth.logout'))
+
+        if request.method == 'POST':
+            first_name = (request.form.get('first_name') or '').strip()
+            middle_name = (request.form.get('middle_name') or '').strip()
+            last_name = (request.form.get('last_name') or '').strip()
+            phone = (request.form.get('phone') or '').strip()
+            student_id = (request.form.get('student_id') or '').strip()
+            startup = (request.form.get('startup') or '').strip()
+            college_department = (request.form.get('college_department') or '').strip()
+            program = (request.form.get('program') or '').strip()
+            year_level = (request.form.get('year_level') or '').strip()
+
+            if not first_name or not last_name:
+                flash('First name and last name are required.', 'warning')
+            elif not phone or not student_id or not startup or not college_department or not program or not year_level:
+                flash('Phone, ID number, startup/agency, college department, program, and year are required.', 'warning')
+            else:
+                db = get_db()
+                with db.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        UPDATE members
+                        SET first_name = %s,
+                            middle_name = %s,
+                            last_name = %s,
+                            phone = %s,
+                            student_id = %s,
+                            startup = %s,
+                            college_department = %s,
+                            program = %s,
+                            year_level = %s,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE member_id = %s
+                        """,
+                        (
+                            first_name,
+                            middle_name or None,
+                            last_name,
+                            phone,
+                            student_id,
+                            startup,
+                            college_department,
+                            program,
+                            year_level,
+                            member_row['member_id'],
+                        ),
+                    )
+                db.commit()
+
+                updated_member = Member.get_auth_by_member_id(member_row['member_id'])
+                if updated_member:
+                    login_user(Member.to_member_user(updated_member))
+                flash('Profile updated successfully.', 'success')
+                return redirect(url_for('auth.view_profile'))
+
+        refreshed_member = Member.get_auth_by_member_id(member_row['member_id']) or member_row
+        return render_template('auth/edit_profile.html', profile=refreshed_member, role='member')
+
+    staff_row = Staff.get_by_id(current_user.id)
+    if not staff_row:
+        flash('Staff account not found. Please sign in again.', 'danger')
+        return redirect(url_for('auth.logout'))
+
+    if request.method == 'POST':
+        full_name = (request.form.get('full_name') or '').strip()
+        if not full_name:
+            flash('Full name is required.', 'warning')
+        else:
+            db = get_db()
+            with db.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE staff
+                    SET full_name = %s,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE staff_id = %s
+                    """,
+                    (full_name, staff_row['staff_id']),
+                )
+            db.commit()
+
+            updated_staff = Staff.get_by_id(staff_row['staff_id'])
+            if updated_staff:
+                login_user(updated_staff)
+            flash('Profile updated successfully.', 'success')
+            return redirect(url_for('auth.view_profile'))
+
+    refreshed_staff = Staff.get_by_id(staff_row['staff_id']) or staff_row
+    return render_template('auth/edit_profile.html', profile=refreshed_staff, role='staff')
+
+
 @auth_bp.route('/api/member/equipment-search', methods=['GET'])
 @login_required
 def member_equipment_search():

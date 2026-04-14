@@ -1,0 +1,99 @@
+{% extends 'layouts/main.html' %}
+{% block title %}Edit Profile{% endblock %}
+{% block page_title %}Edit Profile{% endblock %}
+{% block page_actions %}
+<a href="{{ url_for('auth.view_profile') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i> Back to Profile
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card stat-card">
+            <div class="card-header bg-white border-bottom fw-semibold">
+                <i class="bi bi-pencil-square me-1"></i> Update My Profile
+            </div>
+            <div class="card-body">
+                <form method="POST" novalidate>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    {% if role == 'member' %}
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">First Name</label>
+                            <input type="text" name="first_name" class="form-control" value="{{ profile.first_name or '' }}" maxlength="50" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Middle Name</label>
+                            <input type="text" name="middle_name" class="form-control" value="{{ profile.middle_name or '' }}" maxlength="50">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Last Name</label>
+                            <input type="text" name="last_name" class="form-control" value="{{ profile.last_name or '' }}" maxlength="50" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Email</label>
+                            <input type="email" class="form-control" value="{{ profile.email or profile.google_email or '' }}" readonly>
+                            <div class="form-text">Email is managed by your account login method.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Phone</label>
+                            <input type="text" name="phone" class="form-control" value="{{ profile.phone or '' }}" maxlength="20" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">ID Number</label>
+                            <input type="text" name="student_id" class="form-control" value="{{ profile.student_id or '' }}" maxlength="50" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Startup/Agency</label>
+                            <input type="text" name="startup" class="form-control" value="{{ profile.startup or '' }}" maxlength="100" required>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">College/Department</label>
+                            <input type="text" name="college_department" class="form-control" value="{{ profile.college_department or '' }}" maxlength="120" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Program</label>
+                            <input type="text" name="program" class="form-control" value="{{ profile.program or '' }}" maxlength="120" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Year Level</label>
+                            <input type="text" name="year_level" class="form-control" value="{{ profile.year_level or '' }}" maxlength="20" required>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Staff Code</label>
+                            <input type="text" class="form-control" value="{{ profile.staff_code or '' }}" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Role</label>
+                            <input type="text" class="form-control text-capitalize" value="{{ profile.role or '' }}" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Full Name</label>
+                            <input type="text" name="full_name" class="form-control" value="{{ profile.full_name or '' }}" maxlength="100" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Email</label>
+                            <input type="email" class="form-control" value="{{ profile.email or '' }}" readonly>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="d-grid d-md-flex justify-content-md-end mt-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check2 me-1"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

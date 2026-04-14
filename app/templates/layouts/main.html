@@ -89,7 +89,7 @@
         {% endif %}
     </div>
     <div class="sidebar-bottom">
-        <div class="d-flex align-items-center gap-2 mb-2">
+        <a href="{{ url_for('auth.view_profile') }}" class="sidebar-profile-link d-flex align-items-center gap-2 mb-2 text-decoration-none">
             <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center"
                  style="width:32px;height:32px;flex-shrink:0">
                 <i class="bi bi-person-fill text-white" style="font-size:.9rem"></i>
@@ -98,7 +98,7 @@
                 <div class="text-white fw-semibold text-truncate" style="font-size:.8rem">{{ current_user.full_name }}</div>
                 <span class="badge bg-secondary" style="font-size:.65rem;text-transform:capitalize">{{ current_user.role }}</span>
             </div>
-        </div>
+        </a>
         <a href="{{ url_for('auth.logout') }}" class="nav-link ps-0 js-logout-trigger" data-logout-url="{{ url_for('auth.logout') }}">
             <i class="bi bi-box-arrow-right"></i> Log Out
         </a>
@@ -118,6 +118,10 @@
             <div class="page-actions">
                 {% block page_actions %}{% endblock %}
             </div>
+            <a href="{{ url_for('auth.view_profile') }}" class="btn btn-sm btn-outline-secondary" title="My Profile" aria-label="My Profile">
+                <i class="bi bi-person"></i>
+                <span class="topbar-notification-text ms-1">Profile</span>
+            </a>
             <a href="{{ url_for('borrow.notification_center') }}" class="btn btn-sm btn-outline-secondary position-relative topbar-notification-btn" title="Notifications" aria-label="Notifications{% if unread_count > 0 %} ({{ unread_count }} new){% endif %}">
                 <i class="bi bi-bell"></i>
                 <span class="topbar-notification-text ms-1">Notifications</span>
