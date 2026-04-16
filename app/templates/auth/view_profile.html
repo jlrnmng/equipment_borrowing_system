@@ -2,9 +2,25 @@
 {% block title %}My Profile{% endblock %}
 {% block page_title %}My Profile{% endblock %}
 {% block page_actions %}
+{% if role in ['staff', 'admin'] %}
 <a href="{{ url_for('auth.edit_profile') }}" class="btn btn-sm btn-primary">
     <i class="bi bi-pencil-square me-1"></i> Edit Profile
 </a>
+<a href="{{ url_for('borrow.notification_center') }}" class="btn btn-sm btn-outline-secondary position-relative topbar-notification-btn" title="Notifications" aria-label="Notifications{% if unread_count > 0 %} ({{ unread_count }} new){% endif %}">
+    <i class="bi bi-bell"></i>
+    <span class="topbar-notification-text ms-1">Notifications</span>
+    {% if unread_count > 0 %}
+    <span class="topbar-notification-dot" aria-hidden="true"></span>
+    {% endif %}
+</a>
+<a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline-danger js-logout-trigger" data-logout-url="{{ url_for('auth.logout') }}">
+    <i class="bi bi-box-arrow-right me-1"></i> Log Out
+</a>
+{% else %}
+<a href="{{ url_for('auth.edit_profile') }}" class="btn btn-sm btn-primary">
+    <i class="bi bi-pencil-square me-1"></i> Edit Profile
+</a>
+{% endif %}
 {% endblock %}
 
 {% block content %}

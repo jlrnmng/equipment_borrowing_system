@@ -491,7 +491,7 @@ def view_profile():
     if not staff_row:
         flash('Staff account not found. Please sign in again.', 'danger')
         return redirect(url_for('auth.logout'))
-    return render_template('auth/view_profile.html', profile=staff_row, role='staff')
+    return render_template('auth/view_profile.html', profile=staff_row, role=role)
 
 
 @auth_bp.route('/profile/edit', methods=['GET', 'POST'])
@@ -592,7 +592,7 @@ def edit_profile():
             return redirect(url_for('auth.view_profile'))
 
     refreshed_staff = Staff.get_by_id(staff_row['staff_id']) or staff_row
-    return render_template('auth/edit_profile.html', profile=refreshed_staff, role='staff')
+    return render_template('auth/edit_profile.html', profile=refreshed_staff, role=role)
 
 
 @auth_bp.route('/api/member/equipment-search', methods=['GET'])
