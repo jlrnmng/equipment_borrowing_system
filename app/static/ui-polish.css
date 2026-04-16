@@ -80,6 +80,46 @@ a:hover {
     border-bottom-width: 1px;
 }
 
+.equipment-photo {
+    border-radius: 10px;
+    object-fit: cover;
+    background: #eef3f9;
+    border: 1px solid rgba(172, 186, 204, 0.65);
+}
+
+.equipment-photo-sm {
+    width: 42px;
+    height: 42px;
+}
+
+.equipment-photo-md {
+    width: 84px;
+    height: 84px;
+}
+
+.equipment-photo-placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #6d7f96;
+}
+
+.equipment-name-wrap {
+    max-width: 300px;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 576px) {
+    .equipment-photo-sm {
+        width: 36px;
+        height: 36px;
+    }
+
+    .equipment-name-wrap {
+        max-width: 180px;
+    }
+}
+
 .reports-table th,
 .reports-table td {
     padding: 0.45rem 0.55rem;

@@ -624,6 +624,7 @@ def member_equipment_search():
                     'location': row.get('location'),
                     'status': row.get('status'),
                     'qr_code_path': row.get('qr_code_path'),
+                    'equipment_image_path': row.get('equipment_image_path'),
                 }
                 for row in rows
             ],
@@ -666,6 +667,7 @@ def member_equipment_from_qr():
                 'condition_status': equipment.get('condition_status'),
                 'location': equipment.get('location'),
                 'status': equipment.get('status'),
+                'equipment_image_path': equipment.get('equipment_image_path'),
             },
         }
     )

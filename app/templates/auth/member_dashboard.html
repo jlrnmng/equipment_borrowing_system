@@ -390,7 +390,6 @@
     var csrfToken = '{{ csrf_token() }}';
     var selectedItems = new Map();
     var qrScanner = null;
-    var qrIsRunning = false;
     var qrLastValue = null;
     var qrLastHandledAt = 0;
 
@@ -518,6 +517,30 @@
         }
     }
 
+    function buildEquipmentCard(eq) {
+        var serialDisplay = eq.serial_number || eq.inventory_number || '-';
+        var imageHtml = eq.equipment_image_path
+            ? '<img src="/static/' + encodeURI(eq.equipment_image_path) + '" alt="' + escapeHtml(eq.equipment_name) + '" class="equipment-photo equipment-photo-sm flex-shrink-0">'
+            : '<div class="equipment-photo equipment-photo-sm equipment-photo-placeholder flex-shrink-0" aria-hidden="true"><i class="bi bi-image"></i></div>';
+
+        return (
+            '<div class="card card-sm mb-2">' +
+            '<div class="card-body p-2">' +
+            '<div class="d-flex justify-content-between align-items-start gap-2">' +
+            '<div class="d-flex align-items-start gap-2 min-w-0">' +
+            imageHtml +
+            '<div class="min-w-0">' +
+            '<div class="fw-semibold equipment-name-wrap">' + escapeHtml(eq.equipment_name) + '</div>' +
+            '<div class="small text-muted">Serial: ' + escapeHtml(serialDisplay) + ' • Code: ' + escapeHtml(eq.equipment_code || '-') + ' • ' + escapeHtml(eq.category || '-') + '</div>' +
+            '</div>' +
+            '</div>' +
+            '<button type="button" class="btn btn-sm btn-outline-primary add-equipment-btn" data-equipment-id="' + eq.equipment_id + '" data-equipment-name="' + escapeHtml(eq.equipment_name) + '" data-equipment-code="' + escapeHtml(eq.equipment_code || '') + '" data-serial-number="' + escapeHtml(eq.serial_number || '') + '" data-inventory-number="' + escapeHtml(eq.inventory_number || '') + '" data-category="' + escapeHtml(eq.category || '-') + '" data-equipment-image-path="' + escapeHtml(eq.equipment_image_path || '') + '">Add</button>' +
+            '</div>' +
+            '</div>' +
+            '</div>'
+        );
+    }
+
     function renderSelectedItems() {
         var entries = Array.from(selectedItems.values());
         if (!entries.length) {
@@ -566,41 +589,6 @@
         updatePaperRequirementVisibility();
     }
 
-    function loadAvailableEquipment() {
-        equipmentResults.innerHTML = '<div class="text-muted text-center">Loading...</div>';
-        fetch('/api/member/equipment-search')
-            .then(function (res) { return res.json(); })
-            .then(function (data) {
-                if (!data.ok || !data.results || !data.results.length) {
-                    equipmentResults.innerHTML = '<div class="text-muted text-center py-4">No available equipment found</div>';
-                    return;
-                }
-
-                equipmentResults.innerHTML = data.results.map(function (eq) {
-                    var serialDisplay = eq.serial_number || eq.inventory_number || '-';
-                    return (
-                        '<div class="card card-sm mb-2">' +
-                        '<div class="card-body p-2">' +
-                        '<div class="d-flex justify-content-between align-items-start gap-2">' +
-                        '<div>' +
-                        '<div class="fw-semibold">' + escapeHtml(eq.equipment_name) + '</div>' +
-                        '<div class="small text-muted">Serial: ' + escapeHtml(serialDisplay) + ' • Code: ' + escapeHtml(eq.equipment_code || '-') + ' • ' + escapeHtml(eq.category || '-') + '</div>' +
-                        '</div>' +
-                        '<button type="button" class="btn btn-sm btn-outline-primary add-equipment-btn" data-equipment-id="' + eq.equipment_id + '" data-equipment-name="' + escapeHtml(eq.equipment_name) + '" data-equipment-code="' + escapeHtml(eq.equipment_code || '') + '" data-serial-number="' + escapeHtml(eq.serial_number || '') + '" data-inventory-number="' + escapeHtml(eq.inventory_number || '') + '" data-category="' + escapeHtml(eq.category || '-') + '">Add</button>' +
-                        '</div>' +
-                        '</div>' +
-                        '</div>'
-                    );
-                }).join('');
-
-                bindAddEquipmentButtons();
-            })
-            .catch(function () {
-                equipmentResults.innerHTML = '<div class="text-danger text-center py-4">Failed to load equipment</div>';
-                showAlert('Failed to load equipment.', 'danger');
-            });
-    }
-
     function bindAddEquipmentButtons() {
         equipmentResults.querySelectorAll('.add-equipment-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
@@ -613,6 +601,7 @@
                         serial_number: btn.getAttribute('data-serial-number'),
                         inventory_number: btn.getAttribute('data-inventory-number'),
                         category: btn.getAttribute('data-category'),
+                        equipment_image_path: btn.getAttribute('data-equipment-image-path'),
                         condition_requested: 'good'
                     });
                     renderSelectedItems();
@@ -629,24 +618,27 @@
             return;
         }
 
-        equipmentResults.innerHTML = results.map(function (eq) {
-            var serialDisplay = eq.serial_number || eq.inventory_number || '-';
-            return (
-                '<div class="card card-sm mb-2">' +
-                '<div class="card-body p-2">' +
-                '<div class="d-flex justify-content-between align-items-start gap-2">' +
-                '<div>' +
-                '<div class="fw-semibold">' + escapeHtml(eq.equipment_name) + '</div>' +
-                '<div class="small text-muted">Serial: ' + escapeHtml(serialDisplay) + ' • Code: ' + escapeHtml(eq.equipment_code || '-') + ' • ' + escapeHtml(eq.category || '-') + '</div>' +
-                '</div>' +
-                '<button type="button" class="btn btn-sm btn-outline-primary add-equipment-btn" data-equipment-id="' + eq.equipment_id + '" data-equipment-name="' + escapeHtml(eq.equipment_name) + '" data-equipment-code="' + escapeHtml(eq.equipment_code || '') + '" data-serial-number="' + escapeHtml(eq.serial_number || '') + '" data-inventory-number="' + escapeHtml(eq.inventory_number || '') + '" data-category="' + escapeHtml(eq.category || '-') + '">Add</button>' +
-                '</div>' +
-                '</div>' +
-                '</div>'
-            );
-        }).join('');
-
+        equipmentResults.innerHTML = results.map(buildEquipmentCard).join('');
         bindAddEquipmentButtons();
+    }
+
+    function loadAvailableEquipment() {
+        equipmentResults.innerHTML = '<div class="text-muted text-center">Loading...</div>';
+        fetch('/api/member/equipment-search')
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                if (!data.ok || !data.results || !data.results.length) {
+                    equipmentResults.innerHTML = '<div class="text-muted text-center py-4">No available equipment found</div>';
+                    return;
+                }
+
+                equipmentResults.innerHTML = data.results.map(buildEquipmentCard).join('');
+                bindAddEquipmentButtons();
+            })
+            .catch(function () {
+                equipmentResults.innerHTML = '<div class="text-danger text-center py-4">Failed to load equipment</div>';
+                showAlert('Failed to load equipment.', 'danger');
+            });
     }
 
     function searchEquipment() {
@@ -675,7 +667,6 @@
             .then(function (res) { return res.json(); })
             .then(function (data) {
                 if (!data.ok || !data.item) {
-                    // Fallback to text search to support non-standard QR payloads.
                     searchEquipment();
                     return;
                 }
@@ -688,50 +679,56 @@
             });
     }
 
-    // Initialize QR Scanner
     function initQRScanner() {
-        if (qrScanner) return;
+        if (qrScanner) {
+            return;
+        }
         qrScanner = new Html5Qrcode('qr-reader');
     }
 
     function startQRScanner() {
-        if (!qrScanner) initQRScanner();
-        qrIsRunning = true;
+        if (!qrScanner) {
+            initQRScanner();
+        }
+
         setQrStatus('Starting scanner...', 'warning');
         qrScanner.start(
             { facingMode: 'environment' },
             { fps: 10, qrbox: { width: 250, height: 250 } },
             function onScanSuccess(decodedText) {
                 var now = Date.now();
-                if (qrLastValue === decodedText && now - qrLastHandledAt < 3000) return;
+                if (qrLastValue === decodedText && now - qrLastHandledAt < 3000) {
+                    return;
+                }
+
                 qrLastValue = decodedText;
                 qrLastHandledAt = now;
                 equipmentQuery.value = decodedText;
                 searchEquipmentFromQr(decodedText);
             },
-            function onScanError(error) { }
+            function onScanError(error) {}
         ).then(function () {
             setQrStatus('Scanner is running. Point at equipment QR code.', 'success');
             startQrScanBtn.disabled = true;
             stopQrScanBtn.disabled = false;
         }).catch(function () {
             setQrStatus('Camera access denied or not supported.', 'danger');
-            qrIsRunning = false;
             startQrScanBtn.disabled = false;
         });
     }
 
     function stopQRScanner() {
-        if (!qrScanner) return;
+        if (!qrScanner) {
+            return;
+        }
+
         qrScanner.stop().then(function () {
-            qrIsRunning = false;
             setQrStatus('Scanner is off.', 'muted');
             startQrScanBtn.disabled = false;
             stopQrScanBtn.disabled = true;
         });
     }
 
-    // Event Listeners
     if (equipmentSearchForm) {
         equipmentSearchForm.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -829,40 +826,28 @@
         });
     }
 
-    // Return request handlers
-        // Handle return modal
-        var currentReturnItemId = null;
-        var returnModal = document.getElementById('returnModal');
-    
-        if (returnModal) {
-            returnModal.addEventListener('show.bs.modal', function (e) {
-                var btn = e.relatedTarget;
-                currentReturnItemId = Number(btn.getAttribute('data-borrow-item-id'));
-                var equipmentName = btn.getAttribute('data-equipment-name');
-                var serial = btn.getAttribute('data-serial');
-                var code = btn.getAttribute('data-code');
-                var status = btn.getAttribute('data-status');
-            
-                document.getElementById('modalEquipmentName').textContent = equipmentName;
-                document.getElementById('modalEquipmentSerial').textContent = serial + ' • ' + code;
-                document.getElementById('returnCondition').value = 'good';
-                document.getElementById('returnFeedback').value = '';
-            
-                if (status === 'pending') {
-                    document.getElementById('submitReturnBtn').disabled = true;
-                } else {
-                    document.getElementById('submitReturnBtn').disabled = false;
-                }
-            });
-        }
-    
-        var submitReturnBtn = document.getElementById('submitReturnBtn');
-        if (submitReturnBtn) {
-            submitReturnBtn.addEventListener('click', function () {
-                var itemId = currentReturnItemId;
-                var condition = document.getElementById('returnCondition').value;
-                var feedback = document.getElementById('returnFeedback').value;
+    var currentReturnItemId = null;
+    var returnModal = document.getElementById('returnModal');
+    if (returnModal) {
+        returnModal.addEventListener('show.bs.modal', function (e) {
+            var btn = e.relatedTarget;
+            currentReturnItemId = Number(btn.getAttribute('data-borrow-item-id'));
+            var equipmentName = btn.getAttribute('data-equipment-name');
+            var serial = btn.getAttribute('data-serial');
+            var code = btn.getAttribute('data-code');
+            var status = btn.getAttribute('data-status');
 
+            document.getElementById('modalEquipmentName').textContent = equipmentName;
+            document.getElementById('modalEquipmentSerial').textContent = serial + ' • ' + code;
+            document.getElementById('returnCondition').value = 'good';
+            document.getElementById('returnFeedback').value = '';
+            document.getElementById('submitReturnBtn').disabled = (status === 'pending');
+        });
+    }
+
+    var submitReturnBtn = document.getElementById('submitReturnBtn');
+    if (submitReturnBtn) {
+        submitReturnBtn.addEventListener('click', function () {
             fetch('/api/member/return-request', {
                 method: 'POST',
                 headers: {
@@ -871,39 +856,37 @@
                     'X-CSRF-Token': csrfToken
                 },
                 body: JSON.stringify({
-                    borrow_item_id: itemId,
-                    requested_condition: condition,
-                    member_feedback: feedback
+                    borrow_item_id: currentReturnItemId,
+                    requested_condition: document.getElementById('returnCondition').value,
+                    member_feedback: document.getElementById('returnFeedback').value
                 })
             })
             .then(function (res) { return res.json(); })
             .then(function (data) {
                 if (data.ok) {
                     showAlert('Return request submitted successfully!', 'success');
-                        if (returnModal && window.bootstrap) {
-                            var modalInstance = bootstrap.Modal.getOrCreateInstance(returnModal);
-                            modalInstance.hide();
-                        }
+                    if (returnModal && window.bootstrap) {
+                        bootstrap.Modal.getOrCreateInstance(returnModal).hide();
+                    }
                     setTimeout(function () { window.location.reload(); }, 1500);
                 } else {
                     showAlert(data.message || 'Failed to submit return request.', 'danger');
                 }
             })
             .catch(function () { showAlert('An error occurred.', 'danger'); });
-            });
-        }
+        });
+    }
 
-        if (paperSource) {
-            paperSource.addEventListener('change', updatePaperSourceFields);
-        }
+    if (paperSource) {
+        paperSource.addEventListener('change', updatePaperSourceFields);
+    }
 
     refreshRelativeTimes();
     setInterval(refreshRelativeTimes, 60000);
 
     var overdueSoonModalEl = document.getElementById('overdueSoonModal');
     if (overdueSoonModalEl && window.bootstrap) {
-        var overdueSoonModal = new bootstrap.Modal(overdueSoonModalEl);
-        overdueSoonModal.show();
+        new bootstrap.Modal(overdueSoonModalEl).show();
     }
 
     loadAvailableEquipment();

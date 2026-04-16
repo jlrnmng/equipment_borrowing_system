@@ -11,9 +11,34 @@
                 <i class="bi bi-pencil me-1"></i> Edit Equipment
             </div>
             <div class="card-body">
-                <form id="editEquipmentForm" method="POST" novalidate>
+                <form id="editEquipmentForm" method="POST" enctype="multipart/form-data" novalidate>
                     {{ form.hidden_tag() }}
                     <div class="row g-3">
+                        <div class="col-md-12">
+                            <label for="equipment_photo" class="form-label fw-semibold">Equipment Photo</label>
+                            <input
+                                type="file"
+                                class="form-control"
+                                id="equipment_photo"
+                                name="equipment_photo"
+                                accept="image/png,image/jpeg,image/webp"
+                            >
+                            <div class="form-text">Optional. Accepted formats: PNG, JPG, JPEG, WEBP. Max size: 3MB.</div>
+                        </div>
+
+                        {% if equipment.equipment_image_path %}
+                        <div class="col-md-12">
+                            <div class="border rounded p-2 d-inline-flex align-items-center gap-2 bg-light-subtle">
+                                <img
+                                    src="{{ url_for('static', filename=equipment.equipment_image_path) }}"
+                                    alt="{{ equipment.equipment_name }}"
+                                    class="equipment-photo equipment-photo-md"
+                                >
+                                <div class="small text-muted">Current photo</div>
+                            </div>
+                        </div>
+                        {% endif %}
+
                         <div class="col-md-12">
                             {{ form.equipment_name.label(class='form-label fw-semibold') }}
                             {{ form.equipment_name(class='form-control' + (' is-invalid' if form.equipment_name.errors else '')) }}

@@ -1,9 +1,13 @@
 import os
+import uuid
+from io import BytesIO
 
 import pymysql
+from PIL import Image, UnidentifiedImageError
 
 from flask import Blueprint, current_app, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
+from werkzeug.utils import secure_filename
 
 from app.forms import EquipmentForm
 from app.models.equipment import Equipment
@@ -12,6 +16,8 @@ from app.utils.db import get_db
 from app.utils.qr import build_equipment_qr_filename, generate_equipment_qr
 
 equipment_bp = Blueprint('equipment', __name__)
+
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
 
 
 def _is_authorized_manager():
@@ -50,6 +56,58 @@ def _flash_integrity_error(exc):
     flash('Unable to save equipment due to a data constraint. Please review your entries.', 'danger')
 
 
+def _is_allowed_image_filename(filename):
+    if not filename or '.' not in filename:
+        return False
+    return filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
+
+
+def _save_equipment_image(file_storage, equipment_id):
+    """Validate and save a normalized equipment image under static/uploads/equipment."""
+    image_bytes = _prepare_equipment_image_bytes(file_storage)
+    return _save_equipment_image_bytes(image_bytes, equipment_id)
+
+
+def _prepare_equipment_image_bytes(file_storage):
+    """Validate, normalize, and return JPEG bytes for an uploaded equipment image."""
+    filename = secure_filename(file_storage.filename or '')
+    if not _is_allowed_image_filename(filename):
+        raise ValueError('Please upload a valid image file (PNG, JPG, JPEG, or WEBP).')
+
+    max_size_bytes = int(current_app.config.get('EQUIPMENT_IMAGE_MAX_BYTES', 3 * 1024 * 1024))
+    file_storage.stream.seek(0, os.SEEK_END)
+    size = file_storage.stream.tell()
+    file_storage.stream.seek(0)
+    if size > max_size_bytes:
+        raise ValueError('Image is too large. Maximum size is 3MB.')
+
+    try:
+        with Image.open(file_storage.stream) as image:
+            image = image.convert('RGB')
+            image.thumbnail((720, 720))
+
+            buffer = BytesIO()
+            image.save(buffer, format='JPEG', quality=85, optimize=True)
+    except (UnidentifiedImageError, OSError) as exc:
+        raise ValueError('Uploaded file is not a valid image.') from exc
+
+    return buffer.getvalue()
+
+
+def _save_equipment_image_bytes(image_bytes, equipment_id):
+    """Store normalized equipment image bytes and return the static-relative path."""
+    relative_dir = os.path.join('uploads', 'equipment')
+    absolute_dir = os.path.join(current_app.static_folder, relative_dir)
+    os.makedirs(absolute_dir, exist_ok=True)
+
+    output_name = f"equipment_{equipment_id}_{uuid.uuid4().hex[:10]}.jpg"
+    absolute_path = os.path.join(absolute_dir, output_name)
+    with open(absolute_path, 'wb') as file_handle:
+        file_handle.write(image_bytes)
+
+    return os.path.join(relative_dir, output_name).replace('\\', '/')
+
+
 @equipment_bp.route('/equipment/add', methods=['GET', 'POST'])
 @login_required
 def add_equipment():
@@ -65,12 +123,22 @@ def add_equipment():
 
     if form.validate_on_submit():
         inventory_number = form.inventory_number.data.strip()
+        equipment_image_path = None
+        uploaded_image = request.files.get('equipment_photo')
+        prepared_image_bytes = None
         
         # Check if equipment with same serial number already exists
         if form.serial_number.data:
             existing = Equipment.get_all(search=form.serial_number.data)
             if existing:
                 flash(f'Equipment with this serial number already exists.', 'warning')
+                return render_template('equipment/add.html', form=form)
+
+        if uploaded_image and uploaded_image.filename:
+            try:
+                prepared_image_bytes = _prepare_equipment_image_bytes(uploaded_image)
+            except ValueError as exc:
+                flash(str(exc), 'warning')
                 return render_template('equipment/add.html', form=form)
 
         try:
@@ -89,6 +157,26 @@ def add_equipment():
                 notes=form.notes.data.strip() if form.notes.data else None,
                 added_by=current_user.staff_id,
             )
+
+            if prepared_image_bytes:
+                equipment_image_path = _save_equipment_image_bytes(prepared_image_bytes, created_equipment['equipment_id'])
+                Equipment.update_equipment(
+                    equipment_id=created_equipment['equipment_id'],
+                    equipment_name=created_equipment['equipment_name'],
+                    category=created_equipment['category'],
+                    inventory_number=created_equipment['inventory_number'],
+                    brand=created_equipment['brand'],
+                    serial_number=created_equipment['serial_number'],
+                    property_stock_number=created_equipment['property_stock_number'],
+                    status=created_equipment['status'],
+                    condition_status=created_equipment['condition_status'],
+                    location=created_equipment['location'],
+                    requires_supervision=bool(created_equipment.get('requires_supervision')),
+                    restricted_areas=created_equipment.get('restricted_areas'),
+                    notes=created_equipment.get('notes'),
+                    equipment_image_path=equipment_image_path,
+                )
+                created_equipment['equipment_image_path'] = equipment_image_path
 
             try:
                 qr_path = generate_equipment_qr(
@@ -237,6 +325,12 @@ def edit_equipment(equipment_id):
 
     if form.validate_on_submit():
         try:
+            equipment_image_path = equipment.get('equipment_image_path')
+            uploaded_image = request.files.get('equipment_photo')
+
+            if uploaded_image and uploaded_image.filename:
+                equipment_image_path = _save_equipment_image(uploaded_image, equipment_id)
+
             updated_equipment = Equipment.update_equipment(
                 equipment_id=equipment_id,
                 equipment_name=form.equipment_name.data.strip(),
@@ -251,6 +345,7 @@ def edit_equipment(equipment_id):
                 requires_supervision=bool(equipment.get('requires_supervision')),
                 restricted_areas=equipment.get('restricted_areas'),
                 notes=form.notes.data.strip() if form.notes.data else None,
+                equipment_image_path=equipment_image_path,
             )
 
             try:
@@ -266,6 +361,9 @@ def edit_equipment(equipment_id):
         except pymysql.err.IntegrityError as exc:
             _rollback_db_safely()
             _flash_integrity_error(exc)
+            return render_template('equipment/edit.html', form=form, equipment=equipment)
+        except ValueError as exc:
+            flash(str(exc), 'warning')
             return render_template('equipment/edit.html', form=form, equipment=equipment)
         except Exception:
             _rollback_db_safely()

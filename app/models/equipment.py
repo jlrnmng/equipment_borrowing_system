@@ -75,6 +75,7 @@ class Equipment:
         restricted_areas=None,
         notes=None,
         added_by=None,
+        equipment_image_path=None,
     ):
         """Create a new equipment entry."""
         db = get_db()
@@ -84,9 +85,9 @@ class Equipment:
                 """
                 INSERT INTO equipment 
                 (equipment_code, equipment_name, category, inventory_number, brand,
-                 serial_number, property_stock_number, status, condition_status,
+                 serial_number, property_stock_number, qr_code_path, equipment_image_path, status, condition_status,
                  location, requires_supervision, restricted_areas, notes, added_by)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, NULL, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     equipment_code,
@@ -96,6 +97,7 @@ class Equipment:
                     brand,
                     serial_number,
                     property_stock_number,
+                    equipment_image_path,
                     Equipment._normalize_status_value(status),
                     condition_status,
                     location,
@@ -125,6 +127,7 @@ class Equipment:
         requires_supervision=False,
         restricted_areas=None,
         notes=None,
+        equipment_image_path=None,
     ):
         """Update editable equipment fields."""
         db = get_db()
@@ -146,6 +149,7 @@ class Equipment:
                     requires_supervision = %s,
                     restricted_areas = %s,
                     notes = %s,
+                    equipment_image_path = %s,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE equipment_id = %s
                 """,
@@ -163,6 +167,7 @@ class Equipment:
                     requires_supervision,
                     restricted_areas,
                     notes,
+                    equipment_image_path,
                     equipment_id,
                 ),
             )

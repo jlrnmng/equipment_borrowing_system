@@ -126,7 +126,22 @@
                 <tbody>
                     {% for item in equipment %}
                     <tr>
-                        <td>{{ item.equipment_name }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                {% if item.equipment_image_path %}
+                                <img
+                                    src="{{ url_for('static', filename=item.equipment_image_path) }}"
+                                    alt="{{ item.equipment_name }}"
+                                    class="equipment-photo equipment-photo-sm"
+                                >
+                                {% else %}
+                                <div class="equipment-photo equipment-photo-sm equipment-photo-placeholder" aria-hidden="true">
+                                    <i class="bi bi-image"></i>
+                                </div>
+                                {% endif %}
+                                <div class="equipment-name-wrap">{{ item.equipment_name }}</div>
+                            </div>
+                        </td>
                         <td>{{ item.brand or '-' }}</td>
                         <td>
                             <div class="font-monospace fw-semibold">{{ item.serial_number or item.inventory_number }}</div>
