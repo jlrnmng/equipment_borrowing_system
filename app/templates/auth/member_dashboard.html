@@ -10,7 +10,7 @@
 {% block content %}
 <!-- Stats Overview -->
 <div class="row g-3 mb-4">
-    <div class="col-sm-6 col-lg-3">
+    <div class="col-6 col-lg-3">
         <div class="card stat-card">
             <div class="card-body">
                 <div class="d-flex align-items-center">
@@ -25,7 +25,7 @@
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-lg-3">
+    <div class="col-6 col-lg-3">
         <div class="card stat-card">
             <div class="card-body">
                 <div class="d-flex align-items-center">
@@ -40,7 +40,7 @@
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-lg-3">
+    <div class="col-6 col-lg-3">
         <div class="card stat-card">
             <div class="card-body">
                 <div class="d-flex align-items-center">
@@ -55,7 +55,7 @@
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-lg-3">
+    <div class="col-6 col-lg-3">
         <div class="card stat-card">
             <div class="card-body">
                 <div class="d-flex align-items-center">
@@ -64,7 +64,7 @@
                     </div>
                     <div>
                         <div class="text-muted small">Pending Requests</div>
-                        <div class="h6 mb-0">{{ pending_requests_count or 0 }}</div>
+                        <div class="h6 mb-0" id="pendingRequestsCount">{{ pending_requests_count or 0 }}</div>
                     </div>
                 </div>
             </div>
@@ -135,7 +135,7 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th>Item</th>
-                                        <th style="width: 110px;">Condition</th>
+                                        <th style="width: 130px;">Condition</th>
                                         <th style="width: 60px;">Remove</th>
                                     </tr>
                                 </thead>
@@ -522,6 +522,7 @@
         var imageHtml = eq.equipment_image_path
             ? '<img src="/static/' + encodeURI(eq.equipment_image_path) + '" alt="' + escapeHtml(eq.equipment_name) + '" class="equipment-photo equipment-photo-sm flex-shrink-0">'
             : '<div class="equipment-photo equipment-photo-sm equipment-photo-placeholder flex-shrink-0" aria-hidden="true"><i class="bi bi-image"></i></div>';
+        var condition = (eq.condition_status || 'good').toLowerCase();
 
         return (
             '<div class="card card-sm mb-2">' +
@@ -531,14 +532,29 @@
             imageHtml +
             '<div class="min-w-0">' +
             '<div class="fw-semibold equipment-name-wrap">' + escapeHtml(eq.equipment_name) + '</div>' +
-            '<div class="small text-muted">Serial: ' + escapeHtml(serialDisplay) + ' • Code: ' + escapeHtml(eq.equipment_code || '-') + ' • ' + escapeHtml(eq.category || '-') + '</div>' +
+            '<div class="small text-muted">Serial: ' + escapeHtml(serialDisplay) + ' • Code: ' + escapeHtml(eq.equipment_code || '-') + ' • ' + escapeHtml(eq.category || '-') + ' • Condition: ' + escapeHtml(condition) + '</div>' +
             '</div>' +
             '</div>' +
-            '<button type="button" class="btn btn-sm btn-outline-primary add-equipment-btn" data-equipment-id="' + eq.equipment_id + '" data-equipment-name="' + escapeHtml(eq.equipment_name) + '" data-equipment-code="' + escapeHtml(eq.equipment_code || '') + '" data-serial-number="' + escapeHtml(eq.serial_number || '') + '" data-inventory-number="' + escapeHtml(eq.inventory_number || '') + '" data-category="' + escapeHtml(eq.category || '-') + '" data-equipment-image-path="' + escapeHtml(eq.equipment_image_path || '') + '">Add</button>' +
+            '<button type="button" class="btn btn-sm btn-outline-primary add-equipment-btn" data-equipment-id="' + eq.equipment_id + '" data-equipment-name="' + escapeHtml(eq.equipment_name) + '" data-equipment-code="' + escapeHtml(eq.equipment_code || '') + '" data-serial-number="' + escapeHtml(eq.serial_number || '') + '" data-inventory-number="' + escapeHtml(eq.inventory_number || '') + '" data-category="' + escapeHtml(eq.category || '-') + '" data-condition-status="' + escapeHtml(condition) + '" data-equipment-image-path="' + escapeHtml(eq.equipment_image_path || '') + '">Add</button>' +
             '</div>' +
             '</div>' +
             '</div>'
         );
+    }
+
+    function buildConditionBadge(conditionValue) {
+        var condition = String(conditionValue || 'good').toLowerCase();
+        var badgeClass = 'bg-secondary';
+        if (condition === 'excellent') {
+            badgeClass = 'bg-success';
+        } else if (condition === 'good') {
+            badgeClass = 'bg-info text-dark';
+        } else if (condition === 'fair') {
+            badgeClass = 'bg-warning text-dark';
+        } else if (condition === 'poor') {
+            badgeClass = 'bg-danger';
+        }
+        return '<span class="badge ' + badgeClass + '">' + escapeHtml(condition) + '</span>';
     }
 
     function renderSelectedItems() {
@@ -555,14 +571,7 @@
                 '<tr data-equipment-id="' + item.equipment_id + '">' +
                 '<td><div class="fw-semibold">' + escapeHtml(item.equipment_name) + '</div><div class="small text-muted">' +
                 'Serial: ' + escapeHtml(serialDisplay) + ' • Code: ' + escapeHtml(item.equipment_code || '-') + ' • ' + escapeHtml(item.category || '-') + '</div></td>' +
-                '<td>' +
-                '<select class="form-select form-select-sm item-condition" data-equipment-id="' + item.equipment_id + '">' +
-                '<option value="excellent"' + (item.condition_requested === 'excellent' ? ' selected' : '') + '>Excellent</option>' +
-                '<option value="good"' + (item.condition_requested === 'good' ? ' selected' : '') + '>Good</option>' +
-                '<option value="fair"' + (item.condition_requested === 'fair' ? ' selected' : '') + '>Fair</option>' +
-                '<option value="poor"' + (item.condition_requested === 'poor' ? ' selected' : '') + '>Poor</option>' +
-                '</select>' +
-                '</td>' +
+                '<td>' + buildConditionBadge(item.condition_requested) + '</td>' +
                 '<td><button type="button" class="btn btn-sm btn-outline-danger remove-item" data-equipment-id="' + item.equipment_id + '">Remove</button></td>' +
                 '</tr>'
             );
@@ -573,20 +582,20 @@
                 var id = Number(btn.getAttribute('data-equipment-id'));
                 selectedItems.delete(id);
                 renderSelectedItems();
-            });
-        });
-
-        selectedItemsBody.querySelectorAll('.item-condition').forEach(function (select) {
-            select.addEventListener('change', function () {
-                var id = Number(select.getAttribute('data-equipment-id'));
-                var item = selectedItems.get(id);
-                if (item) {
-                    item.condition_requested = select.value;
-                }
+                updateAddEquipmentButtonStates();
             });
         });
 
         updatePaperRequirementVisibility();
+    }
+
+    function updateAddEquipmentButtonStates() {
+        equipmentResults.querySelectorAll('.add-equipment-btn').forEach(function (btn) {
+            var id = Number(btn.getAttribute('data-equipment-id'));
+            var isSelected = selectedItems.has(id);
+            btn.disabled = isSelected;
+            btn.textContent = isSelected ? 'Added' : 'Add';
+        });
     }
 
     function bindAddEquipmentButtons() {
@@ -602,11 +611,10 @@
                         inventory_number: btn.getAttribute('data-inventory-number'),
                         category: btn.getAttribute('data-category'),
                         equipment_image_path: btn.getAttribute('data-equipment-image-path'),
-                        condition_requested: 'good'
+                        condition_requested: (btn.getAttribute('data-condition-status') || 'good').toLowerCase()
                     });
                     renderSelectedItems();
-                    btn.textContent = 'Added';
-                    btn.disabled = true;
+                    updateAddEquipmentButtonStates();
                 }
             });
         });
@@ -816,8 +824,14 @@
                     showAlert('Borrow request submitted successfully!', 'success');
                     selectedItems.clear();
                     renderSelectedItems();
+                    updateAddEquipmentButtonStates();
                     equipmentQuery.value = '';
-                    setTimeout(function () { window.location.reload(); }, 1500);
+                    loadAvailableEquipment();
+                    var pendingEl = document.getElementById('pendingRequestsCount');
+                    if (pendingEl) {
+                        var nextCount = Number(pendingEl.textContent || '0') + 1;
+                        pendingEl.textContent = String(nextCount);
+                    }
                 } else {
                     showAlert(data.message || 'Failed to submit request.', 'danger');
                 }
@@ -868,7 +882,18 @@
                     if (returnModal && window.bootstrap) {
                         bootstrap.Modal.getOrCreateInstance(returnModal).hide();
                     }
-                    setTimeout(function () { window.location.reload(); }, 1500);
+                    var rowButton = document.querySelector('.return-item-btn[data-borrow-item-id="' + String(currentReturnItemId) + '"]');
+                    if (rowButton) {
+                        rowButton.disabled = true;
+                        rowButton.textContent = 'Pending';
+                        rowButton.classList.remove('btn-outline-primary');
+                        rowButton.classList.add('btn-outline-secondary');
+
+                        var statusCell = rowButton.closest('tr') ? rowButton.closest('tr').children[2] : null;
+                        if (statusCell) {
+                            statusCell.innerHTML = '<span class="badge bg-warning text-dark">Return Pending</span>';
+                        }
+                    }
                 } else {
                     showAlert(data.message || 'Failed to submit return request.', 'danger');
                 }

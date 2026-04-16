@@ -33,7 +33,14 @@
                     {% for item in notifications %}
                     <tr class="{% if item.is_unread %}notification-unread{% else %}notification-read{% endif %}" data-notification-id="{{ item.notification_id }}">
                         <td class="ps-3">
-                            <div class="fw-semibold text-capitalize">{{ (item.notification_type or '').replace('_', ' ') }}</div>
+                            {% set notif_type = (item.notification_type or '')|lower %}
+                            <div class="fw-semibold text-capitalize">
+                                {% if 'rejected' in notif_type and 'request' in notif_type %}
+                                Request Rejected
+                                {% else %}
+                                {{ (item.notification_type or '').replace('_', ' ') }}
+                                {% endif %}
+                            </div>
                             <small class="d-block mt-1 {% if item.is_unread %}text-primary{% else %}text-muted{% endif %}">
                                 {% if item.is_unread %}Unread{% else %}Read{% endif %}
                             </small>
@@ -45,8 +52,9 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% set notif_type = (item.notification_type or '')|lower %}
-                            {% if 'return' in notif_type %}
+                            {% if 'rejected' in notif_type and 'request' in notif_type %}
+                            <span class="badge bg-danger">Reject</span>
+                            {% elif 'return' in notif_type %}
                             <span class="badge bg-info text-dark">Return</span>
                             {% elif 'borrow' in notif_type %}
                             <span class="badge bg-primary">Borrow</span>
@@ -167,7 +175,14 @@
                     {% for item in notifications %}
                     <tr class="{% if item.is_unread %}notification-unread{% else %}notification-read{% endif %}">
                         <td class="ps-3">
-                            <div class="fw-semibold text-capitalize">{{ (item.notification_type or '').replace('_', ' ') }}</div>
+                            {% set notif_type = (item.notification_type or '')|lower %}
+                            <div class="fw-semibold text-capitalize">
+                                {% if 'rejected' in notif_type and 'request' in notif_type %}
+                                Request Rejected
+                                {% else %}
+                                {{ (item.notification_type or '').replace('_', ' ') }}
+                                {% endif %}
+                            </div>
                             <small class="d-block mt-1 {% if item.is_unread %}text-primary{% else %}text-muted{% endif %}">
                                 {% if item.is_unread %}Unread{% else %}Read{% endif %}
                             </small>
@@ -176,8 +191,9 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% set notif_type = (item.notification_type or '')|lower %}
-                            {% if 'return' in notif_type %}
+                            {% if 'rejected' in notif_type and 'request' in notif_type %}
+                            <span class="badge bg-danger">Reject</span>
+                            {% elif 'return' in notif_type %}
                             <span class="badge bg-info text-dark">Return</span>
                             {% elif 'borrow' in notif_type %}
                             <span class="badge bg-primary">Borrow</span>
