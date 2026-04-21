@@ -9,6 +9,35 @@ from app.utils.notifications import queue_and_send_notification
 staff_admin_bp = Blueprint('staff_admin', __name__)
 
 
+def _get_staff_allowed_domains():
+    """Return normalized allowed domains for staff registration emails."""
+    raw_value = current_app.config.get('GOOGLE_ALLOWED_DOMAIN', 'my.cspc.edu.ph') or ''
+    configured = [part.strip().lower() for part in str(raw_value).split(',') if part.strip()]
+
+    defaults = ['my.cspc.edu.ph', 'cspc.edu.ph']
+    ordered = configured + defaults
+
+    seen = set()
+    domains = []
+    for domain in ordered:
+        if domain not in seen:
+            seen.add(domain)
+            domains.append(domain)
+    return domains
+
+
+def _is_allowed_staff_email_domain(email):
+    email_value = (email or '').strip().lower()
+    if '@' not in email_value:
+        return False
+
+    email_domain = email_value.split('@', 1)[1]
+    for domain in _get_staff_allowed_domains():
+        if email_domain == domain or email_domain.endswith(f'.{domain}'):
+            return True
+    return False
+
+
 @staff_admin_bp.route('/staff/register', methods=['GET', 'POST'])
 @login_required
 def register_staff():
@@ -25,10 +54,11 @@ def register_staff():
         email = form.email.data.strip().lower()
         full_name = form.full_name.data.strip()
         role = 'staff'
-        allowed_domain = current_app.config.get('GOOGLE_ALLOWED_DOMAIN', 'my.cspc.edu.ph')
+        allowed_domains = _get_staff_allowed_domains()
 
-        if not email.endswith(f'@{allowed_domain}'):
-            flash(f'Staff Google email must end with @{allowed_domain}.', 'danger')
+        if not _is_allowed_staff_email_domain(email):
+            domains_label = ', '.join(f'@{domain}' for domain in allowed_domains)
+            flash(f'Staff Google email must use one of these domains: {domains_label}.', 'danger')
             return render_template('staff/register.html', form=form)
 
         existing_staff = Staff.get_by_email(email)
