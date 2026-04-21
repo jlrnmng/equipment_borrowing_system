@@ -170,6 +170,9 @@ def load_user(user_id):
     user_id = str(user_id)
     if user_id.startswith('member:'):
         member_id = int(user_id.split(':', 1)[1])
-        return Member.to_member_user(Member.get_auth_by_member_id(member_id))
+        return Member.to_member_user(Member.get_auth_by_member_id(member_id), photo_url=session.get('google_picture_url'))
 
-    return Staff.get_by_id(int(user_id))
+    staff = Staff.get_by_id(int(user_id))
+    if staff:
+        staff.photo_url = session.get('google_picture_url')
+    return staff

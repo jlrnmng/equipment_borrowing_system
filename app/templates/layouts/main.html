@@ -90,9 +90,13 @@
     </div>
     <div class="sidebar-bottom">
         <a href="{{ url_for('auth.view_profile') }}" class="sidebar-profile-link d-flex align-items-center gap-2 mb-2 text-decoration-none">
-            <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center"
+            <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center overflow-hidden"
                  style="width:32px;height:32px;flex-shrink:0">
+                {% if current_user.photo_url %}
+                <img src="{{ current_user.photo_url }}" alt="Profile photo" style="width:100%;height:100%;object-fit:cover;">
+                {% else %}
                 <i class="bi bi-person-fill text-white" style="font-size:.9rem"></i>
+                {% endif %}
             </div>
             <div style="min-width:0">
                 <div class="text-white fw-semibold text-truncate" style="font-size:.8rem">{{ current_user.full_name }}</div>

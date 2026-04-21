@@ -178,6 +178,7 @@ def member_profile(member_code):
     borrow_history = Member.get_borrowing_history(profile['member_id'], limit=25)
     violations = Member.get_violations(profile['member_id'], limit=25)
     calendar_status = Member.get_calendar_status(profile['member_id'])
+    existing_members = Member.get_active_members(limit=25)
 
     return render_template(
         'members/profile.html',
@@ -188,7 +189,33 @@ def member_profile(member_code):
         borrow_history=borrow_history,
         violations=violations,
         calendar_status=calendar_status,
+        existing_members=existing_members,
     )
+
+
+@members_bp.route('/members/<member_code>/delete', methods=['POST'])
+@login_required
+def delete_member(member_code):
+    if not _is_authorized_scanner():
+        flash('You are not authorized to manage members.', 'danger')
+        return redirect(url_for('dashboard.index'))
+
+    normalized_code = _extract_member_code(member_code)
+    if not normalized_code:
+        flash('Invalid member code format.', 'warning')
+        return redirect(url_for('members.scan_member'))
+
+    profile = Member.get_profile_by_member_code(normalized_code)
+    if not profile:
+        flash('Member not found.', 'danger')
+        return redirect(url_for('members.scan_member'))
+
+    if Member.soft_delete_member(profile['member_id']):
+        flash(f'Member {normalized_code} has been deactivated.', 'success')
+    else:
+        flash('Unable to deactivate member right now.', 'danger')
+
+    return redirect(url_for('members.member_profile', member_code=normalized_code))
 
 
 @members_bp.route('/members/<member_code>/qr/download', methods=['GET'])

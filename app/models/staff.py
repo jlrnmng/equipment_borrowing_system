@@ -6,13 +6,14 @@ from app.utils.db import get_db
 class Staff(UserMixin):
     """Represents an authenticated staff member."""
 
-    def __init__(self, staff_id, staff_code, email, full_name, role, status):
+    def __init__(self, staff_id, staff_code, email, full_name, role, status, photo_url=None):
         self.id = staff_id          # Flask-Login requires the attribute named 'id'
         self.staff_code = staff_code
         self.email = email
         self.full_name = full_name
         self.role = role
         self._status = status
+        self.photo_url = photo_url
 
     # ------------------------------------------------------------------
     # Flask-Login required override – inactive staff cannot log in

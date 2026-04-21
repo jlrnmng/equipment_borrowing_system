@@ -374,7 +374,7 @@ class Member:
         return all((value or '').strip() for value in required_fields)
 
     @staticmethod
-    def to_member_user(member_row):
+    def to_member_user(member_row, photo_url=None):
         if not member_row:
             return None
 
@@ -391,6 +391,7 @@ class Member:
             full_name=full_name,
             status=member_row.get('status') or 'inactive',
             profile_complete=Member.is_profile_complete(member_row),
+            photo_url=photo_url,
         )
 
     @staticmethod
@@ -431,6 +432,39 @@ class Member:
             return cursor.fetchall()
 
     @staticmethod
+    def get_active_members(limit=25):
+        db = get_db()
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT member_id, member_code, first_name, middle_name, last_name,
+                       email, google_email, status, current_borrow_count, max_borrow_limit
+                FROM members
+                WHERE status = 'active'
+                ORDER BY last_name ASC, first_name ASC, member_id DESC
+                LIMIT %s
+                """,
+                (int(limit),),
+            )
+            return cursor.fetchall()
+
+    @staticmethod
+    def soft_delete_member(member_id):
+        db = get_db()
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE members
+                SET status = 'inactive',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE member_id = %s
+                """,
+                (member_id,),
+            )
+        db.commit()
+        return cursor.rowcount > 0
+
+    @staticmethod
     def approve_member(member_id):
         """Approve a pending member registration, changing status to active."""
         db = get_db()
@@ -451,7 +485,7 @@ class Member:
 class MemberUser(UserMixin):
     """Represents an authenticated member account via Google OAuth."""
 
-    def __init__(self, member_id, member_code, email, full_name, status, profile_complete):
+    def __init__(self, member_id, member_code, email, full_name, status, profile_complete, photo_url=None):
         self.id = member_id
         self.member_code = member_code
         self.email = email
@@ -459,6 +493,7 @@ class MemberUser(UserMixin):
         self.role = 'member'
         self._status = status
         self.profile_complete = profile_complete
+        self.photo_url = photo_url
 
     @property
     def is_active(self):

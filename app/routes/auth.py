@@ -41,7 +41,7 @@ def _get_google_allowed_domains():
 
 
 def _member_redirect_after_login(member_row):
-    member_user = Member.to_member_user(member_row)
+    member_user = Member.to_member_user(member_row, photo_url=session.get('google_picture_url'))
     login_user(member_user)
 
     if not Member.is_profile_complete(member_row):
@@ -204,7 +204,19 @@ def google_callback():
     try:
         token = google.authorize_access_token()
         nonce = session.pop('oauth_nonce', None)
-        userinfo = google.parse_id_token(token, nonce=nonce)
+        userinfo = None
+        try:
+            userinfo = google.parse_id_token(token, nonce=nonce)
+        except Exception:
+            current_app.logger.exception('Google parse_id_token failed; will try userinfo fallback')
+
+        if not userinfo:
+            try:
+                profile_response = google.get('userinfo')
+                if profile_response and profile_response.ok:
+                    userinfo = profile_response.json() or None
+            except Exception:
+                current_app.logger.exception('Google userinfo fallback failed')
     except Exception:
         flash('Google sign-in failed. Please try again.', 'danger')
         return redirect(url_for('auth.login'))
@@ -216,6 +228,7 @@ def google_callback():
     email = (userinfo.get('email') or '').strip().lower()
     google_sub = userinfo.get('sub')
     full_name = (userinfo.get('name') or 'User').strip()
+    google_picture_url = (userinfo.get('picture') or '').strip() or None
     email_verified = bool(userinfo.get('email_verified'))
     oauth_flow = session.pop('oauth_flow', 'login')
 
@@ -226,6 +239,9 @@ def google_callback():
     if not email_verified:
         flash('Your Google email must be verified.', 'warning')
         return redirect(url_for('auth.login'))
+
+    if google_picture_url:
+        session['google_picture_url'] = google_picture_url
 
     if not is_allowed_domain(email):
         domains_label = ', '.join(f"@{d}" for d in _get_google_allowed_domains())
@@ -253,6 +269,7 @@ def google_callback():
             staff_row['full_name'] or full_name,
             staff_row['role'],
             staff_row['status'],
+            photo_url=google_picture_url,
         )
         login_user(staff)
         Staff.touch_last_login(staff.id)
@@ -391,7 +408,7 @@ def complete_profile():
                 year_level=year_level,
             )
             updated_row = Member.get_auth_by_member_id(member_row['member_id'])
-            login_user(Member.to_member_user(updated_row))
+            login_user(Member.to_member_user(updated_row, photo_url=session.get('google_picture_url')))
             flash('Profile completed successfully.', 'success')
             return redirect(url_for('auth.member_dashboard'))
 
@@ -555,7 +572,7 @@ def edit_profile():
 
                 updated_member = Member.get_auth_by_member_id(member_row['member_id'])
                 if updated_member:
-                    login_user(Member.to_member_user(updated_member))
+                    login_user(Member.to_member_user(updated_member, photo_url=session.get('google_picture_url')))
                 flash('Profile updated successfully.', 'success')
                 return redirect(url_for('auth.view_profile'))
 
