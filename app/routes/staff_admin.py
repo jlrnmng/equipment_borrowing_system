@@ -18,12 +18,13 @@ def register_staff():
         return redirect(url_for('dashboard.index'))
 
     form = StaffRegistrationForm()
+    form.role.data = 'staff'
     created_staff = None
 
     if form.validate_on_submit():
         email = form.email.data.strip().lower()
         full_name = form.full_name.data.strip()
-        role = form.role.data
+        role = 'staff'
         allowed_domain = current_app.config.get('GOOGLE_ALLOWED_DOMAIN', 'my.cspc.edu.ph')
 
         if not email.endswith(f'@{allowed_domain}'):

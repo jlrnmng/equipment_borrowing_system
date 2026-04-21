@@ -122,6 +122,27 @@
     </div>
 
     <div class="col-lg-4">
+        <div class="card stat-card mb-3">
+            <div class="card-header bg-white border-bottom fw-semibold">
+                <i class="bi bi-image me-1"></i> Equipment Photo
+            </div>
+            <div class="card-body text-center">
+                {% if equipment.equipment_image_path %}
+                <img src="{{ url_for('static', filename=equipment.equipment_image_path) }}"
+                     alt="{{ equipment.equipment_name }} photo"
+                     class="img-fluid equipment-photo"
+                     style="max-height: 260px; width: 100%; object-fit: cover;">
+                {% else %}
+                <div class="equipment-photo-placeholder border rounded p-4 w-100" style="min-height: 160px;">
+                    <div>
+                        <i class="bi bi-camera fs-3 d-block mb-2"></i>
+                        <small>No equipment photo uploaded</small>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
         <div class="card stat-card">
             <div class="card-header bg-white border-bottom fw-semibold">
                 <i class="bi bi-qr-code me-1"></i> Equipment Code

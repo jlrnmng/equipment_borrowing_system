@@ -63,8 +63,8 @@
 
         <span class="nav-section">Manage User</span>
         <a href="{{ url_for('members.scan_member') }}"
-           class="nav-link {% if request.endpoint == 'members.scan_member' %}active{% endif %}">
-            <i class="bi bi-qr-code-scan"></i> Scan Member
+           class="nav-link {% if request.endpoint in ['members.scan_member', 'members.member_profile'] %}active{% endif %}">
+            <i class="bi bi-people"></i> Manage Members
         </a>
         <a href="{{ url_for('staff_admin.register_staff') }}"
            class="nav-link {% if request.endpoint == 'staff_admin.register_staff' %}active{% endif %}">

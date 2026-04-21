@@ -237,7 +237,7 @@
                             </td>
                             <td>
                                 {% if item.return_request_status != 'approved' %}
-                                    <button class="btn btn-sm btn-outline-primary return-item-btn" data-bs-toggle="modal" data-bs-target="#returnModal" data-borrow-item-id="{{ item.borrow_item_id }}" data-equipment-name="{{ item.equipment_name }}" data-serial="{{ item.serial_number or item.inventory_number or '-' }}" data-code="{{ item.equipment_code or '-' }}" data-status="{{ item.return_request_status }}">Return</button>
+                                    <button type="button" class="btn btn-sm btn-outline-primary return-item-btn" data-borrow-item-id="{{ item.borrow_item_id }}" data-equipment-name="{{ item.equipment_name }}" data-serial="{{ item.serial_number or item.inventory_number or '-' }}" data-code="{{ item.equipment_code or '-' }}" data-status="{{ item.return_request_status }}" data-equipment-image-path="{{ item.equipment_image_path or '' }}">Return</button>
                                 {% endif %}
                             </td>
                         </tr>
@@ -329,6 +329,16 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
+                <div class="mb-3 text-center">
+                    <img id="modalEquipmentImage"
+                         src=""
+                         alt="Equipment image"
+                         class="equipment-photo equipment-photo-md"
+                         style="width: 120px; height: 120px; display: none;">
+                    <div id="modalEquipmentImagePlaceholder" class="equipment-photo-placeholder border rounded p-3 mx-auto" style="width: 120px; height: 120px;">
+                        <i class="bi bi-image"></i>
+                    </div>
+                </div>
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Equipment</label>
                     <div id="modalEquipmentName" class="form-control-plaintext fw-semibold"></div>
@@ -417,6 +427,41 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
+    }
+
+    function renderReturnModalFromButton(btn) {
+        var modalEl = document.getElementById('returnModal');
+        if (!modalEl || !btn) {
+            return;
+        }
+
+        currentReturnItemId = Number(btn.getAttribute('data-borrow-item-id'));
+
+        var equipmentName = btn.getAttribute('data-equipment-name') || '';
+        var serial = btn.getAttribute('data-serial') || '-';
+        var code = btn.getAttribute('data-code') || '-';
+        var status = btn.getAttribute('data-status') || '';
+        var imagePath = btn.getAttribute('data-equipment-image-path') || '';
+        var imageEl = document.getElementById('modalEquipmentImage');
+        var placeholderEl = document.getElementById('modalEquipmentImagePlaceholder');
+
+        document.getElementById('modalEquipmentName').textContent = equipmentName;
+        document.getElementById('modalEquipmentSerial').textContent = serial + ' • ' + code;
+        document.getElementById('returnCondition').value = 'good';
+        document.getElementById('returnFeedback').value = '';
+        document.getElementById('submitReturnBtn').disabled = (status === 'pending');
+
+        if (imageEl && placeholderEl) {
+            if (imagePath) {
+                imageEl.src = '/static/' + encodeURI(imagePath);
+                imageEl.style.display = 'inline-block';
+                placeholderEl.style.display = 'none';
+            } else {
+                imageEl.removeAttribute('src');
+                imageEl.style.display = 'none';
+                placeholderEl.style.display = 'flex';
+            }
+        }
     }
 
     function showAlert(message, type) {
@@ -841,64 +886,75 @@
     }
 
     var currentReturnItemId = null;
-    var returnModal = document.getElementById('returnModal');
-    if (returnModal) {
-        returnModal.addEventListener('show.bs.modal', function (e) {
-            var btn = e.relatedTarget;
-            currentReturnItemId = Number(btn.getAttribute('data-borrow-item-id'));
-            var equipmentName = btn.getAttribute('data-equipment-name');
-            var serial = btn.getAttribute('data-serial');
-            var code = btn.getAttribute('data-code');
-            var status = btn.getAttribute('data-status');
+    if (!window.__memberDashboardReturnBindingInstalled) {
+        window.__memberDashboardReturnBindingInstalled = true;
 
-            document.getElementById('modalEquipmentName').textContent = equipmentName;
-            document.getElementById('modalEquipmentSerial').textContent = serial + ' • ' + code;
-            document.getElementById('returnCondition').value = 'good';
-            document.getElementById('returnFeedback').value = '';
-            document.getElementById('submitReturnBtn').disabled = (status === 'pending');
-        });
-    }
+        document.addEventListener('click', function (event) {
+            var returnButton = event.target.closest('.return-item-btn');
+            if (returnButton) {
+                event.preventDefault();
+                renderReturnModalFromButton(returnButton);
 
-    var submitReturnBtn = document.getElementById('submitReturnBtn');
-    if (submitReturnBtn) {
-        submitReturnBtn.addEventListener('click', function () {
-            fetch('/api/member/return-request', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken,
-                    'X-CSRF-Token': csrfToken
-                },
-                body: JSON.stringify({
-                    borrow_item_id: currentReturnItemId,
-                    requested_condition: document.getElementById('returnCondition').value,
-                    member_feedback: document.getElementById('returnFeedback').value
-                })
-            })
-            .then(function (res) { return res.json(); })
-            .then(function (data) {
-                if (data.ok) {
-                    showAlert('Return request submitted successfully!', 'success');
-                    if (returnModal && window.bootstrap) {
-                        bootstrap.Modal.getOrCreateInstance(returnModal).hide();
-                    }
-                    var rowButton = document.querySelector('.return-item-btn[data-borrow-item-id="' + String(currentReturnItemId) + '"]');
-                    if (rowButton) {
-                        rowButton.disabled = true;
-                        rowButton.textContent = 'Pending';
-                        rowButton.classList.remove('btn-outline-primary');
-                        rowButton.classList.add('btn-outline-secondary');
-
-                        var statusCell = rowButton.closest('tr') ? rowButton.closest('tr').children[2] : null;
-                        if (statusCell) {
-                            statusCell.innerHTML = '<span class="badge bg-warning text-dark">Return Pending</span>';
-                        }
-                    }
-                } else {
-                    showAlert(data.message || 'Failed to submit return request.', 'danger');
+                var returnModalEl = document.getElementById('returnModal');
+                if (returnModalEl && window.bootstrap) {
+                    bootstrap.Modal.getOrCreateInstance(returnModalEl).show();
                 }
-            })
-            .catch(function () { showAlert('An error occurred.', 'danger'); });
+                return;
+            }
+
+            if (event.target && event.target.id === 'submitReturnBtn') {
+                var submitButton = event.target;
+                if (!currentReturnItemId) {
+                    showAlert('Select a borrowed item to return.', 'warning');
+                    return;
+                }
+
+                submitButton.disabled = true;
+                submitButton.textContent = 'Submitting...';
+
+                fetch('/api/member/return-request', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken,
+                        'X-CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify({
+                        borrow_item_id: currentReturnItemId,
+                        requested_condition: document.getElementById('returnCondition').value,
+                        member_feedback: document.getElementById('returnFeedback').value
+                    })
+                })
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    if (data.ok) {
+                        showAlert('Return request submitted successfully!', 'success');
+                        var returnModalEl = document.getElementById('returnModal');
+                        if (returnModalEl && window.bootstrap) {
+                            bootstrap.Modal.getOrCreateInstance(returnModalEl).hide();
+                        }
+                        var rowButton = document.querySelector('.return-item-btn[data-borrow-item-id="' + String(currentReturnItemId) + '"]');
+                        if (rowButton) {
+                            rowButton.disabled = true;
+                            rowButton.textContent = 'Pending';
+                            rowButton.classList.remove('btn-outline-primary');
+                            rowButton.classList.add('btn-outline-secondary');
+
+                            var statusCell = rowButton.closest('tr') ? rowButton.closest('tr').children[2] : null;
+                            if (statusCell) {
+                                statusCell.innerHTML = '<span class="badge bg-warning text-dark">Return Pending</span>';
+                            }
+                        }
+                    } else {
+                        showAlert(data.message || 'Failed to submit return request.', 'danger');
+                    }
+                })
+                .catch(function () { showAlert('An error occurred.', 'danger'); })
+                .finally(function () {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Submit Return';
+                });
+            }
         });
     }
 
