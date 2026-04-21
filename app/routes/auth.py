@@ -279,7 +279,7 @@ def google_callback():
     member_row = Member.get_by_email_or_google_email(email)
     if member_row:
         if member_row['status'] == 'pending':
-            flash('Your registration is pending admin approval. We will send you an email notification once approved.', 'info')
+            flash('Your registration is pending admin approval. Please check your notifications for updates.', 'info')
             return redirect(url_for('auth.login'))
         
         if member_row['status'] != 'active':
@@ -333,7 +333,7 @@ Your account details:
 - Member Code: {member_code}
 - Email: {email}
 
-We will send you an email notification once your registration has been approved by our administrators.
+You will receive a notification once your registration has been approved by our administrators.
 
 Best regards,
 Equipment Borrowing System Admin""",
@@ -341,7 +341,7 @@ Equipment Borrowing System Admin""",
         except Exception:
             current_app.logger.exception('Failed to queue/send registration pending notification for member %s', member_code)
 
-        flash('Registration successful! Your account is pending admin approval. Check your email for updates.', 'success')
+        flash('Registration successful! Your account is pending admin approval. Check your notifications for updates.', 'success')
         return redirect(url_for('auth.login'))
 
     return redirect(url_for('auth.request_access', email=email))

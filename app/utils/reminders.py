@@ -6,7 +6,6 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from flask import current_app
 
 from app.utils.db import get_db
-from app.utils.notifications import process_existing_notification
 from app.utils.request_expiry import expire_stale_requests
 
 _scheduler = None
@@ -106,8 +105,9 @@ def _queue_notification_row(db, row, notification_type, subject, message):
                 subject,
                 message,
                 status,
-                delivery_status
-            ) VALUES (%s, %s, %s, 'email', %s, %s, %s, 'pending', 'queued')
+                delivery_status,
+                sent_at
+            ) VALUES (%s, %s, %s, 'in_app', %s, %s, %s, 'sent', 'delivered', NOW())
             """,
             (
                 row['member_id'],
@@ -151,8 +151,8 @@ def _build_overdue_warning_message(row):
 
 def queue_due_and_overdue_notifications(db):
     tomorrow = date.today() + timedelta(days=1)
-    queued_due = 0
-    queued_overdue = 0
+    created_due = 0
+    created_overdue = 0
 
     with db.cursor() as cursor:
         cursor.execute(
@@ -187,7 +187,7 @@ def queue_due_and_overdue_notifications(db):
             subject=subject,
             message=_build_due_soon_message(row),
         )
-        queued_due += 1
+        created_due += 1
 
     with db.cursor() as cursor:
         cursor.execute(
@@ -225,48 +225,13 @@ def queue_due_and_overdue_notifications(db):
             subject=subject,
             message=_build_overdue_warning_message(row),
         )
-        queued_overdue += 1
+        created_overdue += 1
 
-    return {'queued_due_reminders': queued_due, 'queued_overdue_warnings': queued_overdue}
-
-
-def process_pending_notifications(limit=50):
-    db = get_db()
-    with db.cursor() as cursor:
-        cursor.execute(
-            """
-            SELECT notification_id, recipient_email, subject, message
-            FROM notifications
-            WHERE status = 'pending'
-            ORDER BY created_at ASC
-            LIMIT %s
-            """,
-            (limit,),
-        )
-        rows = cursor.fetchall()
-
-    processed = 0
-    sent = 0
-    failed = 0
-
-    for row in rows:
-        result = process_existing_notification(
-            notification_id=row['notification_id'],
-            recipient_email=row['recipient_email'],
-            subject=row['subject'],
-            message=row['message'],
-        )
-        processed += 1
-        if result.get('sent'):
-            sent += 1
-        else:
-            failed += 1
-
-    return {'processed': processed, 'sent': sent, 'failed': failed}
+    return {'created_due_reminders': created_due, 'created_overdue_warnings': created_overdue}
 
 
 def run_reminder_cycle():
-    """Single execution cycle for overdue sync + reminder queue + optional sender."""
+    """Single execution cycle for request expiry + overdue sync + in-app reminders."""
     db = get_db()
     try:
         expiry_summary = expire_stale_requests(
@@ -280,15 +245,10 @@ def run_reminder_cycle():
         db.rollback()
         raise
 
-    sent_summary = {'processed': 0, 'sent': 0, 'failed': 0}
-    if current_app.config.get('REMINDER_PROCESS_PENDING_ON_RUN', True):
-        sent_summary = process_pending_notifications(limit=50)
-
     return {
         'request_expiry': expiry_summary,
         'sync': sync_summary,
-        'queued': queued_summary,
-        'delivery': sent_summary,
+        'notifications': queued_summary,
     }
 
 

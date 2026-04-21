@@ -1,45 +1,4 @@
-import smtplib
-from email.message import EmailMessage
-
-from flask import current_app
-
 from app.utils.db import get_db
-
-
-def _mail_is_configured():
-    return bool(
-        current_app.config.get('MAIL_NOTIFICATIONS_ENABLED', True)
-        and current_app.config.get('MAIL_SERVER')
-        and current_app.config.get('MAIL_PORT')
-        and current_app.config.get('MAIL_USERNAME')
-        and current_app.config.get('MAIL_PASSWORD')
-    )
-
-
-def _send_email(recipient_email, subject, body):
-    message = EmailMessage()
-    message['Subject'] = subject
-    message['From'] = current_app.config.get('MAIL_DEFAULT_SENDER')
-    message['To'] = recipient_email
-    message.set_content(body)
-
-    mail_server = current_app.config.get('MAIL_SERVER')
-    mail_port = int(current_app.config.get('MAIL_PORT', 587))
-    use_tls = bool(current_app.config.get('MAIL_USE_TLS', True))
-    use_ssl = bool(current_app.config.get('MAIL_USE_SSL', False))
-    username = current_app.config.get('MAIL_USERNAME')
-    password = current_app.config.get('MAIL_PASSWORD')
-
-    if use_ssl:
-        with smtplib.SMTP_SSL(mail_server, mail_port, timeout=20) as server:
-            server.login(username, password)
-            server.send_message(message)
-    else:
-        with smtplib.SMTP(mail_server, mail_port, timeout=20) as server:
-            if use_tls:
-                server.starttls()
-            server.login(username, password)
-            server.send_message(message)
 
 
 def _queue_notification(
@@ -49,7 +8,7 @@ def _queue_notification(
     recipient_email,
     subject,
     message,
-    channel='email',
+    channel='in_app',
 ):
     db = get_db()
     with db.cursor() as cursor:
@@ -64,8 +23,9 @@ def _queue_notification(
                 subject,
                 message,
                 status,
-                delivery_status
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, 'pending', 'queued')
+                delivery_status,
+                sent_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, 'sent', 'delivered', NOW())
             """,
             (
                 member_id,
@@ -117,16 +77,8 @@ def _update_notification_failure(notification_id, error_message):
 
 
 def process_existing_notification(notification_id, recipient_email, subject, message):
-    if not _mail_is_configured():
-        return {'sent': False, 'notification_id': notification_id, 'error': 'Mail service is not configured.'}
-
-    try:
-        _send_email(recipient_email=recipient_email, subject=subject, body=message)
-        _update_notification_success(notification_id)
-        return {'sent': True, 'notification_id': notification_id}
-    except Exception as exc:
-        _update_notification_failure(notification_id, str(exc))
-        return {'sent': False, 'notification_id': notification_id, 'error': str(exc)}
+    _update_notification_success(notification_id)
+    return {'sent': True, 'notification_id': notification_id}
 
 
 def queue_and_send_notification(
@@ -136,7 +88,7 @@ def queue_and_send_notification(
     recipient_email,
     subject,
     message,
-    channel='email',
+    channel='in_app',
 ):
     notification_id = _queue_notification(
         member_id=member_id,
@@ -148,17 +100,7 @@ def queue_and_send_notification(
         channel=channel,
     )
 
-    if not _mail_is_configured():
-        # Keep notification queued/pending until mail credentials are configured.
-        return {'queued': True, 'sent': False, 'notification_id': notification_id}
-
-    try:
-        _send_email(recipient_email=recipient_email, subject=subject, body=message)
-        _update_notification_success(notification_id)
-        return {'queued': True, 'sent': True, 'notification_id': notification_id}
-    except Exception as exc:
-        _update_notification_failure(notification_id, str(exc))
-        return {'queued': True, 'sent': False, 'notification_id': notification_id, 'error': str(exc)}
+    return {'queued': False, 'sent': True, 'notification_id': notification_id}
 
 
 def build_welcome_message(member_name, member_code):

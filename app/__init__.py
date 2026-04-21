@@ -128,7 +128,7 @@ def create_app(config_name=None):
                             """
                             SELECT COUNT(*) AS cnt
                             FROM notifications
-                            WHERE status = 'pending'
+                            WHERE created_at >= (NOW() - INTERVAL 1 DAY)
                             """
                         )
 

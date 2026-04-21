@@ -18,7 +18,7 @@ from app.utils.notifications import (
     build_return_request_review_message,
     queue_and_send_notification,
 )
-from app.utils.reminders import run_reminder_cycle, process_pending_notifications as process_pending_notifications_service
+from app.utils.reminders import run_reminder_cycle
 
 borrow_bp = Blueprint('borrow', __name__)
 
@@ -563,12 +563,12 @@ def approve_member_request(request_id):
         flash('Unable to approve request due to an unexpected error.', 'danger')
         return redirect(url_for('dashboard.index'))
 
-    # Notify member after admin approval. If mail is not configured, this is queued as pending.
+    # Notify member after admin approval.
     recipient_email = (request_row.get('email') or request_row.get('google_email') or '').strip()
     if recipient_email:
         try:
             member_name = f"{request_row.get('first_name', '')} {request_row.get('last_name', '')}".strip() or request_row.get('member_code')
-            notify_result = queue_and_send_notification(
+            queue_and_send_notification(
                 member_id=member_row['member_id'],
                 borrow_id=borrow_id,
                 notification_type='borrow_confirmation',
@@ -582,8 +582,6 @@ def approve_member_request(request_id):
                     total_items=len(request_items),
                 ),
             )
-            if not notify_result.get('sent'):
-                flash('Borrow approval saved, but email was not delivered (queued or failed). Check Notification Queue.', 'warning')
         except Exception:
             current_app.logger.exception('Failed to queue/send approval notification for borrow request %s', request_id)
 
@@ -656,7 +654,7 @@ def reject_member_request(request_id):
     if recipient_email:
         try:
             member_name = f"{request_row.get('first_name', '')} {request_row.get('last_name', '')}".strip() or request_row.get('member_code')
-            notify_result = queue_and_send_notification(
+            queue_and_send_notification(
                 member_id=request_row.get('member_id'),
                 borrow_id=None,
                 notification_type='borrow_request_rejected',
@@ -669,8 +667,6 @@ def reject_member_request(request_id):
                     review_notes=review_notes,
                 ),
             )
-            if not notify_result.get('sent'):
-                flash('Borrow rejection saved, but email was not delivered (queued or failed). Check Notification Queue.', 'warning')
         except Exception:
             current_app.logger.exception('Failed to queue/send rejection notification for borrow request %s', request_id)
 
@@ -725,12 +721,12 @@ def approve_member_return_request(return_request_id):
         flash('Unable to approve return request due to an unexpected error.', 'danger')
         return redirect(url_for('dashboard.index'))
 
-    # Notify member after return approval. If mail is not configured, this is queued as pending.
+    # Notify member after return approval.
     recipient_email = (request_row.get('email') or request_row.get('google_email') or '').strip()
     if recipient_email:
         try:
             member_name = f"{request_row.get('first_name', '')} {request_row.get('last_name', '')}".strip() or request_row.get('member_code')
-            notify_result = queue_and_send_notification(
+            queue_and_send_notification(
                 member_id=request_row['member_id'],
                 borrow_id=request_row['borrow_id'],
                 notification_type='return_confirmation',
@@ -744,8 +740,6 @@ def approve_member_return_request(return_request_id):
                     days_overdue=receipt_meta['days_overdue'],
                 ),
             )
-            if not notify_result.get('sent'):
-                flash('Return approval processed, but email was not delivered (queued or failed). Check Notification Queue.', 'warning')
         except Exception:
             current_app.logger.exception('Failed to queue/send approval notification for return request %s', return_request_id)
 
@@ -822,7 +816,7 @@ def reject_member_return_request(return_request_id):
     if recipient_email:
         try:
             member_name = f"{request_row.get('first_name', '')} {request_row.get('last_name', '')}".strip() or request_row.get('member_code')
-            notify_result = queue_and_send_notification(
+            queue_and_send_notification(
                 member_id=request_row.get('member_id'),
                 borrow_id=request_row.get('borrow_id'),
                 notification_type='return_request_rejected',
@@ -835,8 +829,6 @@ def reject_member_return_request(return_request_id):
                     review_notes=review_notes,
                 ),
             )
-            if not notify_result.get('sent'):
-                flash('Return rejection saved, but email was not delivered (queued or failed). Check Notification Queue.', 'warning')
         except Exception:
             current_app.logger.exception('Failed to queue/send rejection notification for return request %s', return_request_id)
 
@@ -1451,22 +1443,13 @@ def notification_center():
         except ValueError:
             last_seen_at = None
 
-    mail_configured = bool(
-        current_app.config.get('MAIL_NOTIFICATIONS_ENABLED', True)
-        and current_app.config.get('MAIL_SERVER')
-        and current_app.config.get('MAIL_PORT')
-        and current_app.config.get('MAIL_USERNAME')
-        and current_app.config.get('MAIL_PASSWORD')
-    )
-
     db = get_db()
     with db.cursor() as cursor:
         if role == 'member':
             cursor.execute(
                 """
                 SELECT
-                    SUM(CASE WHEN n.status = 'pending' THEN 1 ELSE 0 END) AS pending_count,
-                    SUM(CASE WHEN n.status = 'sent' THEN 1 ELSE 0 END) AS sent_count,
+                    SUM(CASE WHEN n.status IN ('sent', 'pending') THEN 1 ELSE 0 END) AS sent_count,
                     SUM(CASE WHEN n.status = 'failed' THEN 1 ELSE 0 END) AS failed_count,
                     COUNT(*) AS total_count
                 FROM notifications n
@@ -1496,8 +1479,7 @@ def notification_center():
             cursor.execute(
                 """
                 SELECT
-                    SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_count,
-                    SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) AS sent_count,
+                    SUM(CASE WHEN status IN ('sent', 'pending') THEN 1 ELSE 0 END) AS sent_count,
                     SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed_count,
                     COUNT(*) AS total_count
                 FROM notifications
@@ -1531,23 +1513,8 @@ def notification_center():
         'borrow/notifications.html',
         stats=stats,
         notifications=notifications,
-        mail_configured=mail_configured,
         can_manage_notifications=role in ('admin', 'staff'),
     )
-
-
-@borrow_bp.route('/api/notifications/process-pending', methods=['POST'])
-@login_required
-def process_pending_notifications():
-    if not _is_authorized_borrower():
-        return jsonify({'ok': False, 'message': 'Forbidden'}), 403
-
-    try:
-        result = process_pending_notifications_service(limit=50)
-        emit_app_data_changed(reason='notification_queue_processed', include_staff=True, include_members=True)
-        return jsonify({'ok': True, **result})
-    except Exception:
-        return jsonify({'ok': False, 'message': 'Failed to process pending notifications.'}), 500
 
 
 @borrow_bp.route('/api/reminders/run', methods=['POST'])

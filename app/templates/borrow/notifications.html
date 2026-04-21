@@ -63,12 +63,10 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% if item.status == 'sent' %}
-                            <span class="badge bg-success">Sent</span>
-                            {% elif item.status == 'failed' %}
+                            {% if item.status == 'failed' %}
                             <span class="badge bg-danger">Failed</span>
                             {% else %}
-                            <span class="badge bg-warning text-dark">Pending</span>
+                            <span class="badge bg-success">Delivered</span>
                             {% endif %}
                         </td>
                         <td><span class="time-relative" data-created-at="{{ item.created_at.isoformat() if item.created_at else '' }}">just now</span></td>
@@ -102,15 +100,7 @@
     <div class="col-sm-6 col-lg-3">
         <div class="card stat-card">
             <div class="card-body">
-                <small class="text-muted d-block">Pending</small>
-                <div class="fs-3 fw-bold text-warning">{{ stats.pending_count or 0 }}</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-lg-3">
-        <div class="card stat-card">
-            <div class="card-body">
-                <small class="text-muted d-block">Sent</small>
+                <small class="text-muted d-block">Delivered</small>
                 <div class="fs-3 fw-bold text-success">{{ stats.sent_count or 0 }}</div>
             </div>
         </div>
@@ -136,7 +126,7 @@
 <div class="card stat-card">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <div class="fw-semibold">
-            <i class="bi bi-envelope-check me-1 text-primary"></i> Notification Queue
+            <i class="bi bi-envelope-check me-1 text-primary"></i> Notification Center
         </div>
         <div class="d-flex gap-2">
         {% if notifications %}
@@ -148,9 +138,6 @@
         <div class="d-flex gap-2">
             <button id="runRemindersBtn" type="button" class="btn btn-sm btn-outline-primary">
                 <i class="bi bi-arrow-repeat me-1"></i> Run Reminder Cycle
-            </button>
-            <button id="processPendingBtn" type="button" class="btn btn-sm btn-primary">
-                <i class="bi bi-play-circle me-1"></i> Process Pending
             </button>
         </div>
         {% endif %}
@@ -166,7 +153,7 @@
                         <th>Flow</th>
                         <th>Status</th>
                         <th>Created</th>
-                        <th>Sent</th>
+                        <th>Delivered</th>
                         <th>Error</th>
                         <th>Action</th>
                     </tr>
@@ -202,15 +189,10 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% if item.status == 'sent' %}
-                            <span class="badge bg-success">Sent</span>
-                            {% elif item.status == 'failed' %}
+                            {% if item.status == 'failed' %}
                             <span class="badge bg-danger">Failed</span>
-                            {% elif item.status == 'pending' and not mail_configured %}
-                            <span class="badge bg-secondary">Queued</span>
-                            <small class="d-block text-muted">Mail not configured</small>
                             {% else %}
-                            <span class="badge bg-warning text-dark">Pending</span>
+                            <span class="badge bg-success">Delivered</span>
                             {% endif %}
                             {% if item.retry_count %}
                             <small class="d-block text-muted">Retry: {{ item.retry_count }}</small>
@@ -363,8 +345,7 @@
         });
     });
 
-    var canManageNotifications = !!document.getElementById('processPendingBtn') || !!document.getElementById('runRemindersBtn');
-    var processBtn = document.getElementById('processPendingBtn');
+    var canManageNotifications = !!document.getElementById('runRemindersBtn');
     var runBtn = document.getElementById('runRemindersBtn');
 
     if (!canManageNotifications) {
@@ -399,35 +380,6 @@
         });
     }
 
-    if (!processBtn) {
-        return;
-    }
-
-    processBtn.addEventListener('click', async function () {
-        var original = processBtn.innerHTML;
-        processBtn.disabled = true;
-        processBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Processing...';
-
-        try {
-            var response = await fetch('{{ url_for("borrow.process_pending_notifications") }}', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': csrfToken
-                }
-            });
-            var result = await response.json();
-            if (!response.ok || !result.ok) {
-                throw new Error(result.message || 'Failed to process pending notifications.');
-            }
-
-            window.showAppToast('Processed: ' + result.processed + ' | Sent: ' + result.sent + ' | Failed: ' + result.failed, 'success');
-            window.location.reload();
-        } catch (err) {
-            window.showAppToast(err.message || 'An unexpected error occurred.', 'danger');
-            processBtn.disabled = false;
-            processBtn.innerHTML = original;
-        }
-    });
 })();
 </script>
 {% endblock %}
