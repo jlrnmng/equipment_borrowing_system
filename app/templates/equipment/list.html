@@ -79,6 +79,38 @@
     </div>
 
     <div class="card-body">
+        <style>
+            @media (max-width: 992px) {
+                .equipment-list-table td,
+                .equipment-list-table th {
+                    white-space: normal;
+                    vertical-align: top;
+                }
+
+                .equipment-list-table .btn {
+                    margin-bottom: 0.25rem;
+                }
+            }
+
+            @media (max-width: 768px) {
+                .equipment-list-table th:nth-child(2),
+                .equipment-list-table td:nth-child(2) {
+                    display: none;
+                }
+
+                .equipment-list-table th:nth-child(4),
+                .equipment-list-table td:nth-child(4) {
+                    display: none;
+                }
+
+                .equipment-list-table th,
+                .equipment-list-table td {
+                    font-size: 0.85rem;
+                    padding: 0.5rem;
+                }
+            }
+        </style>
+
         <!-- Filters and Search -->
         <form method="GET" class="row g-3 mb-4">
             <div class="col-md-4">
@@ -112,7 +144,7 @@
         <!-- Equipment Table -->
         {% if equipment %}
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover mb-0 equipment-list-table">
                 <thead class="table-light">
                     <tr>
                         <th class="fw-semibold">Equipment Name</th>

@@ -59,10 +59,19 @@ def _get_member_from_query():
         return Member.get_by_member_code(member_code)
 
     if query:
-        if query.upper().startswith('MEM'):
-            return Member.get_by_member_code(query.upper())
+        normalized_query = query.upper()
+        if normalized_query.startswith('MEM'):
+            row = Member.get_by_member_code(normalized_query)
+            if row:
+                return row
         if '@' in query:
-            return Member.get_by_email_or_google_email(query.lower())
+            row = Member.get_by_email_or_google_email(query.lower())
+            if row:
+                return row
+
+        matches = Member.search_for_lookup(query, limit=1)
+        if matches:
+            return matches[0]
 
     return None
 
@@ -151,7 +160,7 @@ def _fetch_equipment_by_ids(equipment_ids):
     placeholders = ','.join(['%s'] * len(equipment_ids))
     query = (
         "SELECT equipment_id, equipment_code, equipment_name, category, status, condition_status, "
-        "location, requires_supervision, restricted_areas "
+        "location, requires_supervision, restricted_areas, equipment_image_path "
         f"FROM equipment WHERE equipment_id IN ({placeholders})"
     )
 
@@ -266,7 +275,8 @@ def _fetch_member_active_borrowed_items(member_id):
             """
             SELECT bi.borrow_item_id, bi.borrow_id, bi.condition_borrowed, bi.borrowed_at,
                    br.transaction_code, br.borrow_date, br.expected_return_date, br.status AS borrow_status,
-                   e.equipment_id, e.equipment_code, e.equipment_name, e.category, e.location
+                     e.equipment_id, e.equipment_code, e.equipment_name, e.category, e.location,
+                     e.equipment_image_path
             FROM borrow_items bi
             INNER JOIN borrow_records br ON br.borrow_id = bi.borrow_id
             INNER JOIN equipment e ON e.equipment_id = bi.equipment_id
@@ -1023,6 +1033,7 @@ def equipment_search():
                     'requires_supervision': bool(row.get('requires_supervision')),
                     'restricted_areas': row.get('restricted_areas'),
                     'status': row.get('status'),
+                    'equipment_image_path': row.get('equipment_image_path'),
                 }
                 for row in rows
             ],
@@ -1208,7 +1219,7 @@ def submit_borrow():
         db.rollback()
         return jsonify({'ok': False, 'message': 'Failed to save borrow transaction.'}), 500
 
-    # Day 5 afternoon: queue and attempt to send borrow confirmation email.
+    # Create in-app borrow confirmation notification.
     recipient_email = (member_row.get('email') or member_row.get('google_email') or '').strip()
     if recipient_email:
         try:
@@ -1287,6 +1298,7 @@ def return_member_items():
                     'equipment_name': row.get('equipment_name'),
                     'category': row.get('category'),
                     'location': row.get('location'),
+                    'equipment_image_path': row.get('equipment_image_path'),
                 }
                 for row in rows
             ],
@@ -1345,7 +1357,7 @@ def submit_return():
         db.rollback()
         return jsonify({'ok': False, 'message': 'Failed to process return transaction.'}), 500
 
-    # Day 5 afternoon: queue and attempt to send return confirmation email.
+    # Create in-app return confirmation notification.
     recipient_email = (item_row.get('email') or item_row.get('google_email') or '').strip()
     if recipient_email:
         try:

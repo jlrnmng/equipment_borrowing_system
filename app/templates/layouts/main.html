@@ -123,13 +123,6 @@
                 {% block page_actions %}{% endblock %}
             </div>
             {% set is_staff_profile_page = current_user.is_authenticated and current_user.role in ['admin', 'staff'] and request.endpoint in ['auth.view_profile', 'auth.edit_profile'] %}
-            {% set show_profile_button = current_user.is_authenticated and current_user.role != 'member' and not is_staff_profile_page %}
-            {% if show_profile_button %}
-            <a href="{{ url_for('auth.view_profile') }}" class="btn btn-sm btn-outline-secondary" title="My Profile" aria-label="My Profile">
-                <i class="bi bi-person"></i>
-                <span class="topbar-notification-text ms-1">Profile</span>
-            </a>
-            {% endif %}
             {% if not is_staff_profile_page %}
             <a href="{{ url_for('borrow.notification_center') }}" class="btn btn-sm btn-outline-secondary position-relative topbar-notification-btn" title="Notifications" aria-label="Notifications{% if unread_count > 0 %} ({{ unread_count }} new){% endif %}">
                 <i class="bi bi-bell"></i>

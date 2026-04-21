@@ -178,7 +178,6 @@ def member_profile(member_code):
     active_items = Member.get_current_borrowed_items(profile['member_id'])
     borrow_history = Member.get_borrowing_history(profile['member_id'], limit=25)
     violations = Member.get_violations(profile['member_id'], limit=25)
-    calendar_status = Member.get_calendar_status(profile['member_id'])
     existing_members = Member.get_active_members(limit=25)
 
     return render_template(
@@ -189,7 +188,6 @@ def member_profile(member_code):
         active_items=active_items,
         borrow_history=borrow_history,
         violations=violations,
-        calendar_status=calendar_status,
         existing_members=existing_members,
     )
 

@@ -203,6 +203,39 @@ class Equipment:
         return row
 
     @staticmethod
+    def find_duplicate_fields(inventory_number=None, serial_number=None, property_stock_number=None):
+        """Return duplicate matches for unique-like fields using exact value checks."""
+        checks = []
+        if inventory_number:
+            checks.append(('inventory_number', inventory_number))
+        if serial_number:
+            checks.append(('serial_number', serial_number))
+        if property_stock_number:
+            checks.append(('property_stock_number', property_stock_number))
+
+        if not checks:
+            return []
+
+        db = get_db()
+        duplicates = []
+        with db.cursor() as cursor:
+            for field_name, field_value in checks:
+                cursor.execute(
+                    f"SELECT equipment_id FROM equipment WHERE {field_name} = %s LIMIT 1",
+                    (field_value,),
+                )
+                row = cursor.fetchone()
+                if row:
+                    duplicates.append(
+                        {
+                            'field': field_name,
+                            'value': field_value,
+                            'equipment_id': row.get('equipment_id'),
+                        }
+                    )
+        return duplicates
+
+    @staticmethod
     def get_by_code_or_inventory(identifier):
         """Get one equipment row by equipment_code or inventory_number."""
         db = get_db()

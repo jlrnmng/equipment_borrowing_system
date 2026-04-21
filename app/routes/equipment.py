@@ -4,6 +4,7 @@ from io import BytesIO
 
 import pymysql
 from PIL import Image, UnidentifiedImageError
+from PIL import ImageOps
 
 from flask import Blueprint, current_app, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
@@ -75,19 +76,26 @@ def _prepare_equipment_image_bytes(file_storage):
         raise ValueError('Please upload a valid image file (PNG, JPG, JPEG, or WEBP).')
 
     max_size_bytes = int(current_app.config.get('EQUIPMENT_IMAGE_MAX_BYTES', 5 * 1024 * 1024))
-    file_storage.stream.seek(0, os.SEEK_END)
-    size = file_storage.stream.tell()
     file_storage.stream.seek(0)
-    if size > max_size_bytes:
+    raw_bytes = file_storage.stream.read()
+    file_storage.stream.seek(0)
+
+    if len(raw_bytes) > max_size_bytes:
         raise ValueError('Image is too large. Maximum size is 5MB.')
 
+    if not raw_bytes:
+        raise ValueError('Uploaded image file is empty.')
+
     try:
-        with Image.open(file_storage.stream) as image:
+        with Image.open(BytesIO(raw_bytes)) as image:
+            # Apply EXIF orientation before resizing to avoid visually broken results.
+            image = ImageOps.exif_transpose(image)
             image = image.convert('RGB')
             image.thumbnail((720, 720))
 
             buffer = BytesIO()
-            image.save(buffer, format='JPEG', quality=85, optimize=True)
+            image.save(buffer, format='JPEG', quality=88, optimize=True)
+            buffer.seek(0)
     except (UnidentifiedImageError, OSError) as exc:
         raise ValueError('Uploaded file is not a valid image.') from exc
 
@@ -123,16 +131,29 @@ def add_equipment():
 
     if form.validate_on_submit():
         inventory_number = form.inventory_number.data.strip()
+        serial_number = form.serial_number.data.strip() if form.serial_number.data else None
+        property_stock_number = form.property_stock_number.data.strip() if form.property_stock_number.data else None
         equipment_image_path = None
         uploaded_image = request.files.get('equipment_photo')
         prepared_image_bytes = None
-        
-        # Check if equipment with same serial number already exists
-        if form.serial_number.data:
-            existing = Equipment.get_all(search=form.serial_number.data)
-            if existing:
-                flash(f'Equipment with this serial number already exists.', 'warning')
-                return render_template('equipment/add.html', form=form)
+
+        duplicate_conflicts = Equipment.find_duplicate_fields(
+            inventory_number=inventory_number,
+            serial_number=serial_number,
+            property_stock_number=property_stock_number,
+        )
+        if duplicate_conflicts:
+            duplicate_labels = {
+                'inventory_number': 'Inventory number',
+                'serial_number': 'Serial number',
+                'property_stock_number': 'Property/Stock number',
+            }
+            messages = [
+                f"{duplicate_labels.get(conflict['field'], conflict['field'])} already exists ({conflict.get('value')})."
+                for conflict in duplicate_conflicts
+            ]
+            flash(' '.join(messages), 'warning')
+            return render_template('equipment/add.html', form=form)
 
         if uploaded_image and uploaded_image.filename:
             try:
@@ -147,8 +168,8 @@ def add_equipment():
                 category=form.category.data.strip(),
                 inventory_number=inventory_number,
                 brand=form.brand.data.strip() if form.brand.data else None,
-                serial_number=form.serial_number.data.strip() if form.serial_number.data else None,
-                property_stock_number=form.property_stock_number.data.strip() if form.property_stock_number.data else None,
+                serial_number=serial_number,
+                property_stock_number=property_stock_number,
                 status=form.status.data,
                 condition_status=form.condition_status.data,
                 location=form.location.data.strip() if form.location.data else None,

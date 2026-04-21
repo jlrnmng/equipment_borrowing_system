@@ -223,6 +223,9 @@ class Member:
                    OR google_email LIKE %s
                    OR first_name LIKE %s
                    OR last_name LIKE %s
+                         OR CONCAT(first_name, ' ', last_name) LIKE %s
+                         OR CONCAT(first_name, ' ', middle_name, ' ', last_name) LIKE %s
+                         OR CONCAT(last_name, ', ', first_name) LIKE %s
                    OR student_id LIKE %s
                    OR startup LIKE %s
                 ORDER BY
@@ -232,6 +235,9 @@ class Member:
                 LIMIT %s
                 """,
                 (
+                    search_term,
+                    search_term,
+                    search_term,
                     search_term,
                     search_term,
                     search_term,
