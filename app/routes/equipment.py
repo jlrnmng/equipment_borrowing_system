@@ -74,12 +74,12 @@ def _prepare_equipment_image_bytes(file_storage):
     if not _is_allowed_image_filename(filename):
         raise ValueError('Please upload a valid image file (PNG, JPG, JPEG, or WEBP).')
 
-    max_size_bytes = int(current_app.config.get('EQUIPMENT_IMAGE_MAX_BYTES', 3 * 1024 * 1024))
+    max_size_bytes = int(current_app.config.get('EQUIPMENT_IMAGE_MAX_BYTES', 5 * 1024 * 1024))
     file_storage.stream.seek(0, os.SEEK_END)
     size = file_storage.stream.tell()
     file_storage.stream.seek(0)
     if size > max_size_bytes:
-        raise ValueError('Image is too large. Maximum size is 3MB.')
+        raise ValueError('Image is too large. Maximum size is 5MB.')
 
     try:
         with Image.open(file_storage.stream) as image:
@@ -155,7 +155,7 @@ def add_equipment():
                 requires_supervision=form.requires_supervision.data,
                 restricted_areas=form.restricted_areas.data.strip() if form.restricted_areas.data else None,
                 notes=form.notes.data.strip() if form.notes.data else None,
-                added_by=current_user.staff_id,
+                added_by=current_user.id,
             )
 
             if prepared_image_bytes:

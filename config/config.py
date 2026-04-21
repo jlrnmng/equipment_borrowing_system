@@ -41,7 +41,7 @@ class Config:
     REMINDER_JOB_INTERVAL_MINUTES = int(os.getenv('REMINDER_JOB_INTERVAL_MINUTES', 15))
     REMINDER_PROCESS_PENDING_ON_RUN = _env_bool('REMINDER_PROCESS_PENDING_ON_RUN', True)
     REQUEST_EXPIRY_MINUTES = int(os.getenv('REQUEST_EXPIRY_MINUTES', 30))
-    EQUIPMENT_IMAGE_MAX_BYTES = int(os.getenv('EQUIPMENT_IMAGE_MAX_BYTES', 3 * 1024 * 1024))
+    EQUIPMENT_IMAGE_MAX_BYTES = int(os.getenv('EQUIPMENT_IMAGE_MAX_BYTES', 5 * 1024 * 1024))
 
     # Realtime settings (optional Redis queue for multi-instance deployments)
     SOCKETIO_MESSAGE_QUEUE = os.getenv('SOCKETIO_MESSAGE_QUEUE', '').strip() or None
