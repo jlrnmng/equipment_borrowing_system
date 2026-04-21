@@ -205,9 +205,7 @@
                 }
             }
 
-            var socket = io({
-                transports: ['websocket', 'polling']
-            });
+            var socket = io();
 
             socket.on('connect_error', function () {
                 // Keep app usable even when realtime transport is unavailable.

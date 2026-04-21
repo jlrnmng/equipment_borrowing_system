@@ -13,6 +13,7 @@ A Flask-based web application for managing equipment borrowing in a facility usi
 - [Prerequisites](#prerequisites)
 - [Setup & Installation](#setup--installation)
 - [Running the App](#running-the-app)
+- [Deployment Notes (Hostinger)](#deployment-notes-hostinger)
 - [Creating the First Admin Account](#creating-the-first-admin-account)
 - [Environment Variables](#environment-variables)
 - [Database](#database)
@@ -95,6 +96,7 @@ The member-side experience was updated to improve navigation and reduce friction
 - Fixed a member borrow-request 400 issue caused by missing client-side validation and CSRF header mismatch handling.
 - Approval actions for borrow and return requests now send member email notifications through the existing notification pipeline.
 - Notification queue entries now distinguish queued mail from true pending delivery when SMTP is not configured.
+- Realtime client transport init was updated from forced `websocket`-first to automatic negotiation (`io()`), improving compatibility on hosts that do not fully support WebSocket upgrades.
 
 For a full breakdown, see `UI_IMPROVEMENTS.md`.
 
@@ -318,6 +320,25 @@ Account flow:
 - Member self-service dashboard: **/member/dashboard**
 - Staff login page: **/login**
 - Staff registration (admin/staff only): **/staff/register**
+
+---
+
+## Deployment Notes (Hostinger)
+
+For a company account that already hosts another site, deploy this app as a separate subdomain (example: `app.yourcompany.com`) and keep its runtime isolated.
+
+Recommended low-change setup:
+- Keep Socket.IO transport negotiation on the default client init (`io()`), so realtime can use polling fallback when WebSocket upgrade is unavailable.
+- Do not force `websocket` transport in templates unless your hosting plan explicitly supports WebSocket proxying and worker setup.
+- Keep this app isolated from the main website (separate app root, environment variables, and restart cycle).
+
+If using Hostinger VPS (with Nginx/proxy control):
+- Use a Socket.IO-capable worker stack (eventlet or gevent).
+- Configure reverse proxy headers for WebSocket upgrade.
+
+If using Hostinger shared hosting:
+- Treat long-polling fallback as the primary compatible realtime mode.
+- Expect that forcing WebSocket may produce server log noise without breaking core page navigation.
 
 ---
 
