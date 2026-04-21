@@ -80,57 +80,27 @@ def create_app(config_name=None):
                 return {'unread_count': 0}
 
             role = getattr(current_user, 'role', None)
-            session_key = f'notifications_last_seen_{role or "user"}'
-            last_seen_raw = session.get(session_key)
-            last_seen_at = None
-            if last_seen_raw:
-                try:
-                    last_seen_at = datetime.fromisoformat(last_seen_raw)
-                except ValueError:
-                    last_seen_at = None
-
             db = get_db()
 
             with db.cursor() as cursor:
                 if role == 'member':
-                    if last_seen_at:
-                        cursor.execute(
-                            """
-                            SELECT COUNT(*) AS cnt
-                            FROM notifications
-                            WHERE member_id = %s
-                              AND created_at > %s
-                            """,
-                            (current_user.id, last_seen_at),
-                        )
-                    else:
-                        cursor.execute(
-                            """
-                            SELECT COUNT(*) AS cnt
-                            FROM notifications
-                            WHERE member_id = %s
-                              AND created_at >= (NOW() - INTERVAL 1 DAY)
-                            """,
-                            (current_user.id,),
-                        )
+                    cursor.execute(
+                        """
+                        SELECT COUNT(*) AS cnt
+                        FROM notifications
+                        WHERE member_id = %s
+                          AND read_at IS NULL
+                        """,
+                        (current_user.id,),
+                    )
                 else:
-                    if last_seen_at:
-                        cursor.execute(
-                            """
-                            SELECT COUNT(*) AS cnt
-                            FROM notifications
-                            WHERE created_at > %s
-                            """,
-                            (last_seen_at,),
-                        )
-                    else:
-                        cursor.execute(
-                            """
-                            SELECT COUNT(*) AS cnt
-                            FROM notifications
-                            WHERE created_at >= (NOW() - INTERVAL 1 DAY)
-                            """
-                        )
+                    cursor.execute(
+                        """
+                        SELECT COUNT(*) AS cnt
+                        FROM notifications
+                        WHERE read_at IS NULL
+                        """
+                    )
 
                 row = cursor.fetchone() or {}
 

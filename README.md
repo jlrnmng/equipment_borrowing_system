@@ -97,6 +97,7 @@ The member-side experience was updated to improve navigation and reduce friction
 - Approval actions for borrow and return requests now send member email notifications through the existing notification pipeline.
 - Notification queue entries now distinguish queued mail from true pending delivery when SMTP is not configured.
 - Realtime client transport init was updated from forced `websocket`-first to automatic negotiation (`io()`), improving compatibility on hosts that do not fully support WebSocket upgrades.
+- Notification read state now persists in the database (`notifications.read_at`), so unread counters and row styling no longer reset after logout/login.
 
 For a full breakdown, see `UI_IMPROVEMENTS.md`.
 
@@ -294,6 +295,7 @@ mysql -u root -p equipment_borrowing < migrations/2026_03_31_member_profile_acad
 mysql -u root -p equipment_borrowing < migrations/2026_03_31_equipment_qr_path.sql
 mysql -u root -p equipment_borrowing < migrations/2026_03_31_member_return_requests.sql
 mysql -u root -p equipment_borrowing < migrations/2026_03_31_request_status_expired.sql
+mysql -u root -p equipment_borrowing < migrations/2026_04_21_notifications_read_tracking.sql
 
 # (Optional) Load test data
 mysql -u root -p equipment_borrowing < database/seeds/test_data.sql

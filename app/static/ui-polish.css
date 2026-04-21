@@ -355,13 +355,13 @@ a:hover {
     box-shadow: 0 0 0 1px rgba(16, 32, 55, 0.1);
 }
 
-.notification-unread {
+.notification-unread > td {
     background-color: #eaf3ff !important;
     box-shadow: inset 3px 0 0 #0d6efd;
 }
 
-.notification-read {
-    background-color: #f3efe5;
+.notification-read > td {
+    background-color: #ffffff !important;
 }
 
 .topbar .topbar-user {

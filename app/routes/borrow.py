@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, jsonify, redirect, render_template, request, url_for
 from flask import flash
 from flask_login import current_user, login_required
 
@@ -1446,15 +1446,6 @@ def notification_center():
     if role not in ('admin', 'staff', 'member'):
         return redirect(url_for('dashboard.index'))
 
-    session_key = f'notifications_last_seen_{role or "user"}'
-    last_seen_raw = session.get(session_key)
-    last_seen_at = None
-    if last_seen_raw:
-        try:
-            last_seen_at = datetime.fromisoformat(last_seen_raw)
-        except ValueError:
-            last_seen_at = None
-
     db = get_db()
     with db.cursor() as cursor:
         if role == 'member':
@@ -1474,7 +1465,7 @@ def notification_center():
             cursor.execute(
                 """
                 SELECT n.notification_id, n.notification_type, n.recipient_email, n.subject,
-                     n.status, n.retry_count, n.error_message, n.created_at, n.sent_at,
+                     n.status, n.retry_count, n.error_message, n.created_at, n.sent_at, n.read_at,
                        m.member_code, m.first_name, m.last_name,
                        br.transaction_code
                 FROM notifications n
@@ -1502,7 +1493,7 @@ def notification_center():
             cursor.execute(
                 """
                 SELECT n.notification_id, n.notification_type, n.recipient_email, n.subject,
-                     n.status, n.retry_count, n.error_message, n.created_at, n.sent_at,
+                     n.status, n.retry_count, n.error_message, n.created_at, n.sent_at, n.read_at,
                        m.member_code, m.first_name, m.last_name,
                        br.transaction_code
                 FROM notifications n
@@ -1514,12 +1505,28 @@ def notification_center():
             )
             notifications = cursor.fetchall()
 
-    for item in notifications:
-        created_at = item.get('created_at')
-        item['is_unread'] = bool(created_at and (last_seen_at is None or created_at > last_seen_at))
+        if role == 'member':
+            cursor.execute(
+                """
+                UPDATE notifications
+                SET read_at = NOW()
+                WHERE member_id = %s
+                  AND read_at IS NULL
+                """,
+                (current_user.id,),
+            )
+        else:
+            cursor.execute(
+                """
+                UPDATE notifications
+                SET read_at = NOW()
+                WHERE read_at IS NULL
+                """
+            )
+        db.commit()
 
-    # Mark list as seen using local app time to match DB created_at comparisons.
-    session[session_key] = datetime.now().isoformat()
+    for item in notifications:
+        item['is_unread'] = item.get('read_at') is None
 
     return render_template(
         'borrow/notifications.html',
