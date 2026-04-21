@@ -160,6 +160,8 @@
                                 <button
                                     type="button"
                                     class="btn btn-sm btn-outline-danger js-open-delete-member-modal"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#confirmDeleteMemberModal"
                                     data-member-code="{{ item.member_code }}"
                                     data-form-id="deleteMemberFormMobile{{ loop.index }}"
                                 >Delete</button>
@@ -289,6 +291,8 @@
                                 <button
                                     type="button"
                                     class="btn btn-sm btn-outline-danger js-open-delete-member-modal"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#confirmDeleteMemberModal"
                                     data-member-code="{{ item.member_code }}"
                                     data-form-id="deleteMemberFormDesktop{{ loop.index }}"
                                 >Delete</button>
@@ -449,20 +453,22 @@
         return;
     }
 
-    var modal = new bootstrap.Modal(modalEl);
     var targetCodeEl = document.getElementById('deleteMemberCodeTarget');
     var confirmBtn = document.getElementById('confirmDeleteMemberBtn');
     var targetFormId = '';
 
-    document.querySelectorAll('.js-open-delete-member-modal').forEach(function (button) {
-        button.addEventListener('click', function () {
-            targetFormId = button.getAttribute('data-form-id') || '';
-            var memberCode = button.getAttribute('data-member-code') || 'this member';
-            if (targetCodeEl) {
-                targetCodeEl.textContent = memberCode;
-            }
-            modal.show();
-        });
+    modalEl.addEventListener('show.bs.modal', function (event) {
+        var triggerButton = event.relatedTarget;
+        if (!triggerButton) {
+            targetFormId = '';
+            return;
+        }
+
+        targetFormId = triggerButton.getAttribute('data-form-id') || '';
+        var memberCode = triggerButton.getAttribute('data-member-code') || 'this member';
+        if (targetCodeEl) {
+            targetCodeEl.textContent = memberCode;
+        }
     });
 
     if (confirmBtn) {
