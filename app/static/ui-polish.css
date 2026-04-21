@@ -603,6 +603,11 @@ a:hover {
         line-height: 1;
     }
 
+    .topbar-right > .btn {
+        width: auto;
+        padding: 0 0.65rem;
+    }
+
     .topbar .btn.js-logout-trigger {
         width: auto;
         padding: 0 0.6rem;
