@@ -1518,8 +1518,8 @@ def notification_center():
         created_at = item.get('created_at')
         item['is_unread'] = bool(created_at and (last_seen_at is None or created_at > last_seen_at))
 
-    # Mark list as seen once the user loads notification center.
-    session[session_key] = datetime.utcnow().isoformat()
+    # Mark list as seen using local app time to match DB created_at comparisons.
+    session[session_key] = datetime.now().isoformat()
 
     return render_template(
         'borrow/notifications.html',
