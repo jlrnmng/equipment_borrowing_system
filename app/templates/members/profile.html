@@ -155,9 +155,14 @@
                         </div>
                         <div class="text-end flex-shrink-0">
                             <span class="badge bg-success-subtle text-success-emphasis mb-2">Active</span>
-                            <form method="POST" action="{{ url_for('members.delete_member', member_code=item.member_code) }}" onsubmit="return confirm('Deactivate this member? This will mark the account inactive.');">
+                            <form id="deleteMemberFormMobile{{ loop.index }}" method="POST" action="{{ url_for('members.delete_member', member_code=item.member_code) }}">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-outline-danger js-open-delete-member-modal"
+                                    data-member-code="{{ item.member_code }}"
+                                    data-form-id="deleteMemberFormMobile{{ loop.index }}"
+                                >Delete</button>
                             </form>
                         </div>
                     </div>
@@ -279,9 +284,14 @@
                         </div>
                         <div class="text-end flex-shrink-0">
                             <span class="badge bg-success-subtle text-success-emphasis mb-2">Active</span>
-                            <form method="POST" action="{{ url_for('members.delete_member', member_code=item.member_code) }}" onsubmit="return confirm('Deactivate this member? This will mark the account inactive.');">
+                            <form id="deleteMemberFormDesktop{{ loop.index }}" method="POST" action="{{ url_for('members.delete_member', member_code=item.member_code) }}">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-outline-danger js-open-delete-member-modal"
+                                    data-member-code="{{ item.member_code }}"
+                                    data-form-id="deleteMemberFormDesktop{{ loop.index }}"
+                                >Delete</button>
                             </form>
                         </div>
                     </div>
@@ -409,4 +419,63 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="confirmDeleteMemberModal" tabindex="-1" aria-labelledby="confirmDeleteMemberModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger-subtle">
+                <h5 class="modal-title" id="confirmDeleteMemberModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>
+                    Confirm Member Deactivation
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to deactivate <strong id="deleteMemberCodeTarget">this member</strong>?
+                <div class="small text-muted mt-2">This action will mark the account as inactive.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteMemberBtn">Yes, Deactivate</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var modalEl = document.getElementById('confirmDeleteMemberModal');
+    if (!modalEl || !window.bootstrap) {
+        return;
+    }
+
+    var modal = new bootstrap.Modal(modalEl);
+    var targetCodeEl = document.getElementById('deleteMemberCodeTarget');
+    var confirmBtn = document.getElementById('confirmDeleteMemberBtn');
+    var targetFormId = '';
+
+    document.querySelectorAll('.js-open-delete-member-modal').forEach(function (button) {
+        button.addEventListener('click', function () {
+            targetFormId = button.getAttribute('data-form-id') || '';
+            var memberCode = button.getAttribute('data-member-code') || 'this member';
+            if (targetCodeEl) {
+                targetCodeEl.textContent = memberCode;
+            }
+            modal.show();
+        });
+    });
+
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', function () {
+            if (!targetFormId) {
+                return;
+            }
+            var form = document.getElementById(targetFormId);
+            if (form) {
+                form.submit();
+            }
+        });
+    }
+})();
+</script>
 {% endblock %}
