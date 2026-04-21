@@ -13,18 +13,32 @@
         <div class="card stat-card mb-3">
             <div class="card-header bg-white border-bottom fw-semibold d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-person-vcard me-1"></i> Member Details</span>
-                <span class="badge {% if member.status == 'active' %}bg-success{% elif member.status == 'suspended' %}bg-warning text-dark{% else %}bg-secondary{% endif %} text-uppercase">
-                    {{ member.status }}
-                </span>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge {% if member.status == 'active' %}bg-success{% elif member.status == 'suspended' %}bg-warning text-dark{% else %}bg-secondary{% endif %} text-uppercase">
+                        {{ member.status }}
+                    </span>
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editMemberModal">
+                        <i class="bi bi-pencil-square me-1"></i> Edit Member Information
+                    </button>
+                </div>
             </div>
             <div class="card-body">
                 <div class="rounded-4 border p-3 p-md-4 mb-3"
                      style="background: linear-gradient(135deg, #f4f9ff 0%, #fff8ef 100%);">
                     <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
                         <div class="d-flex align-items-center gap-3">
-                            <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center"
+                            <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center overflow-hidden"
                                  style="width:56px;height:56px;">
-                                <i class="bi bi-person-vcard" style="font-size:1.35rem;"></i>
+                                {% if member.profile_picture_url %}
+                                <img src="{{ member.profile_picture_url }}"
+                                     alt="{{ full_name }} Google photo"
+                                     style="width:100%;height:100%;object-fit:cover;">
+                                {% else %}
+                                <span class="d-flex align-items-center justify-content-center"
+                                      style="width:100%;height:100%;">
+                                    <i class="bi bi-person-vcard" style="font-size:1.35rem;"></i>
+                                </span>
+                                {% endif %}
                             </div>
                             <div>
                                 <div class="text-muted text-uppercase small fw-semibold">Member Profile</div>
@@ -81,67 +95,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <div class="card stat-card mb-3">
-            <div class="card-header bg-white border-bottom fw-semibold">
-                <i class="bi bi-pencil-square me-1"></i> Edit Member Information
-            </div>
-            <div class="card-body">
-                <form method="POST" novalidate>
-                    {{ form.hidden_tag() }}
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            {{ form.first_name.label(class='form-label fw-semibold') }}
-                            {{ form.first_name(class='form-control' + (' is-invalid' if form.first_name.errors else '')) }}
-                            {% for error in form.first_name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-                        </div>
-                        <div class="col-md-4">
-                            {{ form.middle_name.label(class='form-label fw-semibold') }}
-                            {{ form.middle_name(class='form-control' + (' is-invalid' if form.middle_name.errors else '')) }}
-                            {% for error in form.middle_name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-                        </div>
-                        <div class="col-md-4">
-                            {{ form.last_name.label(class='form-label fw-semibold') }}
-                            {{ form.last_name(class='form-control' + (' is-invalid' if form.last_name.errors else '')) }}
-                            {% for error in form.last_name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-                        </div>
-                        <div class="col-md-6">
-                            {{ form.email.label(class='form-label fw-semibold') }}
-                            {{ form.email(class='form-control' + (' is-invalid' if form.email.errors else '')) }}
-                            {% for error in form.email.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-                        </div>
-                        <div class="col-md-6">
-                            {{ form.phone.label(class='form-label fw-semibold') }}
-                            {{ form.phone(class='form-control' + (' is-invalid' if form.phone.errors else '')) }}
-                            {% for error in form.phone.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-                        </div>
-                        <div class="col-md-4">
-                            {{ form.student_id.label(class='form-label fw-semibold') }}
-                            {{ form.student_id(class='form-control' + (' is-invalid' if form.student_id.errors else '')) }}
-                            {% for error in form.student_id.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-                        </div>
-                        <div class="col-md-4">
-                            {{ form.startup.label(class='form-label fw-semibold') }}
-                            {{ form.startup(class='form-control' + (' is-invalid' if form.startup.errors else '')) }}
-                            {% for error in form.startup.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-                        </div>
-                        <div class="col-md-2">
-                            {{ form.status.label(class='form-label fw-semibold') }}
-                            {{ form.status(class='form-select' + (' is-invalid' if form.status.errors else '')) }}
-                            {% for error in form.status.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-                        </div>
-                        <div class="col-md-2">
-                            {{ form.max_borrow_limit.label(class='form-label fw-semibold') }}
-                            {{ form.max_borrow_limit(class='form-control' + (' is-invalid' if form.max_borrow_limit.errors else '')) }}
-                            {% for error in form.max_borrow_limit.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-                        </div>
-                    </div>
-                    <div class="d-grid d-md-flex justify-content-md-end mt-3">
-                        {{ form.submit(class='btn btn-primary') }}
-                    </div>
-                </form>
             </div>
         </div>
 
@@ -379,6 +332,73 @@
                 <div><strong>Registered:</strong> {{ member.created_at.strftime('%b %d, %Y %I:%M %p') if member.created_at else '-' }}</div>
                 <div class="mt-2"><strong>Last Updated:</strong> {{ member.updated_at.strftime('%b %d, %Y %I:%M %p') if member.updated_at else '-' }}</div>
                 <div class="mt-2"><strong>Created By:</strong> {{ member.created_by_name or 'System / Self Signup' }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editMemberModal" tabindex="-1" aria-labelledby="editMemberModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editMemberModalLabel"><i class="bi bi-pencil-square me-1"></i> Edit Member Information</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" novalidate id="editMemberForm">
+                    {{ form.hidden_tag() }}
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            {{ form.first_name.label(class='form-label fw-semibold') }}
+                            {{ form.first_name(class='form-control' + (' is-invalid' if form.first_name.errors else '')) }}
+                            {% for error in form.first_name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.middle_name.label(class='form-label fw-semibold') }}
+                            {{ form.middle_name(class='form-control' + (' is-invalid' if form.middle_name.errors else '')) }}
+                            {% for error in form.middle_name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.last_name.label(class='form-label fw-semibold') }}
+                            {{ form.last_name(class='form-control' + (' is-invalid' if form.last_name.errors else '')) }}
+                            {% for error in form.last_name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.email.label(class='form-label fw-semibold') }}
+                            {{ form.email(class='form-control' + (' is-invalid' if form.email.errors else '')) }}
+                            {% for error in form.email.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.phone.label(class='form-label fw-semibold') }}
+                            {{ form.phone(class='form-control' + (' is-invalid' if form.phone.errors else '')) }}
+                            {% for error in form.phone.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.student_id.label(class='form-label fw-semibold') }}
+                            {{ form.student_id(class='form-control' + (' is-invalid' if form.student_id.errors else '')) }}
+                            {% for error in form.student_id.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.startup.label(class='form-label fw-semibold') }}
+                            {{ form.startup(class='form-control' + (' is-invalid' if form.startup.errors else '')) }}
+                            {% for error in form.startup.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-2">
+                            {{ form.status.label(class='form-label fw-semibold') }}
+                            {{ form.status(class='form-select' + (' is-invalid' if form.status.errors else '')) }}
+                            {% for error in form.status.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-2">
+                            {{ form.max_borrow_limit.label(class='form-label fw-semibold') }}
+                            {{ form.max_borrow_limit(class='form-control' + (' is-invalid' if form.max_borrow_limit.errors else '')) }}
+                            {% for error in form.max_borrow_limit.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">X</button>
+                <button type="submit" form="editMemberForm" class="btn btn-primary">Save Changes</button>
             </div>
         </div>
     </div>

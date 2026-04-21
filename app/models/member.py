@@ -13,7 +13,7 @@ class Member:
         with db.cursor() as cursor:
             cursor.execute(
                 "SELECT member_id, member_code, email, google_email, google_sub, "
-                "first_name, last_name, status "
+                "first_name, last_name, status, profile_picture_url "
                 "FROM members WHERE email = %s OR google_email = %s LIMIT 1",
                 (email, email),
             )
@@ -27,7 +27,7 @@ class Member:
                 """
                 SELECT member_id, member_code, first_name, middle_name, last_name,
                        email, google_email, phone, student_id, startup,
-                       status, current_borrow_count, max_borrow_limit, qr_code_path
+                       status, current_borrow_count, max_borrow_limit, qr_code_path, profile_picture_url
                 FROM members
                 WHERE member_code = %s
                 LIMIT 1
@@ -45,6 +45,7 @@ class Member:
                 SELECT m.member_id, m.member_code, m.first_name, m.middle_name, m.last_name,
                        m.email, m.google_email, m.google_sub, m.phone, m.student_id, m.startup,
                        m.status, m.current_borrow_count, m.max_borrow_limit, m.qr_code_path,
+                       m.profile_picture_url,
                        m.google_calendar_enabled, m.created_at, m.updated_at,
                        s.full_name AS created_by_name
                 FROM members m
@@ -322,19 +323,32 @@ class Member:
         }
 
     @staticmethod
-    def link_google_identity(member_id, google_email, google_sub):
+    def link_google_identity(member_id, google_email, google_sub, profile_picture_url=None):
         db = get_db()
         with db.cursor() as cursor:
-            cursor.execute(
-                """
-                UPDATE members
-                SET google_email = %s,
-                    google_sub = %s,
-                    registration_method = 'google_oauth'
-                WHERE member_id = %s
-                """,
-                (google_email, google_sub, member_id),
-            )
+            if profile_picture_url:
+                cursor.execute(
+                    """
+                    UPDATE members
+                    SET google_email = %s,
+                        google_sub = %s,
+                        profile_picture_url = %s,
+                        registration_method = 'google_oauth'
+                    WHERE member_id = %s
+                    """,
+                    (google_email, google_sub, profile_picture_url, member_id),
+                )
+            else:
+                cursor.execute(
+                    """
+                    UPDATE members
+                    SET google_email = %s,
+                        google_sub = %s,
+                        registration_method = 'google_oauth'
+                    WHERE member_id = %s
+                    """,
+                    (google_email, google_sub, member_id),
+                )
         db.commit()
 
     @staticmethod
@@ -346,7 +360,7 @@ class Member:
                 SELECT member_id, member_code, email, google_email,
                        first_name, middle_name, last_name,
                        phone, student_id, startup, college_department,
-                      program, year_level, status,
+                      program, year_level, status, profile_picture_url,
                       current_borrow_count, max_borrow_limit, qr_code_path
                 FROM members
                 WHERE member_id = %s
@@ -384,6 +398,8 @@ class Member:
         full_name = f"{first_name} {middle_name} {last_name}".replace('  ', ' ').strip() or member_row.get('member_code')
         email = (member_row.get('email') or member_row.get('google_email') or '').strip().lower()
 
+        resolved_photo_url = photo_url or member_row.get('profile_picture_url')
+
         return MemberUser(
             member_id=member_row['member_id'],
             member_code=member_row['member_code'],
@@ -391,7 +407,7 @@ class Member:
             full_name=full_name,
             status=member_row.get('status') or 'inactive',
             profile_complete=Member.is_profile_complete(member_row),
-            photo_url=photo_url,
+            photo_url=resolved_photo_url,
         )
 
     @staticmethod

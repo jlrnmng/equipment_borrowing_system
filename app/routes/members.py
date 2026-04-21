@@ -56,7 +56,8 @@ def scan_member():
     if not _is_authorized_scanner():
         flash('You are not authorized to scan member QR codes.', 'danger')
         return redirect(url_for('dashboard.index'))
-    return render_template('members/scan.html')
+    existing_members = Member.get_active_members(limit=25)
+    return render_template('members/scan.html', existing_members=existing_members)
 
 
 @members_bp.route('/api/members/lookup', methods=['GET'])

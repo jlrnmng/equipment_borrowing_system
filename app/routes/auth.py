@@ -260,7 +260,7 @@ def google_callback():
             return redirect(url_for('auth.login'))
 
         if not existing_sub:
-            Staff.update_google_identity(staff_row['staff_id'], email, google_sub)
+            Staff.update_google_identity(staff_row['staff_id'], email, google_sub, profile_picture_url=google_picture_url)
 
         staff = Staff(
             staff_row['staff_id'],
@@ -269,7 +269,7 @@ def google_callback():
             staff_row['full_name'] or full_name,
             staff_row['role'],
             staff_row['status'],
-            photo_url=google_picture_url,
+            photo_url=google_picture_url or staff_row.get('profile_picture_url'),
         )
         login_user(staff)
         Staff.touch_last_login(staff.id)
@@ -292,7 +292,7 @@ def google_callback():
             return redirect(url_for('auth.login'))
 
         if not existing_sub:
-            Member.link_google_identity(member_row['member_id'], email, google_sub)
+            Member.link_google_identity(member_row['member_id'], email, google_sub, profile_picture_url=google_picture_url)
 
         member_row = Member.get_auth_by_member_id(member_row['member_id'])
 
@@ -315,7 +315,7 @@ def google_callback():
             created_by=None,
             qr_code_path=qr_code_path,
         )
-        Member.link_google_identity(created_member['member_id'], email, google_sub)
+        Member.link_google_identity(created_member['member_id'], email, google_sub, profile_picture_url=google_picture_url)
 
         # Queue registration pending approval notification
         try:

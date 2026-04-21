@@ -31,7 +31,7 @@ class Staff(UserMixin):
         db = get_db()
         with db.cursor() as cursor:
             cursor.execute(
-                "SELECT staff_id, staff_code, email, full_name, role, status "
+                "SELECT staff_id, staff_code, email, full_name, role, status, profile_picture_url "
                 "FROM staff WHERE staff_id = %s",
                 (staff_id,),
             )
@@ -40,6 +40,7 @@ class Staff(UserMixin):
             return Staff(
                 row['staff_id'], row['staff_code'], row['email'],
                 row['full_name'], row['role'], row['status'],
+                photo_url=row.get('profile_picture_url'),
             )
         return None
 
@@ -50,7 +51,7 @@ class Staff(UserMixin):
         with db.cursor() as cursor:
             cursor.execute(
                 "SELECT staff_id, staff_code, email, password_hash, "
-                "full_name, role, status, google_email, google_sub "
+                "full_name, role, status, google_email, google_sub, profile_picture_url "
                 "FROM staff WHERE email = %s OR google_email = %s LIMIT 1",
                 (email, email),
             )
@@ -74,14 +75,20 @@ class Staff(UserMixin):
         return (result or {}).get('cnt', 0) == 0
 
     @staticmethod
-    def update_google_identity(staff_id, google_email, google_sub):
+    def update_google_identity(staff_id, google_email, google_sub, profile_picture_url=None):
         """Link a staff account to Google identity on first OAuth login."""
         db = get_db()
         with db.cursor() as cursor:
-            cursor.execute(
-                "UPDATE staff SET google_email = %s, google_sub = %s WHERE staff_id = %s",
-                (google_email, google_sub, staff_id),
-            )
+            if profile_picture_url:
+                cursor.execute(
+                    "UPDATE staff SET google_email = %s, google_sub = %s, profile_picture_url = %s WHERE staff_id = %s",
+                    (google_email, google_sub, profile_picture_url, staff_id),
+                )
+            else:
+                cursor.execute(
+                    "UPDATE staff SET google_email = %s, google_sub = %s WHERE staff_id = %s",
+                    (google_email, google_sub, staff_id),
+                )
         db.commit()
 
     @staticmethod
