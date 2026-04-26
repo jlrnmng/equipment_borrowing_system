@@ -1,445 +1,254 @@
 # QR Equipment Borrowing System
 
-A Flask-based web application for managing equipment borrowing in a facility using QR codes. Staff/admin users manage inventory and transactions, while members can sign in with Google, complete their profile, submit borrow requests for staff approval, and submit return requests for staff physical-check approval.
-
----
+Flask-based web application for managing equipment borrowing with QR support, role-based access, and request approval workflows.
 
 ## Table of Contents
 
 - [Features](#features)
-- [Recent UI Updates](#recent-ui-updates)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
 - [Prerequisites](#prerequisites)
-- [Setup & Installation](#setup--installation)
-- [Running the App](#running-the-app)
-- [Deployment Notes (Hostinger)](#deployment-notes-hostinger)
-- [Creating the First Admin Account](#creating-the-first-admin-account)
+- [Setup](#setup)
+- [Run](#run)
+- [Important Routes](#important-routes)
 - [Environment Variables](#environment-variables)
 - [Database](#database)
+- [Deployment Notes (Hostinger)](#deployment-notes-hostinger)
 - [Security](#security)
-- [Development Roadmap](#development-roadmap)
-
----
+- [Roadmap](#roadmap)
 
 ## Features
 
-**Currently implemented:**
-- Staff login / logout with bcrypt-hashed passwords
-- Google OAuth login flow (domain-restricted)
-- Manual login reserved for bootstrap admin account
-- Member Google signup/login with profile completion gate before member dashboard
-- Staff account registration by admin or staff (`/staff/register`)
-- Equipment management: add, list, detail, and edit
-- Equipment code generation + inventory/status tracking
-- Borrow transactions with member eligibility checks and equipment assignment
-- Member self-service borrow request dashboard (search equipment, submit request, view request history)
-- Member dashboard camera scanner: scan equipment QR to add items instantly to a borrow request
-- Unified authenticated shell: role-aware sidebar/topbar for both member and staff sessions
-- Member dashboard redesign with quick-action cards, stats summary, and clearer section hierarchy
-- Member borrow flow moved to a guided modal (search, QR scan, select items, submit request)
-- Member active borrowing, return request, and request history sections are easier to scan and navigate
-- Admin approval now sends Gmail notifications to members for approved borrow and return requests when mail is configured
-- Admin dashboard queue for pending member requests with approve/reject actions
-- Approved member requests are converted into active borrow transactions automatically
-- Pending member borrow/return requests auto-expire after 30 minutes (kept in history for reporting/audit)
-- Equipment QR management: auto-generate on add/edit, regenerate on detail page, and downloadable QR image
-- Member QR management: auto-repair missing QR on profile view + regenerate action
-- Member-initiated return request workflow with condition/feedback capture
-- Admin queue for pending return requests with physical-check approve/reject actions
-- Approved return requests process actual returns and run overdue/damage violation checks
-- Notification queue pipeline for borrow/return/reminder/overdue emails
-- Automated reminder scheduler (due-tomorrow reminders + overdue warnings)
-- Extended member profile requirements: phone, ID number, startup/agency, college department, program, year level
-- Shared UI polish stylesheet for consistent shell/auth/dashboard presentation, responsive quick actions, and improved table/readability states
-- CSRF protection on all forms
-- Session timeout after 30 minutes of inactivity
-- No back-button bypass after logout (cache headers)
-- Dashboard with live stats — today's transactions, available equipment, active borrowings, overdue items
-- Dashboard quick search across members, equipment, and transactions
-- Recent activity feed
-- **5 Essential Reports with filtering & CSV export:**
-  - Active borrowings list (filter by member, equipment, facility area)
-  - Overdue items report (filter by days overdue, member)
-  - Member borrowing history (filter by member, date range)
-  - Equipment usage report (usage stats, borrowing patterns, average duration)
-  - Violation log (filter by violation type, member, date range)
+### Implemented
 
-**Planned (see `2-week_development_plan.txt`):**
-- Gmail API native integration (database ready; SMTP queue fallback implemented)
-- Google Calendar integration (database ready)
+- Staff/admin authentication with secure bcrypt password hashing
+- Google OAuth login for members (domain-restricted)
+- Mandatory member profile completion before member dashboard access
+- Equipment management: add, edit, list, detail, QR generation/regeneration
+- Member borrow request flow with multi-item selection
+- Optional accessory add-on suggestions when desktop equipment is selected
+- Member return requests per item plus Return All action
+- Staff approval/rejection queue for member borrow and return requests
+- Auto-expiry for pending member requests (configurable)
+- Overdue tracking and violation handling
+- Notification queue and reminder automation scheduler
+- Realtime updates via Socket.IO
+- Reports with filters and CSV export
 
----
+### Planned
 
-## Recent UI Updates
+- Google Calendar integration
+- Expanded notification/channel features
 
-The member-side experience was updated to improve navigation and reduce friction for common tasks.
-
-- Role-aware navigation now uses the shared authenticated layout, so members and staff get a consistent shell.
-- Member dashboard now includes:
-  - At-a-glance stats (member code, borrow count/limit, status, pending requests)
-  - Quick actions for search, requests, returns, notifications, and profile
-  - Cleaner history/return tables with clearer status badges
-- Borrow request flow is now guided inside a modal for faster completion:
-  - Search by equipment code/name/category
-  - Optional QR scan input
-  - Item selection with condition choice
-  - Expected return date + usage area + notes
-- Borrow submission now validates required fields more clearly and uses the member-specific API endpoints directly
-- Styling refresh focused on readability and responsiveness:
-  - Better spacing and visual hierarchy
-  - Improved empty states and table headers
-  - Mobile-friendly action buttons and layout behavior
-
-## Recent Fixes
-
-- Fixed a member borrow-request 400 issue caused by missing client-side validation and CSRF header mismatch handling.
-- Approval actions for borrow and return requests now send member email notifications through the existing notification pipeline.
-- Notification queue entries now distinguish queued mail from true pending delivery when SMTP is not configured.
-- Realtime client transport init was updated from forced `websocket`-first to automatic negotiation (`io()`), improving compatibility on hosts that do not fully support WebSocket upgrades.
-- Notification read state now persists in the database (`notifications.read_at`), so unread counters and row styling no longer reset after logout/login.
-
-For a full breakdown, see `UI_IMPROVEMENTS.md`.
-
----
+See [2-week_development_plan.txt](2-week_development_plan.txt) for planned and phased work.
 
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Backend | Python 3 · Flask 3 |
-| Auth | Flask-Login · bcrypt |
-| Forms | Flask-WTF · WTForms |
-| Database | MySQL (XAMPP) · PyMySQL |
-| Frontend | Jinja2 · Bootstrap 5 · Bootstrap Icons |
-| Realtime | Flask-SocketIO · Socket.IO client |
+| Backend | Python 3, Flask |
+| Auth | Flask-Login, bcrypt, Authlib |
+| Forms | Flask-WTF, WTForms |
+| Database | MySQL, PyMySQL |
+| Frontend | Jinja2, Bootstrap 5, Bootstrap Icons |
+| Realtime | Flask-SocketIO |
 | Scheduling | APScheduler |
 | Config | python-dotenv |
 
----
-
 ## Project Structure
 
-```
+```text
 equipment_borrowing_system/
-│
-├── app/
-│   ├── __init__.py          # App factory (Flask-Login, CSRF, OAuth, session timeout)
-│   ├── forms.py             # WTForms form classes
-│   ├── models/
-│   │   ├── staff.py         # Staff model (UserMixin, bcrypt helpers)
-│   │   ├── member.py        # Member model helpers + member auth object
-│   │   ├── member_request.py # Member self-service borrow request model
-│   │   ├── member_return_request.py # Member-initiated return request model
-│   │   └── equipment.py     # Equipment model helpers
-│   ├── routes/
-│   │   ├── auth.py          # auth + member profile completion + member dashboard + QR APIs
-│   │   ├── borrow.py        # borrow/return/overdue/notifications APIs + pages
-│   │   ├── dashboard.py     # /dashboard + quick search + pending request queue
-│   │   ├── equipment.py     # equipment CRUD pages + equipment QR regenerate endpoint
-│   │   ├── members.py       # signup + member QR scan/profile QR regenerate
-│   │   └── staff_admin.py   # /staff/register
-│   ├── templates/
-│   │   ├── base.html        # Shared <head>, Bootstrap, CSS
-│   │   ├── layouts/
-│   │   │   └── main.html    # Authenticated layout (sidebar + topbar)
-│   │   ├── auth/
-│   │   │   ├── login.html
-│   │   │   ├── request_access.html
-│   │   │   ├── signup.html
-│   │   │   ├── member_complete_profile.html
-│   │   │   └── member_dashboard.html
-│   │   ├── borrow/          # new, return, overdue, notifications, receipts
-│   │   ├── dashboard/
-│   │   │   └── index.html
-│   │   ├── equipment/       # add, list, detail, edit
-│   │   ├── members/         # register, scan
-│   │   └── staff/
-│   │       └── register.html
-│   ├── static/              # CSS, JS, images, generated QRs
-│   └── utils/
-│       ├── db.py            # get_db() / close_db() per-request connection
-│       ├── notifications.py # notification queue + SMTP sender helpers
-│       └── qr.py            # member/equipment QR generation + payload extraction helpers
-│
-├── config/
-│   └── config.py            # DevelopmentConfig / ProductionConfig
-│
-├── database/
-│   ├── migrations/
-│   │   └── equipment_borrowing.sql   # Full schema (10 tables)
-│   └── seeds/
-│       └── test_data.sql             # test seed data
-│
-├── migrations/
-│   ├── 2026_03_16_equipment_label_fields.sql
-│   ├── 2026_03_17_equipment_usage_restrictions.sql
-│   ├── 2026_03_31_member_borrow_requests.sql
-│   ├── 2026_03_31_member_profile_academic_fields.sql
-│   ├── 2026_03_31_equipment_qr_path.sql
-│   ├── 2026_03_31_member_return_requests.sql
-│   └── 2026_03_31_request_status_expired.sql
-│
-├── scripts/
-│   └── create_admin.py      # One-time CLI to create the first admin account
-│
-├── tests/                   # (to be populated)
-│
-├── .env                     # Local environment variables (not in Git)
-├── .gitignore
-├── requirements.txt
-├── main.py                  # Entry point
-├── workflow.txt             # System workflow documentation
-└── 2-week_development_plan.txt
+|- app/
+|  |- routes/
+|  |- models/
+|  |- templates/
+|  |- static/
+|  |- utils/
+|- config/
+|- database/
+|- migrations/
+|- scripts/
+|- tests/
+|- main.py
+|- requirements.txt
 ```
-
----
 
 ## Prerequisites
 
 - Python 3.10+
-- [XAMPP](https://www.apachefriends.org/) (for MySQL) or any MySQL 8+ server
+- MySQL 8+ (or XAMPP MySQL)
 - Git
 
----
+## Setup
 
-## Setup & Installation
+1. Clone repository
 
-**1. Clone the repository**
 ```bash
 git clone <your-repository-url>
 cd equipment_borrowing_system
 ```
 
-**2. Create and activate a virtual environment**
+2. Create and activate virtual environment
+
 ```bash
 # Windows
 python -m venv venv
 venv\Scripts\activate
 
-# macOS / Linux
+# macOS/Linux
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-**3. Install dependencies**
+3. Install dependencies
+
 ```bash
 pip install -r requirements.txt
 ```
 
-**4. Configure environment variables**
+4. Create local .env
 
-Create a local `.env` file and set values for your environment.
-Never commit real credentials to Git.
-
-Example `.env` template:
-```
-DB_HOST=<db-host>
-DB_PORT=<db-port>
-DB_NAME=<db-name>
-DB_USER=<db-user>
-DB_PASSWORD=<db-password>
+```env
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=equipment_borrowing
+DB_USER=root
+DB_PASSWORD=
 
 FLASK_APP=main.py
 FLASK_ENV=development
-SECRET_KEY=<long-random-secret-key>
+SECRET_KEY=<your-secret>
 
-# Google OAuth
 GOOGLE_CLIENT_ID=<google-client-id>
 GOOGLE_CLIENT_SECRET=<google-client-secret>
 GOOGLE_REDIRECT_URI=<google-redirect-uri>
-GOOGLE_ALLOWED_DOMAIN=<allowed-domain>
+GOOGLE_ALLOWED_DOMAIN=my.cspc.edu.ph
 
-# Mail / notifications
 MAIL_NOTIFICATIONS_ENABLED=true
-MAIL_SERVER=<smtp-host>
-MAIL_PORT=<smtp-port>
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
 MAIL_USE_TLS=true
 MAIL_USE_SSL=false
-MAIL_USERNAME=<smtp-username>
-MAIL_PASSWORD=<smtp-password-or-app-password>
+MAIL_USERNAME=<smtp-user>
+MAIL_PASSWORD=<smtp-password>
 MAIL_DEFAULT_SENDER=<sender-email>
 
-# Reminder automation
 REMINDER_AUTOMATION_ENABLED=true
 REMINDER_JOB_INTERVAL_MINUTES=15
 REMINDER_PROCESS_PENDING_ON_RUN=true
 REQUEST_EXPIRY_MINUTES=30
 
-# Realtime (Socket.IO)
 SOCKETIO_CORS_ALLOWED_ORIGINS=*
-# Optional for multi-instance deployment (Redis URL)
 SOCKETIO_MESSAGE_QUEUE=
 ```
 
-> **Important:**
-> - Do not commit `.env`, credentials, OAuth secrets, or private keys.
-> - Rotate any credential immediately if it was ever pushed to a public repo.
-> - Keep only placeholder values in documentation and sample config files.
-
-**5. Set up the database**
-
-Start XAMPP and ensure MySQL is running, then:
+5. Initialize database
 
 ```bash
-# Create the database in phpMyAdmin or via MySQL CLI
 mysql -u root -p -e "CREATE DATABASE equipment_borrowing CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-
-# Run the schema migration
 mysql -u root -p equipment_borrowing < database/migrations/equipment_borrowing.sql
-
-# Run incremental app migrations (skip files already applied in existing DBs)
-mysql -u root -p equipment_borrowing < migrations/2026_03_17_equipment_usage_restrictions.sql
-mysql -u root -p equipment_borrowing < migrations/2026_03_31_member_borrow_requests.sql
-mysql -u root -p equipment_borrowing < migrations/2026_03_31_member_profile_academic_fields.sql
-mysql -u root -p equipment_borrowing < migrations/2026_03_31_equipment_qr_path.sql
-mysql -u root -p equipment_borrowing < migrations/2026_03_31_member_return_requests.sql
-mysql -u root -p equipment_borrowing < migrations/2026_03_31_request_status_expired.sql
-mysql -u root -p equipment_borrowing < migrations/2026_04_21_notifications_read_tracking.sql
-
-# (Optional) Load test data
-mysql -u root -p equipment_borrowing < database/seeds/test_data.sql
 ```
 
-**6. Create the admin account**
+6. Apply incremental migrations
+
+```bash
+mysql -u root -p equipment_borrowing < migrations/2026_03_16_equipment_label_fields.sql
+mysql -u root -p equipment_borrowing < migrations/2026_03_17_equipment_usage_restrictions.sql
+mysql -u root -p equipment_borrowing < migrations/2026_03_31_equipment_qr_path.sql
+mysql -u root -p equipment_borrowing < migrations/2026_03_31_member_borrow_requests.sql
+mysql -u root -p equipment_borrowing < migrations/2026_03_31_member_profile_academic_fields.sql
+mysql -u root -p equipment_borrowing < migrations/2026_03_31_member_return_requests.sql
+mysql -u root -p equipment_borrowing < migrations/2026_03_31_request_status_expired.sql
+mysql -u root -p equipment_borrowing < migrations/2026_04_13_member_approval_workflow.sql
+mysql -u root -p equipment_borrowing < migrations/2026_04_16_equipment_image_path.sql
+mysql -u root -p equipment_borrowing < migrations/2026_04_21_notifications_in_app_delivery_backfill.sql
+mysql -u root -p equipment_borrowing < migrations/2026_04_21_notifications_read_tracking.sql
+```
+
+7. Create first admin account
+
 ```bash
 python scripts/create_admin.py
 ```
 
----
-
-## Running the App
+## Run
 
 ```bash
 python main.py
 ```
 
-Then open **http://127.0.0.1:5000** in your browser.
+Open http://127.0.0.1:5000
 
-Account flow:
-- Member Google signup entry: **/signup**
-- Member profile completion: **/member/complete-profile**
-- Member self-service dashboard: **/member/dashboard**
-- Staff login page: **/login**
-- Staff registration (admin/staff only): **/staff/register**
+## Important Routes
 
----
-
-## Deployment Notes (Hostinger)
-
-For a company account that already hosts another site, deploy this app as a separate subdomain (example: `app.yourcompany.com`) and keep its runtime isolated.
-
-Recommended low-change setup:
-- Keep Socket.IO transport negotiation on the default client init (`io()`), so realtime can use polling fallback when WebSocket upgrade is unavailable.
-- Do not force `websocket` transport in templates unless your hosting plan explicitly supports WebSocket proxying and worker setup.
-- Keep this app isolated from the main website (separate app root, environment variables, and restart cycle).
-
-If using Hostinger VPS (with Nginx/proxy control):
-- Use a Socket.IO-capable worker stack (eventlet or gevent).
-- Configure reverse proxy headers for WebSocket upgrade.
-
-If using Hostinger shared hosting:
-- Treat long-polling fallback as the primary compatible realtime mode.
-- Expect that forcing WebSocket may produce server log noise without breaking core page navigation.
-
----
-
-## Creating the First Admin Account
-
-```bash
-python scripts/create_admin.py
-```
-
-You will be prompted for:
-- Full name
-- Email address
-- Password (minimum 8 characters)
-
-The script checks for duplicate emails and generates a unique `STAFF###` code automatically.
-
----
+- Member signup: /signup
+- Member dashboard: /member/dashboard
+- Member complete profile: /member/complete-profile
+- Staff login: /login
+- Staff register: /staff/register
 
 ## Environment Variables
 
 | Variable | Description | Default |
 |---|---|---|
-| `DB_HOST` | MySQL host | `localhost` |
-| `DB_PORT` | MySQL port | `3306` |
-| `DB_NAME` | Database name | `equipment_borrowing` |
-| `DB_USER` | MySQL username | `root` |
-| `DB_PASSWORD` | MySQL password | *(empty)* |
-| `FLASK_APP` | Flask app module | `main.py` |
-| `FLASK_ENV` | `development` or `production` | `development` |
-| `SECRET_KEY` | Flask session signing key | *(must be changed)* |
-| `MAIL_NOTIFICATIONS_ENABLED` | Enable/disable notification sending | `true` |
-| `MAIL_SERVER` | SMTP server host | `smtp.gmail.com` |
-| `MAIL_PORT` | SMTP port | `587` |
-| `MAIL_USE_TLS` | Use STARTTLS for SMTP | `true` |
-| `MAIL_USE_SSL` | Use SSL SMTP transport | `false` |
-| `MAIL_USERNAME` | SMTP username | *(empty)* |
-| `MAIL_PASSWORD` | SMTP password/app password | *(empty)* |
-| `MAIL_DEFAULT_SENDER` | Sender email/display address | `MAIL_USERNAME` or `no-reply@localhost` |
-| `REMINDER_AUTOMATION_ENABLED` | Enable background reminder scheduler | `true` |
-| `REMINDER_JOB_INTERVAL_MINUTES` | Scheduler run interval in minutes | `15` |
-| `REMINDER_PROCESS_PENDING_ON_RUN` | Process queued notifications every reminder cycle | `true` |
-| `REQUEST_EXPIRY_MINUTES` | Minutes before pending borrow/return requests auto-expire | `30` |
-| `SOCKETIO_CORS_ALLOWED_ORIGINS` | Allowed origins for Socket.IO clients | `*` |
-| `SOCKETIO_MESSAGE_QUEUE` | Optional Redis URL for multi-instance Socket.IO fanout | *(empty)* |
-
----
+| DB_HOST | MySQL host | localhost |
+| DB_PORT | MySQL port | 3306 |
+| DB_NAME | Database name | equipment_borrowing |
+| DB_USER | MySQL username | root |
+| DB_PASSWORD | MySQL password | empty |
+| FLASK_APP | Flask app module | main.py |
+| FLASK_ENV | Environment | development |
+| SECRET_KEY | Flask session signing key | required |
+| MAIL_NOTIFICATIONS_ENABLED | Enable notification sending | true |
+| MAIL_SERVER | SMTP server host | smtp.gmail.com |
+| MAIL_PORT | SMTP port | 587 |
+| MAIL_USE_TLS | Use STARTTLS | true |
+| MAIL_USE_SSL | Use SSL transport | false |
+| MAIL_USERNAME | SMTP username | empty |
+| MAIL_PASSWORD | SMTP password/app password | empty |
+| MAIL_DEFAULT_SENDER | Default sender | MAIL_USERNAME or fallback |
+| REMINDER_AUTOMATION_ENABLED | Enable scheduler | true |
+| REMINDER_JOB_INTERVAL_MINUTES | Scheduler interval | 15 |
+| REMINDER_PROCESS_PENDING_ON_RUN | Process queue per run | true |
+| REQUEST_EXPIRY_MINUTES | Pending request expiry | 30 |
+| SOCKETIO_CORS_ALLOWED_ORIGINS | Allowed realtime origins | * |
+| SOCKETIO_MESSAGE_QUEUE | Optional Redis URL | empty |
 
 ## Database
 
-The schema includes core borrowing tables plus request/approval tables for self-service member flow:
+Core and workflow tables include:
 
-| Table | Purpose |
-|---|---|
-| `staff` | Staff/admin accounts (with Google OAuth fields) |
-| `members` | Registered members with QR codes |
-| `equipment` | Equipment inventory with QR codes |
-| `borrow_records` | Borrowing transaction headers |
-| `borrow_items` | Individual items per transaction |
-| `violations` | Overdue, damage, and unauthorized use records |
-| `notifications` | Email/SMS queue with Gmail API tracking |
-| `activity_log` | Full audit trail |
-| `google_calendar_events` | Calendar reminders (Phase 2) |
-| `app_settings` | OAuth credentials and system config |
-| `member_borrow_requests` | Member-submitted borrow requests pending review |
-| `member_borrow_request_items` | Equipment items attached to each member request |
-| `member_return_requests` | Member-submitted return requests pending physical-check review |
+- staff
+- members
+- equipment
+- borrow_records
+- borrow_items
+- violations
+- notifications
+- activity_log
+- app_settings
+- member_borrow_requests
+- member_borrow_request_items
+- member_return_requests
+- google_calendar_events (phase-ready)
 
-See [`database/database_documentation.md`](database/database_documentation.md) for full field-level documentation.
+Full schema documentation: [database/database_documentation.md](database/database_documentation.md)
 
----
+## Deployment Notes (Hostinger)
+
+- Deploy as a separate subdomain/app instance.
+- Keep Socket.IO client transport on default negotiation to allow polling fallback.
+- Use websocket workers and reverse proxy upgrades only when hosting tier supports it.
 
 ## Security
 
-- **Passwords** — hashed with bcrypt, never stored in plain text
-- **CSRF** — all forms protected via Flask-WTF
-- **Session timeout** — 30-minute inactivity timeout enforced server-side
-- **Back-button bypass** — `Cache-Control: no-store` on all authenticated responses
-- **Open redirect** — `next` parameter validated to reject absolute URLs
-- **SQL injection** — all queries use parameterized `%s` placeholders
-- **Inactive staff** — blocked from logging in regardless of correct password
+- Passwords hashed with bcrypt
+- CSRF protection enabled
+- Session timeout enforced
+- Parameterized SQL queries used
+- Logout response disables cache on authenticated pages
 
----
+## Roadmap
 
-## Development Roadmap
-
-See [`2-week_development_plan.txt`](2-week_development_plan.txt) for the full sprint plan.
-
-| Phase | Status |
-|---|---|
-| Day 1 — Database & project setup | ✅ Done |
-| Day 2 Morning — Staff authentication & dashboard | ✅ Done |
-| Day 2 Afternoon — Member manual signup & QR codes | ✅ Done |
-| Day 3 Morning — Equipment management | ✅ Done |
-| Day 3 Afternoon — Member QR scanning | ✅ Done |
-| Day 4 — Borrow transaction module | ✅ Done |
-| Day 5 — Return module & email notifications | ✅ Done |
-| Day 6 Morning — Overdue tracking | ✅ Done |
-| Day 6 Afternoon — Reminder automation | ✅ Done |
-| Day 7 Morning — Dashboard metrics + search | ✅ Done |
-| Day 7 Afternoon — Reports & CSV export | ✅ Done |
-| Member self-service request + approval flow | ✅ Done |
-| Post-launch — Calendar, advanced notifications, HTML emails | 🔲 Phase 2 |
+Current phase status is tracked in [2-week_development_plan.txt](2-week_development_plan.txt).

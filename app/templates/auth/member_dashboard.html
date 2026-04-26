@@ -148,6 +148,17 @@
                         </div>
                     </div>
 
+                    <div id="accessorySuggestionsSection" class="border rounded p-3 mb-3 bg-light-subtle d-none">
+                        <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                            <div>
+                                <div class="fw-semibold">Suggested Add-ons</div>
+                                <div class="small text-muted">Desktop selected. You can include optional accessories in this same request.</div>
+                            </div>
+                            <button id="addAccessoriesBtn" type="button" class="btn btn-sm btn-outline-primary">Add Selected</button>
+                        </div>
+                        <div id="accessorySuggestionsList" class="small"></div>
+                    </div>
+
                     <div class="row g-2 mb-3">
                         <div class="col-12 col-md-6 col-lg-12">
                             <label for="usageArea" class="form-label fw-semibold mb-1">Usage Area <span class="text-danger">*</span></label>
@@ -201,7 +212,12 @@
 
 <!-- Current Borrowing Status -->
 <div class="mb-4" id="requests">
-    <h5 class="fw-bold mb-3">Active Borrowed Items</h5>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold mb-0">Active Borrowed Items</h5>
+        {% if active_return_items %}
+        <button type="button" id="returnAllBtn" class="btn btn-sm btn-outline-primary">Return All</button>
+        {% endif %}
+    </div>
     <div class="card stat-card">
         <div class="card-body p-0">
             {% if active_return_items %}
@@ -416,9 +432,14 @@
     var paperType = document.getElementById('paperType');
     var paperQuantity = document.getElementById('paperQuantity');
     var facilityPaperFields = document.getElementById('facilityPaperFields');
+    var accessorySuggestionsSection = document.getElementById('accessorySuggestionsSection');
+    var accessorySuggestionsList = document.getElementById('accessorySuggestionsList');
+    var addAccessoriesBtn = document.getElementById('addAccessoriesBtn');
     var qrScanStatus = document.getElementById('qrScanStatus');
     var startQrScanBtn = document.getElementById('startQrScanBtn');
     var stopQrScanBtn = document.getElementById('stopQrScanBtn');
+    var returnAllBtn = document.getElementById('returnAllBtn');
+    var availableEquipmentCache = new Map();
 
     function escapeHtml(value) {
         return (value || '')
@@ -537,6 +558,74 @@
         return text.indexOf('printer') !== -1 || text.indexOf('scanner') !== -1;
     }
 
+    function isDesktopLike(item) {
+        var text = ((item.category || '') + ' ' + (item.equipment_name || '')).toLowerCase();
+        return text.indexOf('desktop') !== -1;
+    }
+
+    function isAccessoryLike(item) {
+        var text = ((item.category || '') + ' ' + (item.equipment_name || '')).toLowerCase();
+        return [
+            'headset',
+            'headphone',
+            'earphone',
+            'mouse',
+            'keyboard',
+            'webcam',
+            'speaker',
+            'microphone'
+        ].some(function (keyword) {
+            return text.indexOf(keyword) !== -1;
+        });
+    }
+
+    function upsertEquipmentCache(items) {
+        (items || []).forEach(function (item) {
+            if (item && item.equipment_id) {
+                availableEquipmentCache.set(Number(item.equipment_id), item);
+            }
+        });
+    }
+
+    function getSuggestedAccessories() {
+        var hasDesktop = Array.from(selectedItems.values()).some(isDesktopLike);
+        if (!hasDesktop) {
+            return [];
+        }
+
+        return Array.from(availableEquipmentCache.values()).filter(function (item) {
+            var itemId = Number(item.equipment_id);
+            return !selectedItems.has(itemId) && !isDesktopLike(item) && isAccessoryLike(item);
+        });
+    }
+
+    function renderAccessorySuggestions() {
+        if (!accessorySuggestionsSection || !accessorySuggestionsList) {
+            return;
+        }
+
+        var suggestions = getSuggestedAccessories();
+        if (!suggestions.length) {
+            accessorySuggestionsSection.classList.add('d-none');
+            accessorySuggestionsList.innerHTML = '';
+            return;
+        }
+
+        accessorySuggestionsSection.classList.remove('d-none');
+        accessorySuggestionsList.innerHTML = suggestions.map(function (item) {
+            var serialDisplay = item.serial_number || item.inventory_number || '-';
+            return (
+                '<label class="form-check mb-2">' +
+                '<input class="form-check-input accessory-check" type="checkbox" value="' + item.equipment_id + '"> ' +
+                '<span class="form-check-label">' +
+                '<span class="fw-semibold">' + escapeHtml(item.equipment_name) + '</span> ' +
+                '<span class="text-muted">(' + escapeHtml(item.equipment_code || '-') + ' • ' + escapeHtml(serialDisplay) + ')</span>' +
+                '</span>' +
+                '</label>'
+            );
+        }).join('');
+    }
+
     function updatePaperRequirementVisibility() {
         var needsPaperDetails = Array.from(selectedItems.values()).some(isPrinterOrScanner);
         if (needsPaperDetails) {
@@ -607,6 +696,7 @@
         if (!entries.length) {
             selectedItemsBody.innerHTML = '<tr id="emptySelectedRow"><td colspan="3" class="text-center text-muted py-3">No equipment selected</td></tr>';
             updatePaperRequirementVisibility();
+            renderAccessorySuggestions();
             return;
         }
 
@@ -632,6 +722,7 @@
         });
 
         updatePaperRequirementVisibility();
+        renderAccessorySuggestions();
     }
 
     function updateAddEquipmentButtonStates() {
@@ -685,8 +776,10 @@
                     return;
                 }
 
+                upsertEquipmentCache(data.results);
                 equipmentResults.innerHTML = data.results.map(buildEquipmentCard).join('');
                 bindAddEquipmentButtons();
+                renderAccessorySuggestions();
             })
             .catch(function () {
                 equipmentResults.innerHTML = '<div class="text-danger text-center py-4">Failed to load equipment</div>';
@@ -709,7 +802,9 @@
                     equipmentResults.innerHTML = '<div class="text-muted text-center py-4">No equipment found</div>';
                     return;
                 }
+                upsertEquipmentCache(data.results || []);
                 renderEquipmentResults(data.results || []);
+                renderAccessorySuggestions();
             })
             .catch(function () { showAlert('Failed to search equipment.', 'danger'); });
     }
@@ -885,11 +980,86 @@
         });
     }
 
+    if (addAccessoriesBtn) {
+        addAccessoriesBtn.addEventListener('click', function () {
+            var checks = document.querySelectorAll('.accessory-check:checked');
+            if (!checks.length) {
+                showAlert('Select at least one suggested accessory to add.', 'warning');
+                return;
+            }
+
+            checks.forEach(function (input) {
+                var id = Number(input.value);
+                var item = availableEquipmentCache.get(id);
+                if (item && !selectedItems.has(id)) {
+                    selectedItems.set(id, {
+                        equipment_id: id,
+                        equipment_name: item.equipment_name,
+                        equipment_code: item.equipment_code,
+                        serial_number: item.serial_number,
+                        inventory_number: item.inventory_number,
+                        category: item.category,
+                        equipment_image_path: item.equipment_image_path,
+                        condition_requested: (item.condition_status || 'good').toLowerCase()
+                    });
+                }
+            });
+
+            renderSelectedItems();
+            updateAddEquipmentButtonStates();
+            showAlert('Selected accessories added to your request.', 'success');
+        });
+    }
+
     var currentReturnItemId = null;
     if (!window.__memberDashboardReturnBindingInstalled) {
         window.__memberDashboardReturnBindingInstalled = true;
 
         document.addEventListener('click', function (event) {
+            if (event.target && event.target.id === 'returnAllBtn') {
+                event.preventDefault();
+
+                if (!window.confirm('Submit return requests for all active borrowed items?')) {
+                    return;
+                }
+
+                var returnAllButton = event.target;
+                returnAllButton.disabled = true;
+                returnAllButton.textContent = 'Submitting...';
+
+                fetch('/api/member/return-request-all', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken,
+                        'X-CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify({
+                        requested_condition: 'good',
+                        member_feedback: 'Return-all request submitted by member.'
+                    })
+                })
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    if (data.ok) {
+                        showAlert(data.message || 'Return-all request submitted.', 'success');
+                        window.setTimeout(function () {
+                            window.location.reload();
+                        }, 800);
+                    } else {
+                        showAlert(data.message || 'Failed to submit return-all request.', 'danger');
+                    }
+                })
+                .catch(function () {
+                    showAlert('An error occurred while submitting return-all request.', 'danger');
+                })
+                .finally(function () {
+                    returnAllButton.disabled = false;
+                    returnAllButton.textContent = 'Return All';
+                });
+                return;
+            }
+
             var returnButton = event.target.closest('.return-item-btn');
             if (returnButton) {
                 event.preventDefault();

@@ -839,6 +839,75 @@ def submit_member_return_request():
     return jsonify({'ok': True, 'return_request_code': result.get('return_request_code')})
 
 
+@auth_bp.route('/api/member/return-request-all', methods=['POST'])
+@login_required
+def submit_member_return_request_all():
+    if getattr(current_user, 'role', None) != 'member':
+        return jsonify({'ok': False, 'message': 'Forbidden'}), 403
+
+    member_row = Member.get_auth_by_member_id(current_user.id)
+    if not Member.is_profile_complete(member_row):
+        return jsonify({'ok': False, 'message': 'Complete your profile first.'}), 400
+
+    payload = request.get_json(silent=True) or {}
+    requested_condition = (payload.get('requested_condition') or 'good').strip().lower()
+    member_feedback = (payload.get('member_feedback') or '').strip() or None
+
+    if requested_condition not in ('excellent', 'good', 'fair', 'poor'):
+        return jsonify({'ok': False, 'message': 'Invalid requested return condition.'}), 400
+
+    active_items = MemberReturnRequest.get_member_active_items(member_row['member_id'])
+    if not active_items:
+        return jsonify({'ok': False, 'message': 'No active borrowed items found.'}), 400
+
+    created_codes = []
+    skipped = 0
+
+    for item in active_items:
+        status = (item.get('return_request_status') or '').strip().lower()
+        if status in ('pending', 'approved'):
+            skipped += 1
+            continue
+
+        result = MemberReturnRequest.create_or_resubmit_request(
+            member_id=member_row['member_id'],
+            borrow_item_id=item.get('borrow_item_id'),
+            requested_condition=requested_condition,
+            member_feedback=member_feedback,
+        )
+        if result.get('ok'):
+            created_codes.append(result.get('return_request_code'))
+        else:
+            skipped += 1
+
+    if not created_codes:
+        return jsonify(
+            {
+                'ok': False,
+                'message': 'All active items already have return requests or are not eligible.',
+                'created_count': 0,
+                'skipped_count': skipped,
+            }
+        ), 400
+
+    emit_app_data_changed(
+        reason='member_return_request_all_submitted',
+        member_id=member_row['member_id'],
+        include_staff=True,
+        include_members=True,
+    )
+
+    return jsonify(
+        {
+            'ok': True,
+            'message': f"Submitted {len(created_codes)} return request(s).",
+            'created_count': len(created_codes),
+            'skipped_count': skipped,
+            'return_request_codes': created_codes,
+        }
+    )
+
+
 @auth_bp.route('/logout')
 @login_required
 def logout():
