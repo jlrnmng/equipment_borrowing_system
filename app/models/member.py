@@ -208,6 +208,37 @@ class Member:
         db.commit()
 
     @staticmethod
+    def update_max_borrow_limit(member_id, max_borrow_limit):
+        db = get_db()
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE members
+                SET max_borrow_limit = %s,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE member_id = %s
+                """,
+                (max_borrow_limit, member_id),
+            )
+        db.commit()
+
+    @staticmethod
+    def update_max_borrow_limit_for_all(max_borrow_limit):
+        db = get_db()
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE members
+                SET max_borrow_limit = %s,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (max_borrow_limit,),
+            )
+            affected_rows = cursor.rowcount
+        db.commit()
+        return int(affected_rows or 0)
+
+    @staticmethod
     def search_for_lookup(query, limit=10):
         db = get_db()
         with db.cursor() as cursor:

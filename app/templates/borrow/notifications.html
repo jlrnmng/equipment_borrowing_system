@@ -31,11 +31,15 @@
                 </thead>
                 <tbody>
                     {% for item in notifications %}
-                    <tr class="{% if item.is_unread %}notification-unread{% else %}notification-read{% endif %}" data-notification-id="{{ item.notification_id }}">
+                    <tr class="{% if item.is_unread %}notification-unread{% else %}notification-read{% endif %} {% if 'rejected' in ((item.notification_type or '')|lower) and 'request' in ((item.notification_type or '')|lower) %}table-danger{% endif %}" data-notification-id="{{ item.notification_id }}">
                         <td class="ps-3">
                             {% set notif_type = (item.notification_type or '')|lower %}
                             <div class="fw-semibold text-capitalize">
-                                {% if 'rejected' in notif_type and 'request' in notif_type %}
+                                {% if 'borrow' in notif_type and 'rejected' in notif_type and 'request' in notif_type %}
+                                Borrow Request Rejected
+                                {% elif 'return' in notif_type and 'rejected' in notif_type and 'request' in notif_type %}
+                                Return Request Rejected
+                                {% elif 'rejected' in notif_type and 'request' in notif_type %}
                                 Request Rejected
                                 {% else %}
                                 {{ (item.notification_type or '').replace('_', ' ') }}
@@ -52,7 +56,11 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% if 'rejected' in notif_type and 'request' in notif_type %}
+                            {% if 'borrow' in notif_type and 'rejected' in notif_type and 'request' in notif_type %}
+                            <span class="badge bg-danger">Borrow Rejected</span>
+                            {% elif 'return' in notif_type and 'rejected' in notif_type and 'request' in notif_type %}
+                            <span class="badge bg-danger">Return Rejected</span>
+                            {% elif 'rejected' in notif_type and 'request' in notif_type %}
                             <span class="badge bg-danger">Reject</span>
                             {% elif 'return' in notif_type %}
                             <span class="badge bg-info text-dark">Return</span>
@@ -160,11 +168,15 @@
                 </thead>
                 <tbody>
                     {% for item in notifications %}
-                    <tr class="{% if item.is_unread %}notification-unread{% else %}notification-read{% endif %}">
+                    <tr class="{% if item.is_unread %}notification-unread{% else %}notification-read{% endif %} {% if 'rejected' in ((item.notification_type or '')|lower) and 'request' in ((item.notification_type or '')|lower) %}table-danger{% endif %}">
                         <td class="ps-3">
                             {% set notif_type = (item.notification_type or '')|lower %}
                             <div class="fw-semibold text-capitalize">
-                                {% if 'rejected' in notif_type and 'request' in notif_type %}
+                                {% if 'borrow' in notif_type and 'rejected' in notif_type and 'request' in notif_type %}
+                                Borrow Request Rejected
+                                {% elif 'return' in notif_type and 'rejected' in notif_type and 'request' in notif_type %}
+                                Return Request Rejected
+                                {% elif 'rejected' in notif_type and 'request' in notif_type %}
                                 Request Rejected
                                 {% else %}
                                 {{ (item.notification_type or '').replace('_', ' ') }}
@@ -178,7 +190,11 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% if 'rejected' in notif_type and 'request' in notif_type %}
+                            {% if 'borrow' in notif_type and 'rejected' in notif_type and 'request' in notif_type %}
+                            <span class="badge bg-danger">Borrow Rejected</span>
+                            {% elif 'return' in notif_type and 'rejected' in notif_type and 'request' in notif_type %}
+                            <span class="badge bg-danger">Return Rejected</span>
+                            {% elif 'rejected' in notif_type and 'request' in notif_type %}
                             <span class="badge bg-danger">Reject</span>
                             {% elif 'return' in notif_type %}
                             <span class="badge bg-info text-dark">Return</span>

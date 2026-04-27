@@ -248,7 +248,3 @@ Full schema documentation: [database/database_documentation.md](database/databas
 - Session timeout enforced
 - Parameterized SQL queries used
 - Logout response disables cache on authenticated pages
-
-## Roadmap
-
-Current phase status is tracked in [2-week_development_plan.txt](2-week_development_plan.txt).

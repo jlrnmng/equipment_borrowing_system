@@ -137,8 +137,7 @@
                 'dashboard.index': true,
                 'borrow.overdue_management': true,
                 'borrow.notification_center': true,
-                'equipment.list_equipment': true,
-                'auth.member_dashboard': true
+                'equipment.list_equipment': true
             };
 
             if (!refreshableEndpoints[endpoint]) {
@@ -226,6 +225,12 @@
                     if (targetMemberId !== null && targetMemberId !== undefined && Number(targetMemberId) !== Number(userId)) {
                         return;
                     }
+                }
+
+                if (endpoint === 'dashboard.index' && window.__suppressDashboardAutoRefreshOnce) {
+                    window.__suppressDashboardAutoRefreshOnce = false;
+                    window.showAppToast('New updates are available.', 'info', 2000);
+                    return;
                 }
 
                 window.dispatchEvent(new CustomEvent('app:data-changed', {

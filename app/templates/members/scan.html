@@ -41,6 +41,36 @@
 
         <div class="card stat-card mb-3">
             <div class="card-header bg-white border-bottom fw-semibold">
+                <i class="bi bi-sliders me-1"></i> Global Borrow Limit
+            </div>
+            <div class="card-body">
+                <label for="globalBorrowLimitInput" class="form-label fw-semibold mb-1">Default Max Borrow Limit</label>
+                <div class="d-flex gap-2 mb-2">
+                    <input id="globalBorrowLimitInput" type="number" min="1" max="10" class="form-control" value="{{ default_borrow_limit or 3 }}">
+                    <button id="saveGlobalBorrowLimitBtn" type="button" class="btn btn-outline-primary">Save</button>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" value="1" id="applyToAllMembersCheck">
+                    <label class="form-check-label" for="applyToAllMembersCheck">
+                        Apply this limit to all existing member accounts now
+                    </label>
+                </div>
+                <div id="globalMemberTargetSection" class="border rounded p-3 mb-2 bg-light-subtle">
+                    <div class="fw-semibold mb-2">Apply to a specific member</div>
+                    <div class="d-flex gap-2 mb-2">
+                        <input id="globalMemberSearchInput" type="text" class="form-control form-control-sm" placeholder="Search by member code, name, or email">
+                        <button id="globalMemberSearchBtn" type="button" class="btn btn-sm btn-outline-secondary">Search</button>
+                    </div>
+                    <div id="globalMemberSearchResults" class="small"></div>
+                    <div id="globalMemberTargetSummary" class="small text-muted mt-2">No member selected.</div>
+                    <input type="hidden" id="globalTargetMemberCode" value="">
+                </div>
+                <div id="globalBorrowLimitHint" class="small text-muted">This affects new member signups. If you do not apply to all, select one member to update.</div>
+            </div>
+        </div>
+
+        <div class="card stat-card mb-3">
+            <div class="card-header bg-white border-bottom fw-semibold">
                 <i class="bi bi-people me-1"></i> Existing Members
             </div>
             <div class="card-body p-0" style="max-height: 260px; overflow: auto;">
@@ -81,6 +111,7 @@
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script>
 (function () {
+    var csrfToken = '{{ csrf_token() }}';
     var scannerInstance = null;
     var isScanning = false;
     var startBtn = document.getElementById('startScanBtn');
@@ -89,6 +120,15 @@
     var lookupInput = document.getElementById('lookupInput');
     var statusEl = document.getElementById('scanStatus');
     var resultEl = document.getElementById('memberResult');
+    var globalBorrowLimitInput = document.getElementById('globalBorrowLimitInput');
+    var saveGlobalBorrowLimitBtn = document.getElementById('saveGlobalBorrowLimitBtn');
+    var applyToAllMembersCheck = document.getElementById('applyToAllMembersCheck');
+    var globalMemberSearchInput = document.getElementById('globalMemberSearchInput');
+    var globalMemberSearchBtn = document.getElementById('globalMemberSearchBtn');
+    var globalMemberSearchResults = document.getElementById('globalMemberSearchResults');
+    var globalMemberTargetSummary = document.getElementById('globalMemberTargetSummary');
+    var globalTargetMemberCode = document.getElementById('globalTargetMemberCode');
+    var globalBorrowLimitHint = document.getElementById('globalBorrowLimitHint');
 
     function setStatus(text, isError) {
         statusEl.textContent = text || '';
@@ -110,9 +150,234 @@
             '<div><strong>Phone:</strong> ' + (member.phone || '-') + '</div>' +
             '<div><strong>ID Number:</strong> ' + (member.student_id || '-') + '</div>' +
             '<div><strong>Startup/Agency:</strong> ' + (member.startup || '-') + '</div>' +
-            '<div><strong>Borrow Count:</strong> ' + member.current_borrow_count + ' / ' + member.max_borrow_limit + '</div>' +
+            '<div><strong>Borrow Count:</strong> <span id="memberBorrowCountValue">' + member.current_borrow_count + '</span> / <span id="memberBorrowLimitValue">' + member.max_borrow_limit + '</span></div>' +
+            '<div class="mt-2 p-2 border rounded bg-light-subtle">' +
+                '<label class="form-label form-label-sm fw-semibold mb-1" for="quickBorrowLimitInput">Max Borrow Limit</label>' +
+                '<div class="d-flex gap-2">' +
+                    '<input id="quickBorrowLimitInput" type="number" min="1" max="10" class="form-control form-control-sm" value="' + member.max_borrow_limit + '">' +
+                    '<button id="saveBorrowLimitBtn" type="button" class="btn btn-sm btn-outline-primary" data-member-code="' + member.member_code + '">Save</button>' +
+                '</div>' +
+                '<div id="borrowLimitHint" class="small text-muted mt-1">Allowed range: 1 to 10.</div>' +
+            '</div>' +
             '<div class="mt-2"><span class="badge bg-' + statusClass + ' text-uppercase">' + member.status + '</span></div>' +
             '<div class="d-grid mt-3"><a class="btn btn-sm btn-outline-primary" href="' + profileUrl + '">View Full Profile</a></div>';
+
+        var saveBtn = document.getElementById('saveBorrowLimitBtn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', function () {
+                updateBorrowLimit(saveBtn.getAttribute('data-member-code'));
+            });
+        }
+    }
+
+    function updateBorrowLimit(memberCode) {
+        var input = document.getElementById('quickBorrowLimitInput');
+        var hint = document.getElementById('borrowLimitHint');
+        var borrowLimitValue = document.getElementById('memberBorrowLimitValue');
+        var saveBtn = document.getElementById('saveBorrowLimitBtn');
+        if (!input || !saveBtn || !memberCode) {
+            return;
+        }
+
+        var requestedLimit = Number(input.value);
+        if (!Number.isInteger(requestedLimit) || requestedLimit < 1 || requestedLimit > 10) {
+            if (hint) {
+                hint.className = 'small text-danger mt-1';
+                hint.textContent = 'Borrow limit must be between 1 and 10.';
+            }
+            return;
+        }
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+
+        fetch('/api/members/' + encodeURIComponent(memberCode) + '/borrow-limit', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+                'X-CSRF-Token': csrfToken
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                max_borrow_limit: requestedLimit
+            })
+        })
+        .then(function (response) {
+            return response.json().then(function (data) {
+                return { ok: response.ok, data: data };
+            });
+        })
+        .then(function (result) {
+            if (!result.ok || !result.data.ok) {
+                throw new Error((result.data && result.data.message) || 'Failed to update borrow limit.');
+            }
+
+            if (borrowLimitValue) {
+                borrowLimitValue.textContent = String(result.data.max_borrow_limit);
+            }
+            if (hint) {
+                hint.className = 'small text-success mt-1';
+                hint.textContent = 'Borrow limit updated.';
+            }
+            if (window.showAppToast) {
+                window.showAppToast('Borrow limit updated successfully.', 'success');
+            }
+        })
+        .catch(function (err) {
+            if (hint) {
+                hint.className = 'small text-danger mt-1';
+                hint.textContent = err.message || 'Failed to update borrow limit.';
+            }
+            if (window.showAppToast) {
+                window.showAppToast(err.message || 'Failed to update borrow limit.', 'danger');
+            }
+        })
+        .finally(function () {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save';
+        });
+    }
+
+    function updateGlobalBorrowLimit() {
+        if (!globalBorrowLimitInput || !saveGlobalBorrowLimitBtn) {
+            return;
+        }
+
+        var requestedLimit = Number(globalBorrowLimitInput.value);
+        var applyToAll = !!(applyToAllMembersCheck && applyToAllMembersCheck.checked);
+        var targetMemberCode = globalTargetMemberCode ? (globalTargetMemberCode.value || '').trim() : '';
+
+        if (!Number.isInteger(requestedLimit) || requestedLimit < 1 || requestedLimit > 10) {
+            if (globalBorrowLimitHint) {
+                globalBorrowLimitHint.className = 'small text-danger';
+                globalBorrowLimitHint.textContent = 'Borrow limit must be between 1 and 10.';
+            }
+            return;
+        }
+
+        saveGlobalBorrowLimitBtn.disabled = true;
+        saveGlobalBorrowLimitBtn.textContent = 'Saving...';
+
+        fetch('/api/members/borrow-limit/global', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+                'X-CSRF-Token': csrfToken
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                default_borrow_limit: requestedLimit,
+                apply_to_all: applyToAll,
+                target_member_code: targetMemberCode
+            })
+        })
+        .then(function (response) {
+            return response.json().then(function (data) {
+                return { ok: response.ok, data: data };
+            });
+        })
+        .then(function (result) {
+            if (!result.ok || !result.data.ok) {
+                throw new Error((result.data && result.data.message) || 'Failed to update global borrow limit.');
+            }
+
+            if (globalBorrowLimitHint) {
+                globalBorrowLimitHint.className = 'small text-success';
+                if (result.data.apply_to_all) {
+                    globalBorrowLimitHint.textContent = 'Global default updated and applied to ' + String(result.data.updated_members_count) + ' member account(s).';
+                } else {
+                    globalBorrowLimitHint.textContent = 'Global default borrow limit updated for new member signups and the selected member.';
+                }
+            }
+            if (window.showAppToast) {
+                window.showAppToast('Global borrow limit updated.', 'success');
+            }
+        })
+        .catch(function (err) {
+            if (globalBorrowLimitHint) {
+                globalBorrowLimitHint.className = 'small text-danger';
+                globalBorrowLimitHint.textContent = err.message || 'Failed to update global borrow limit.';
+            }
+            if (window.showAppToast) {
+                window.showAppToast(err.message || 'Failed to update global borrow limit.', 'danger');
+            }
+        })
+        .finally(function () {
+            saveGlobalBorrowLimitBtn.disabled = false;
+            saveGlobalBorrowLimitBtn.textContent = 'Save';
+        });
+    }
+
+    function renderGlobalMemberSearchResults(results) {
+        if (!globalMemberSearchResults) {
+            return;
+        }
+
+        if (!results || !results.length) {
+            globalMemberSearchResults.innerHTML = '<div class="text-muted">No matching member found.</div>';
+            return;
+        }
+
+        globalMemberSearchResults.innerHTML = results.map(function (item) {
+            return (
+                '<button type="button" class="list-group-item list-group-item-action py-2 px-3 w-100 text-start global-member-pick" ' +
+                'data-member-code="' + item.member_code + '" ' +
+                'data-member-name="' + item.full_name + '" ' +
+                'data-member-email="' + (item.email || '-') + '">' +
+                '<div class="fw-semibold">' + item.full_name + '</div>' +
+                '<div class="small text-muted">' + item.member_code + ' • ' + (item.email || '-') + '</div>' +
+                '</button>'
+            );
+        }).join('');
+
+        globalMemberSearchResults.querySelectorAll('.global-member-pick').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                if (globalTargetMemberCode) {
+                    globalTargetMemberCode.value = btn.getAttribute('data-member-code') || '';
+                }
+                if (globalMemberTargetSummary) {
+                    globalMemberTargetSummary.textContent = 'Selected member: ' + (btn.getAttribute('data-member-name') || '') + ' (' + (btn.getAttribute('data-member-code') || '') + ')';
+                }
+                if (globalBorrowLimitHint) {
+                    globalBorrowLimitHint.className = 'small text-muted';
+                    globalBorrowLimitHint.textContent = 'This affects new member signups. You can save to the selected member now, or enable apply-to-all.';
+                }
+            });
+        });
+    }
+
+    function searchGlobalMember(query) {
+        if (!query) {
+            if (globalMemberSearchResults) {
+                globalMemberSearchResults.innerHTML = '<div class="text-muted">Enter a member code, name, or email to search.</div>';
+            }
+            return;
+        }
+
+        if (globalMemberSearchResults) {
+            globalMemberSearchResults.innerHTML = '<div class="text-muted">Searching...</div>';
+        }
+
+        fetch('{{ url_for("members.lookup_member") }}?query=' + encodeURIComponent(query), { credentials: 'same-origin' })
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                if (!data.ok) {
+                    throw new Error(data.message || 'Search failed.');
+                }
+
+                if (data.member) {
+                    renderGlobalMemberSearchResults([data.member]);
+                } else {
+                    renderGlobalMemberSearchResults(data.results || []);
+                }
+            })
+            .catch(function (err) {
+                if (globalMemberSearchResults) {
+                    globalMemberSearchResults.innerHTML = '<div class="text-danger">' + (err.message || 'Unable to search members.') + '</div>';
+                }
+            });
     }
 
     function renderSuggestions(results) {
@@ -227,6 +492,46 @@
 
     startBtn.addEventListener('click', startScanner);
     stopBtn.addEventListener('click', stopScanner);
+
+    if (saveGlobalBorrowLimitBtn) {
+        saveGlobalBorrowLimitBtn.addEventListener('click', updateGlobalBorrowLimit);
+    }
+
+    if (globalMemberSearchBtn) {
+        globalMemberSearchBtn.addEventListener('click', function () {
+            searchGlobalMember((globalMemberSearchInput && globalMemberSearchInput.value) ? globalMemberSearchInput.value.trim() : '');
+        });
+    }
+
+    if (globalMemberSearchInput) {
+        globalMemberSearchInput.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                searchGlobalMember(globalMemberSearchInput.value.trim());
+            }
+        });
+    }
+
+    if (applyToAllMembersCheck) {
+        applyToAllMembersCheck.addEventListener('change', function () {
+            var disabled = applyToAllMembersCheck.checked;
+            if (globalMemberSearchInput) {
+                globalMemberSearchInput.disabled = disabled;
+            }
+            if (globalMemberSearchBtn) {
+                globalMemberSearchBtn.disabled = disabled;
+            }
+            if (globalTargetMemberCode && disabled) {
+                globalTargetMemberCode.value = '';
+            }
+            if (globalMemberTargetSummary && disabled) {
+                globalMemberTargetSummary.textContent = 'Apply-to-all selected.';
+            }
+            if (globalMemberSearchResults && disabled) {
+                globalMemberSearchResults.innerHTML = '<div class="text-muted">Search disabled while applying to all members.</div>';
+            }
+        });
+    }
 
     lookupForm.addEventListener('submit', function (event) {
         event.preventDefault();

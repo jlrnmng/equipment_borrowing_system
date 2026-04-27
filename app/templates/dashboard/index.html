@@ -288,10 +288,10 @@
     </div>
 </div>
 
-<div class="card stat-card mb-4">
+<div class="card stat-card mb-4" id="pendingReturnRequestsCard">
     <div class="card-header bg-white border-bottom fw-semibold d-flex justify-content-between align-items-center">
         <span><i class="bi bi-arrow-return-left me-1 text-success"></i> Pending Member Return Requests</span>
-        <span class="badge bg-success">{{ pending_return_requests|length }}</span>
+        <span class="badge bg-success" id="pendingReturnRequestsCount">{{ pending_return_requests|length }}</span>
     </div>
     <div class="card-body p-0">
         {% if pending_return_requests %}
@@ -309,7 +309,7 @@
                 </thead>
                 <tbody>
                     {% for req in pending_return_requests %}
-                    <tr>
+                    <tr data-return-request-row="{{ req.return_request_id }}" data-member-id="{{ req.member_id }}">
                         <td>
                             <div class="fw-semibold">{{ req.return_request_code }}</div>
                             <div class="small text-muted">{{ req.created_at.strftime('%Y-%m-%d %H:%M') if req.created_at else '' }}</div>
@@ -334,7 +334,7 @@
                         </td>
                         <td>
                             <div class="d-grid gap-2">
-                                <form method="POST" action="{{ url_for('borrow.approve_member_return_request', return_request_id=req.return_request_id) }}" class="d-flex gap-2">
+                                <form method="POST" action="{{ url_for('borrow.approve_member_return_request', return_request_id=req.return_request_id) }}" class="d-flex gap-2 js-return-request-action" data-return-action="approve" data-return-request-id="{{ req.return_request_id }}">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <select name="final_condition" class="form-select form-select-sm">
                                         <option value="excellent">Excellent</option>
@@ -345,7 +345,7 @@
                                     <input type="text" name="review_notes" class="form-control form-control-sm" placeholder="Physical check notes (optional)">
                                     <button type="submit" class="btn btn-sm btn-success">Approve</button>
                                 </form>
-                                <form method="POST" action="{{ url_for('borrow.reject_member_return_request', return_request_id=req.return_request_id) }}" class="d-flex gap-2">
+                                <form method="POST" action="{{ url_for('borrow.reject_member_return_request', return_request_id=req.return_request_id) }}" class="d-flex gap-2 js-return-request-action" data-return-action="reject" data-return-request-id="{{ req.return_request_id }}">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="text" name="review_notes" class="form-control form-control-sm" placeholder="Reason for rejection" required>
                                     <button type="submit" class="btn btn-sm btn-outline-danger">Reject</button>
@@ -411,4 +411,199 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="returnReceiptModal" tabindex="-1" aria-labelledby="returnReceiptModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="returnReceiptModalLabel"><i class="bi bi-receipt me-1"></i> Return Receipt</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0" style="min-height: 520px;">
+                <iframe id="returnReceiptFrame" src="about:blank" title="Return receipt" style="width:100%; min-height:520px; border:0;"></iframe>
+            </div>
+            <div class="modal-footer">
+                <a id="returnReceiptOpenNewTab" href="#" target="_blank" rel="noopener" class="btn btn-outline-secondary">
+                    <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+                </a>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Done</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
+
+    {% block extra_scripts %}
+    {{ super() }}
+    <script>
+    (function () {
+        var returnReceiptModalEl = document.getElementById('returnReceiptModal');
+        var returnReceiptFrame = document.getElementById('returnReceiptFrame');
+        var returnReceiptOpenNewTab = document.getElementById('returnReceiptOpenNewTab');
+        var returnReceiptModal = (returnReceiptModalEl && window.bootstrap)
+            ? bootstrap.Modal.getOrCreateInstance(returnReceiptModalEl)
+            : null;
+
+        function getCsrfToken(form) {
+            var tokenInput = form.querySelector('input[name="csrf_token"]');
+            return tokenInput ? tokenInput.value : '';
+        }
+
+        function openReturnReceiptModal(receiptUrl) {
+            if (!receiptUrl || !returnReceiptModal || !returnReceiptFrame) {
+                return;
+            }
+
+            returnReceiptFrame.setAttribute('src', receiptUrl);
+            if (returnReceiptOpenNewTab) {
+                returnReceiptOpenNewTab.setAttribute('href', receiptUrl);
+            }
+            returnReceiptModal.show();
+        }
+
+        function formatActionLabel(result) {
+            if (!result) {
+                return 'Request updated.';
+            }
+
+            if (result.action === 'approved') {
+                return 'Return request approved.';
+            }
+
+            if (result.action === 'rejected') {
+                return 'Return request rejected.';
+            }
+
+            return 'Request updated.';
+        }
+
+        function removeRequestRow(requestId) {
+            var row = document.querySelector('tr[data-return-request-row="' + String(requestId) + '"]');
+            var tbody = row ? row.parentNode : null;
+            if (row && row.parentNode) {
+                row.remove();
+            }
+
+            var remainingRows = document.querySelectorAll('tr[data-return-request-row]').length;
+            var badge = document.getElementById('pendingReturnRequestsCount');
+            if (badge) {
+                badge.textContent = String(remainingRows);
+            }
+
+            if (tbody && !tbody.querySelector('tr[data-return-request-row]')) {
+                var emptyStateCell = document.createElement('td');
+                emptyStateCell.colSpan = 6;
+                emptyStateCell.className = 'text-center text-muted py-4';
+                emptyStateCell.innerHTML = '<i class="bi bi-check2-circle fs-2 d-block mb-2"></i>No pending return requests.';
+                tbody.innerHTML = '';
+                var emptyRow = document.createElement('tr');
+                emptyRow.appendChild(emptyStateCell);
+                tbody.appendChild(emptyRow);
+            }
+        }
+
+        function refreshPendingReturnRequestsCard() {
+            return fetch(window.location.href, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'same-origin',
+                cache: 'no-store'
+            })
+            .then(function (response) {
+                if (!response.ok) {
+                    return false;
+                }
+
+                return response.text().then(function (html) {
+                    var parser = new DOMParser();
+                    var doc = parser.parseFromString(html, 'text/html');
+                    var currentCard = document.getElementById('pendingReturnRequestsCard');
+                    var nextCard = doc.getElementById('pendingReturnRequestsCard');
+                    if (currentCard && nextCard) {
+                        currentCard.outerHTML = nextCard.outerHTML;
+                    }
+                    return true;
+                });
+            })
+            .catch(function () {
+                return false;
+            });
+        }
+
+        if (!window.__dashboardReturnReviewAjaxBindingInstalled) {
+            window.__dashboardReturnReviewAjaxBindingInstalled = true;
+
+            window.addEventListener('app:data-changed', function (event) {
+                var detail = (event && event.detail) || {};
+                if (!detail.reason || detail.reason.indexOf('member_return_request_') !== 0) {
+                    return;
+                }
+                refreshPendingReturnRequestsCard();
+            });
+
+            document.addEventListener('submit', async function (event) {
+                var form = event.target.closest('.js-return-request-action');
+                if (!form) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                var submitBtn = form.querySelector('button[type="submit"]');
+                var originalText = submitBtn ? submitBtn.textContent : '';
+                var requestId = form.getAttribute('data-return-request-id');
+                var action = form.getAttribute('data-return-action');
+                var payload = new FormData(form);
+
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Saving...';
+                }
+
+                try {
+                    var response = await fetch(form.getAttribute('action'), {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': getCsrfToken(form),
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: payload,
+                        credentials: 'same-origin'
+                    });
+
+                    var result = await response.json();
+                    if (!response.ok || !result.ok) {
+                        throw new Error(result.message || 'Failed to update return request.');
+                    }
+
+                    window.__suppressDashboardAutoRefreshOnce = true;
+                    window.showAppToast(formatActionLabel(result), 'success');
+                    removeRequestRow(requestId);
+                    refreshPendingReturnRequestsCard();
+                    if (action === 'approve' && result.receipt_url) {
+                        openReturnReceiptModal(result.receipt_url);
+                    }
+                    if (window.dispatchEvent) {
+                        window.dispatchEvent(new CustomEvent('app:data-changed', {
+                            detail: {
+                                reason: 'member_return_request_' + action,
+                                member_id: result.member_id || null,
+                                return_request_id: result.return_request_id || null
+                            }
+                        }));
+                    }
+                } catch (err) {
+                    window.showAppToast(err.message || 'Failed to update return request.', 'danger');
+                } finally {
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = originalText || (action === 'approve' ? 'Approve' : 'Reject');
+                    }
+                }
+            });
+        }
+    })();
+    </script>
+    {% endblock %}

@@ -111,11 +111,26 @@
     var submitBorrowBtn = document.getElementById('submitBorrowBtn');
     var precheckResult = document.getElementById('precheckResult');
     var csrfToken = '{{ csrf_token() }}';
+    var MAX_SELECTED_ITEMS = 3;
 
     var selectedMember = null;
     var selectedItems = new Map();
     var allEquipmentResults = [];
     var equipmentVisibleCount = 10;
+
+    function showPopup(message, variant) {
+        if (window.showInlinePopup) {
+            window.showInlinePopup({
+                message: message,
+                variant: variant || 'info',
+                delay: 2200,
+                anchorSelector: '#precheckResult'
+            });
+            return;
+        }
+
+        precheckResult.innerHTML = '<span class="text-' + (variant === 'danger' ? 'danger' : 'warning') + '">' + escapeHtml(message) + '</span>';
+    }
 
     function escapeHtml(value) {
         return (value || '')
@@ -154,6 +169,7 @@
         var entries = Array.from(selectedItems.values());
         if (!entries.length) {
             selectedItemsBody.innerHTML = '<tr id="emptySelectedRow"><td colspan="3" class="text-muted text-center py-3">No equipment selected.</td></tr>';
+            updateEquipmentSelectionButtonStates();
             return;
         }
 
@@ -196,6 +212,29 @@
                 }
             });
         });
+
+        updateEquipmentSelectionButtonStates();
+    }
+
+    function updateEquipmentSelectionButtonStates() {
+        var atLimit = selectedItems.size >= MAX_SELECTED_ITEMS;
+        equipmentResults.querySelectorAll('.add-equipment').forEach(function (btn) {
+            var raw = btn.getAttribute('data-item') || '';
+            var item = null;
+            try {
+                item = JSON.parse(decodeURIComponent(raw));
+            } catch (err) {
+                return;
+            }
+
+            var isSelected = !!(item && selectedItems.has(Number(item.equipment_id)));
+            if (isSelected) {
+                btn.disabled = true;
+                return;
+            }
+
+            btn.disabled = atLimit;
+        });
     }
 
     function renderEquipmentResults(results, appendOnly) {
@@ -231,10 +270,17 @@
         equipmentResults.querySelectorAll('.add-equipment').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var item = JSON.parse(decodeURIComponent(btn.getAttribute('data-item')));
+                if (!selectedItems.has(item.equipment_id) && selectedItems.size >= MAX_SELECTED_ITEMS) {
+                    showPopup('Only 3 equipment items can be selected per borrow transaction.', 'warning');
+                    updateEquipmentSelectionButtonStates();
+                    return;
+                }
                 selectedItems.set(item.equipment_id, item);
                 renderSelectedItems();
             });
         });
+
+        updateEquipmentSelectionButtonStates();
 
         var loadMoreBtn = document.getElementById('loadMoreEquipmentBtn');
         if (loadMoreBtn) {
@@ -327,6 +373,11 @@
     submitBorrowBtn.addEventListener('click', function () {
         if (!selectedMember) {
             precheckResult.innerHTML = '<span class="text-danger">Select and validate a member first.</span>';
+            return;
+        }
+
+        if (selectedItems.size > MAX_SELECTED_ITEMS) {
+            showPopup('Only 3 equipment items can be selected per borrow transaction.', 'warning');
             return;
         }
 

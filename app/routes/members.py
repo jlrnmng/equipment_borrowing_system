@@ -5,7 +5,9 @@ from flask import Blueprint, current_app, flash, jsonify, redirect, render_templ
 from flask_login import current_user, login_required
 
 from app.forms import MemberProfileForm
+from app.models.app_setting import AppSetting
 from app.models.member import Member
+from app.realtime import emit_app_data_changed
 from app.utils.db import get_db
 from app.utils.qr import (
     build_member_qr_download_filename,
@@ -57,7 +59,12 @@ def scan_member():
         flash('You are not authorized to scan member QR codes.', 'danger')
         return redirect(url_for('dashboard.index'))
     existing_members = Member.get_active_members(limit=25)
-    return render_template('members/scan.html', existing_members=existing_members)
+    default_borrow_limit = AppSetting.get_int('default_borrow_limit', 3)
+    return render_template(
+        'members/scan.html',
+        existing_members=existing_members,
+        default_borrow_limit=default_borrow_limit,
+    )
 
 
 @members_bp.route('/api/members/lookup', methods=['GET'])
@@ -94,6 +101,137 @@ def lookup_member():
         return jsonify({'ok': True, 'member': None, 'results': [_serialize_member(r) for r in results]})
 
     return jsonify({'ok': True, 'member': None, 'results': []})
+
+
+@members_bp.route('/api/members/<member_code>/borrow-limit', methods=['POST'])
+@login_required
+def update_member_borrow_limit(member_code):
+    if not _is_authorized_scanner():
+        return jsonify({'ok': False, 'message': 'Forbidden'}), 403
+
+    normalized_code = _extract_member_code(member_code)
+    if not normalized_code:
+        return jsonify({'ok': False, 'message': 'Invalid member code format.'}), 400
+
+    profile = Member.get_profile_by_member_code(normalized_code)
+    if not profile:
+        return jsonify({'ok': False, 'message': 'Member not found.'}), 404
+
+    payload = request.get_json(silent=True) or {}
+    raw_limit = payload.get('max_borrow_limit')
+
+    try:
+        new_limit = int(raw_limit)
+    except Exception:
+        return jsonify({'ok': False, 'message': 'Borrow limit must be a whole number.'}), 400
+
+    if new_limit < 1 or new_limit > 10:
+        return jsonify({'ok': False, 'message': 'Borrow limit must be between 1 and 10.'}), 400
+
+    current_borrow_count = int(profile.get('current_borrow_count') or 0)
+    if new_limit < current_borrow_count:
+        return jsonify(
+            {
+                'ok': False,
+                'message': f'Borrow limit cannot be less than current borrowed count ({current_borrow_count}).',
+            }
+        ), 400
+
+    try:
+        Member.update_max_borrow_limit(profile['member_id'], new_limit)
+    except Exception:
+        current_app.logger.exception('Failed to update borrow limit for %s', normalized_code)
+        return jsonify({'ok': False, 'message': 'Unable to update borrow limit right now.'}), 500
+
+    emit_app_data_changed(
+        reason='member_borrow_limit_updated',
+        member_id=profile['member_id'],
+        include_staff=True,
+        include_members=True,
+    )
+
+    return jsonify(
+        {
+            'ok': True,
+            'member_code': normalized_code,
+            'current_borrow_count': current_borrow_count,
+            'max_borrow_limit': new_limit,
+        }
+    )
+
+
+@members_bp.route('/api/members/borrow-limit/global', methods=['POST'])
+@login_required
+def update_global_borrow_limit():
+    if not _is_authorized_scanner():
+        return jsonify({'ok': False, 'message': 'Forbidden'}), 403
+
+    payload = request.get_json(silent=True) or {}
+    raw_limit = payload.get('default_borrow_limit')
+    apply_to_all = bool(payload.get('apply_to_all'))
+    target_member_code = _extract_member_code(payload.get('target_member_code'))
+
+    try:
+        default_limit = int(raw_limit)
+    except Exception:
+        return jsonify({'ok': False, 'message': 'Borrow limit must be a whole number.'}), 400
+
+    if default_limit < 1 or default_limit > 10:
+        return jsonify({'ok': False, 'message': 'Borrow limit must be between 1 and 10.'}), 400
+
+    target_profile = None
+    if not apply_to_all:
+        if not target_member_code:
+            return jsonify({'ok': False, 'message': 'Select a member to apply the limit to, or enable apply-to-all.'}), 400
+
+        target_profile = Member.get_profile_by_member_code(target_member_code)
+        if not target_profile:
+            return jsonify({'ok': False, 'message': 'Selected member not found.'}), 404
+
+        current_borrow_count = int(target_profile.get('current_borrow_count') or 0)
+        if default_limit < current_borrow_count:
+            return jsonify(
+                {
+                    'ok': False,
+                    'message': f'Borrow limit cannot be less than current borrowed count ({current_borrow_count}) for {target_member_code}.',
+                }
+            ), 400
+
+    try:
+        AppSetting.set_number(
+            setting_key='default_borrow_limit',
+            value=default_limit,
+            updated_by=getattr(current_user, 'id', None),
+            description='Default max borrow limit per member account',
+            category='system',
+            is_public=True,
+        )
+
+        updated_members_count = 0
+        if apply_to_all:
+            updated_members_count = Member.update_max_borrow_limit_for_all(default_limit)
+        elif target_profile:
+            Member.update_max_borrow_limit(target_profile['member_id'], default_limit)
+    except Exception:
+        current_app.logger.exception('Failed to update global borrow limit setting')
+        return jsonify({'ok': False, 'message': 'Unable to update global borrow limit right now.'}), 500
+
+    emit_app_data_changed(
+        reason='global_borrow_limit_updated',
+        member_id=None,
+        include_staff=True,
+        include_members=apply_to_all,
+    )
+
+    return jsonify(
+        {
+            'ok': True,
+            'default_borrow_limit': default_limit,
+            'apply_to_all': apply_to_all,
+            'target_member_code': target_member_code,
+            'updated_members_count': updated_members_count,
+        }
+    )
 
 
 @members_bp.route('/members/<member_code>', methods=['GET', 'POST'])

@@ -7,6 +7,7 @@ from flask_login import current_user, login_required, login_user, logout_user
 
 from app import oauth
 from app.forms import LoginForm
+from app.models.app_setting import AppSetting
 from app.models.equipment import Equipment
 from app.models.member import Member
 from app.models.member_request import MemberBorrowRequest
@@ -302,6 +303,9 @@ def google_callback():
         first_name, last_name = _split_google_name(full_name)
         member_code = Member.get_next_member_code()
         qr_code_path = generate_member_qr(member_code)
+        default_borrow_limit = AppSetting.get_int('default_borrow_limit', 3)
+        if default_borrow_limit < 1:
+            default_borrow_limit = 3
         created_member = Member.create_member(
             member_code=member_code,
             first_name=first_name,
@@ -311,7 +315,7 @@ def google_callback():
             phone=None,
             student_id=None,
             startup=None,
-            max_borrow_limit=3,
+            max_borrow_limit=default_borrow_limit,
             created_by=None,
             qr_code_path=qr_code_path,
         )
@@ -732,6 +736,20 @@ def submit_member_borrow_request():
         selected_ids.append(equipment_id)
         parsed_items.append({'equipment_id': equipment_id, 'condition_requested': condition_requested})
 
+    if len(parsed_items) > 3:
+        return jsonify({'ok': False, 'message': 'You can only request up to 3 equipment items per borrow request.'}), 400
+
+    current_borrow_count = int(member_row.get('current_borrow_count') or 0)
+    max_borrow_limit = int(member_row.get('max_borrow_limit') or 0)
+    next_borrow_count = current_borrow_count + len(parsed_items)
+    if max_borrow_limit <= 0 or next_borrow_count > max_borrow_limit:
+        return jsonify(
+            {
+                'ok': False,
+                'message': f'Borrowed items limit exceeded. Your limit is {max_borrow_limit} item(s).',
+            }
+        ), 400
+
     available_rows = Equipment.get_all(status='available')
     available_ids = {row.get('equipment_id') for row in available_rows}
     unavailable = [str(item_id) for item_id in selected_ids if item_id not in available_ids]
@@ -842,6 +860,8 @@ def submit_member_return_request():
 @auth_bp.route('/api/member/return-request-all', methods=['POST'])
 @login_required
 def submit_member_return_request_all():
+    return jsonify({'ok': False, 'message': 'Return-all is currently disabled. Please submit returns one item at a time.'}), 403
+
     if getattr(current_user, 'role', None) != 'member':
         return jsonify({'ok': False, 'message': 'Forbidden'}), 403
 

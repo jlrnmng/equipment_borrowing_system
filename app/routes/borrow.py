@@ -689,6 +689,8 @@ def approve_member_return_request(return_request_id):
     if not _is_authorized_borrower():
         return redirect(url_for('dashboard.index'))
 
+    is_ajax_request = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
     expire_stale_requests(expiry_minutes=current_app.config.get('REQUEST_EXPIRY_MINUTES', 30))
 
     request_row = MemberReturnRequest.get_request_detail(return_request_id)
@@ -764,6 +766,20 @@ def approve_member_return_request(return_request_id):
         include_staff=True,
         include_members=True,
     )
+
+    if is_ajax_request:
+        return jsonify(
+            {
+                'ok': True,
+                'action': 'approved',
+                'message': f"Return request {request_row.get('return_request_code')} approved.",
+                'member_id': request_row.get('member_id'),
+                'return_request_id': return_request_id,
+                'return_request_code': request_row.get('return_request_code'),
+                'receipt_url': url_for('borrow.return_receipt', borrow_item_id=receipt_meta['borrow_item_id'], embed=1),
+            }
+        )
+
     return redirect(url_for('borrow.return_receipt', borrow_item_id=receipt_meta['borrow_item_id']))
 
 
@@ -772,6 +788,8 @@ def approve_member_return_request(return_request_id):
 def reject_member_return_request(return_request_id):
     if not _is_authorized_borrower():
         return redirect(url_for('dashboard.index'))
+
+    is_ajax_request = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
     expire_stale_requests(expiry_minutes=current_app.config.get('REQUEST_EXPIRY_MINUTES', 30))
 
@@ -841,6 +859,18 @@ def reject_member_return_request(return_request_id):
             )
         except Exception:
             current_app.logger.exception('Failed to queue/send rejection notification for return request %s', return_request_id)
+
+    if is_ajax_request:
+        return jsonify(
+            {
+                'ok': True,
+                'action': 'rejected',
+                'message': f"Return request {request_row.get('return_request_code')} rejected.",
+                'member_id': request_row.get('member_id'),
+                'return_request_id': return_request_id,
+                'return_request_code': request_row.get('return_request_code'),
+            }
+        )
 
     return redirect(url_for('dashboard.index'))
 
@@ -1068,6 +1098,8 @@ def borrow_precheck():
     warnings = []
     if not usage_area:
         warnings.append('Usage area is required for in-facility tracking.')
+    if len(selected_items) > 3:
+        warnings.append('Only 3 equipment items are allowed per borrow transaction.')
     if not in_working_hours:
         warnings.append('Borrowing is outside working hours (Mon-Fri, 8:00-16:30).')
     if unavailable_items:
@@ -1082,11 +1114,12 @@ def borrow_precheck():
                 'borrowed_during_working_hours': in_working_hours,
                 'requires_supervision': requires_supervision,
                 'usage_area_provided': bool(usage_area),
+                'within_selection_limit': len(selected_items) <= 3,
             },
             'selected_count': len(selected_items),
             'unavailable_items': [item.get('equipment_code') for item in unavailable_items],
             'warnings': warnings,
-            'ready_for_save': eligibility['eligible'] and len(selected_items) > 0 and not warnings,
+            'ready_for_save': eligibility['eligible'] and len(selected_items) > 0 and len(selected_items) <= 3 and not warnings,
         }
     )
 
@@ -1127,6 +1160,9 @@ def submit_borrow():
         if condition_borrowed not in ('excellent', 'good', 'fair', 'poor'):
             return jsonify({'ok': False, 'message': 'Invalid borrowed condition value.'}), 400
         parsed_items.append({'equipment_id': equipment_id, 'condition_borrowed': condition_borrowed})
+
+    if len(parsed_items) > 3:
+        return jsonify({'ok': False, 'message': 'Only 3 equipment items are allowed per borrow transaction.'}), 400
 
     member_row = Member.get_by_member_code(member_code)
     eligibility = _build_member_eligibility(member_row)
@@ -1430,6 +1466,14 @@ def return_receipt(borrow_item_id):
     expected = row.get('expected_return_date')
     days_overdue = max(0, (today - expected).days) if expected else 0
     is_damaged = _is_condition_worse(row.get('condition_borrowed'), row.get('condition_returned'))
+
+    if (request.args.get('embed') or '').strip() == '1':
+        return render_template(
+            'borrow/return_receipt_embed.html',
+            record=row,
+            days_overdue=days_overdue,
+            is_damaged=is_damaged,
+        )
 
     return render_template(
         'borrow/return_receipt.html',
